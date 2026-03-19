@@ -1,0 +1,47 @@
+import { Routes } from '@angular/router';
+import { LayoutComponent } from './shared/components/layout/layout.component';
+
+export const routes: Routes = [
+  {
+    path: 'login',
+    loadComponent: () =>
+      import('./core/auth/presentation/pages/login.component').then(m => m.LoginPageComponent)
+  },
+  {
+    path: '',
+    component: LayoutComponent,
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./features/dashboard/presentation/pages/dashboard.component').then(m => m.DashboardPageComponent)
+      },
+      {
+        path: 'products',
+        loadComponent: () =>
+          import('./features/inventory/presentation/pages/inventory/inventory.component').then(m => m.InventoryPageComponent)
+      },
+      {
+        path: 'movements',
+        loadComponent: () =>
+          import('./features/movements/presentation/pages/movements/movements.component').then(m => m.MovementsPageComponent)
+      },
+      {
+        path: 'sim-cards',
+        loadComponent: () =>
+          import('./features/sim-cards/presentation/pages/sim-cards/sim-cards.component').then(m => m.SimCardsPageComponent)
+      },
+      {
+        path: 'responsables',
+        loadComponent: () =>
+          import('./features/responsables/presentation/pages/responsables/responsables.component').then(m => m.ResponsablesPageComponent)
+      },
+      {
+        path: 'reports',
+        loadComponent: () =>
+          import('./features/dashboard/presentation/pages/reports/reports.component').then(m => m.ReportsPageComponent)
+      },
+    ]
+  },
+  { path: '**', redirectTo: 'login' }
+];
