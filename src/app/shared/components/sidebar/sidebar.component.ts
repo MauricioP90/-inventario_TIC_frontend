@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import Keycloak from 'keycloak-js';
 
 interface NavItem {
   label: string;
@@ -12,6 +13,7 @@ interface NavItem {
   standalone: true,
   imports: [RouterLink, RouterLinkActive],
   template: `
+<!-- ... remaining template unchanged ... -->
     <aside class="flex flex-col h-screen w-64 bg-slate-900 text-slate-100 shrink-0 shadow-lg">
       <!-- Header -->
       <div class="flex items-center gap-3 px-6 py-5 border-b border-slate-700">
@@ -52,6 +54,8 @@ interface NavItem {
   styles: []
 })
 export class SidebarComponent {
+  private keycloak = inject(Keycloak);
+
   navItems: NavItem[] = [
     {
       label: 'Dashboard',
@@ -85,8 +89,7 @@ export class SidebarComponent {
     },
   ];
 
-  logout() {
-    // Se implementará con un AuthService
-    console.log('Logout');
+  async logout() {
+    await this.keycloak.logout({ redirectUri: window.location.origin });
   }
 }

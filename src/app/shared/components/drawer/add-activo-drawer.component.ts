@@ -1,9 +1,10 @@
-import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { CreateActivoUseCase } from '../../../features/inventory/application/use-cases/create-activo.use-case';
 
 @Component({
-  selector: 'app-add-product-drawer',
+  selector: 'app-add-activo-drawer',
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
@@ -24,7 +25,7 @@ import { FormsModule } from '@angular/forms';
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-5 border-b border-slate-200 shrink-0">
         <div>
-          <h2 class="text-base font-bold text-slate-800">Nuevo Producto</h2>
+          <h2 class="text-base font-bold text-slate-800">Nuevo Activo</h2>
           <p class="text-xs text-slate-500 mt-0.5">Completa los datos del equipo a registrar.</p>
         </div>
         <button (click)="close()" class="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
@@ -48,7 +49,7 @@ import { FormsModule } from '@angular/forms';
         <!-- Tipo de Dispositivo -->
         <div class="space-y-1.5">
           <label class="block text-sm font-medium text-slate-700">Tipo de Dispositivo</label>
-          <select [(ngModel)]="deviceType" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <select [(ngModel)]="tipo" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
             <option value="" disabled>Seleccionar tipo</option>
             <option value="Laptop">Laptop</option>
             <option value="Celular">Celular</option>
@@ -56,17 +57,17 @@ import { FormsModule } from '@angular/forms';
           </select>
         </div>
 
-        <!-- Modelo -->
+        <!-- Marca -->
         <div class="space-y-1.5">
-          <label class="block text-sm font-medium text-slate-700">Modelo</label>
-          <input type="text" [(ngModel)]="model" placeholder="Ej: Dell Latitude 5540"
+          <label class="block text-sm font-medium text-slate-700">Marca</label>
+          <input type="text" [(ngModel)]="marca" placeholder="Ej: Dell Latitude 5540"
             class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" />
         </div>
 
-        <!-- Placa -->
+        <!-- Modelo -->
         <div class="space-y-1.5">
-          <label class="block text-sm font-medium text-slate-700">Placa</label>
-          <input type="text" [(ngModel)]="placa" placeholder="Ej: FLM-0010"
+          <label class="block text-sm font-medium text-slate-700">Modelo</label>
+          <input type="text" [(ngModel)]="modelo" placeholder="Ej: Dell Latitude 5540"
             class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" />
         </div>
 
@@ -77,16 +78,45 @@ import { FormsModule } from '@angular/forms';
             class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" />
         </div>
 
+        <!-- Placa -->
+        <div class="space-y-1.5">
+          <label class="block text-sm font-medium text-slate-700">Placa</label>
+          <input type="text" [(ngModel)]="placa" placeholder="Ej: FLM-0010"
+            class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" />
+        </div>
+
         <!-- Ubicación -->
         <div class="space-y-1.5">
           <label class="block text-sm font-medium text-slate-700">Ubicación</label>
-          <select [(ngModel)]="location" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <select [(ngModel)]="locationId" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
             <option value="" disabled>Seleccionar ubicación</option>
-            <option value="Bodega Principal">Bodega Principal</option>
-            <option value="Oficina Bogotá">Oficina Bogotá</option>
-            <option value="Oficina Medellín">Oficina Medellín</option>
-            <option value="Taller Técnico">Taller Técnico</option>
+            <option value="550e8400-e29b-41d4-a716-446655440000">Bodega Central Bogotá (BOG-01)</option>
           </select>
+        </div>
+
+        <!-- Estado -->
+        <div class="space-y-1.5">
+          <label class="block text-sm font-medium text-slate-700">Estado</label>
+          <select [(ngModel)]="estado" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+            <option value="" disabled>Seleccionar estado</option>
+            <option value="BODEGA">En Bodega</option>
+            <option value="OPERACION">En Operación</option>
+            <option value="REPARACION">En Reparación</option>
+          </select>
+        </div>
+
+        <!-- Responsable -->
+        <div class="space-y-1.5">
+          <label class="block text-sm font-medium text-slate-700">ID Responsable</label>
+          <input type="text" [(ngModel)]="responsibleId" placeholder="Ej: RESP-001"
+            class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" />
+        </div>
+
+        <!-- Fecha Ingreso -->
+        <div class="space-y-1.5">
+          <label class="block text-sm font-medium text-slate-700">Fecha de Ingreso</label>
+          <input type="date" [(ngModel)]="fechaIngreso"
+            class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         </div>
 
         <!-- Factura / Soporte -->
@@ -107,23 +137,28 @@ import { FormsModule } from '@angular/forms';
       <div class="px-6 py-4 border-t border-slate-200 shrink-0">
         <button (click)="handleSave()"
           class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg transition-colors">
-          Guardar Producto
+          Guardar Activo
         </button>
       </div>
     </div>
   `,
   styles: []
 })
-export class AddProductDrawerComponent {
+export class AddActivoDrawerComponent {
+  private createActivoUseCase = inject(CreateActivoUseCase);
   @Input() open = false;
   @Output() openChange = new EventEmitter<boolean>();
   @Output() saved = new EventEmitter<void>();
 
-  deviceType = '';
-  model = '';
-  placa = '';
+  tipo = '';
+  marca = '';
+  modelo = '';
   serial = '';
-  location = '';
+  placa = '';
+  estado = '';
+  locationId = '550e8400-e29b-41d4-a716-446655440000';
+  responsibleId = '77f1f7d5-d14c-474c-87d2-646c1a843e93';
+  fechaIngreso = '';
   fileName = '';
   toast = signal<{ type: 'success' | 'error', message: string } | null>(null);
 
@@ -138,21 +173,50 @@ export class AddProductDrawerComponent {
 
   handleSave() {
     this.toast.set(null);
-    if (!this.deviceType || !this.model || !this.placa || !this.serial || !this.location) {
+    if (!this.tipo || !this.marca || !this.modelo || !this.serial || !this.placa || !this.estado || !this.locationId || !this.responsibleId || !this.fechaIngreso) {
       this.toast.set({ type: 'error', message: 'Por favor completa todos los campos obligatorios.' });
       return;
     }
-    this.toast.set({ type: 'success', message: `Producto "${this.placa}" guardado exitosamente.` });
-    this.resetForm();
-    setTimeout(() => { this.toast.set(null); this.close(); this.saved.emit(); }, 1200);
+
+    const payload = {
+      tipo: this.tipo,
+      marca: this.marca,
+      modelo: this.modelo,
+      serial: this.serial,
+      placa: this.placa,
+      estado: this.estado as any,
+      locationId: this.locationId,
+      responsibleId: this.responsibleId,
+      fechaIngreso: this.fechaIngreso
+    };
+
+    this.createActivoUseCase.execute(payload).subscribe({
+      next: () => {
+        this.toast.set({ type: 'success', message: `Activo "${this.placa}" guardado exitosamente.` });
+        this.resetForm();
+        setTimeout(() => {
+          this.toast.set(null);
+          this.close();
+          this.saved.emit();
+        }, 1200);
+      },
+      error: (err) => {
+        console.error('Error al guardar activo:', err);
+        this.toast.set({ type: 'error', message: 'Hubo un error al conectar con el servidor.' });
+      }
+    });
   }
 
   private resetForm() {
-    this.deviceType = '';
-    this.model = '';
-    this.placa = '';
+    this.tipo = '';
+    this.marca = '';
+    this.modelo = '';
     this.serial = '';
-    this.location = '';
+    this.placa = '';
+    this.estado = '';
+    this.locationId = '';
+    this.responsibleId = '';
+    this.fechaIngreso = '';
     this.fileName = '';
   }
 }
