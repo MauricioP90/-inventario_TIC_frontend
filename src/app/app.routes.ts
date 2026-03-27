@@ -22,6 +22,11 @@ export const routes: Routes = [
           import('./features/inventory/presentation/pages/inventory/inventory.component').then(m => m.InventoryPageComponent)
       },
       {
+        path: 'locations',
+        loadComponent: () =>
+          import('./features/locations/presentation/pages/locations-list/locations-list.component').then(m => m.LocationsListComponent)
+      },
+      {
         path: 'movements',
         loadComponent: () =>
           import('./features/movements/presentation/pages/movements/movements.component').then(m => m.MovementsPageComponent)

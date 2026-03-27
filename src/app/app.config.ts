@@ -18,6 +18,8 @@ import { ResponsableRepository } from './features/responsables/domain/repositori
 import { HttpResponsableRepository } from './features/responsables/infrastructure/adapters/http-responsable.repository';
 import { ActivoRepository } from './features/inventory/domain/repositories/activo.repository';
 import { HttpActivoRepository } from './features/inventory/infrastructure/adapters/http-activo.repository';
+import { LocationRepository } from './features/locations/domain/repositories/location.repository';
+import { HttpLocationRepository } from './features/locations/infrastructure/adapters/http-location.repository';
 
 // Condición para incluir el token en las peticiones al backend
 const urlCondition = createInterceptorCondition<IncludeBearerTokenCondition>({
@@ -44,6 +46,7 @@ export const appConfig: ApplicationConfig = {
       provide: INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG,
       useValue: [urlCondition]
     },
+    { provide: LocationRepository, useClass: HttpLocationRepository },
     { provide: ActivoRepository, useClass: HttpActivoRepository },
     { provide: SimCardRepository, useClass: HttpSimCardRepository },
     { provide: MovementRepository, useClass: HttpMovementRepository },
