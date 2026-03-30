@@ -3,7 +3,7 @@ export interface Location {
   code: string;
   nombre: string;
   coordenadas?: string | null;
-  responsableId: string;
+  responsibleId: string;
   estado: 'ACTIVO' | 'INACTIVO';
 }
 

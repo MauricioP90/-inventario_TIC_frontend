@@ -71,7 +71,7 @@ import { Location } from '../../../../features/locations/domain/models/location.
             <div>
               <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Responsable</label>
               <select 
-                formControlName="responsableId"
+                formControlName="responsibleId"
                 class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm appearance-none bg-no-repeat bg-[right_1rem_center] bg-[length:1em]">
                 <option value="">Seleccione un responsable</option>
                 @for (resp of responsables(); track resp.id) {
@@ -121,7 +121,7 @@ export class AddLocationDrawerComponent implements OnInit {
       code: ['', [Validators.required]],
       nombre: ['', [Validators.required]],
       coordenadas: [''],
-      responsableId: ['', [Validators.required]],
+      responsibleId: ['', [Validators.required]],
       estado: ['ACTIVO']
     });
   }
