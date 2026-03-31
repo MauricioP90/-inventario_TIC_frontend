@@ -7,7 +7,7 @@ import { environment } from '../../../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class HttpResponsableRepository implements ResponsableRepository {
-  private apiUrl = `${environment.apiUrl}/responsables`;
+  private apiUrl = `${environment.apiUrl}/responsibles`;
 
   constructor(private http: HttpClient) {}
 
@@ -17,11 +17,17 @@ export class HttpResponsableRepository implements ResponsableRepository {
   getById(id: string): Observable<Responsable> {
     return this.http.get<Responsable>(`${this.apiUrl}/${id}`);
   }
+  getStats(id: string): Observable<{ totalActivos: number, totalSIMCards: number }> {
+    return this.http.get<{ totalActivos: number, totalSIMCards: number }>(`${this.apiUrl}/${id}/stats`);
+  }
   create(responsable: CreateResponsableDto): Observable<Responsable> {
     return this.http.post<Responsable>(this.apiUrl, responsable);
   }
   update(id: string, responsable: UpdateResponsableDto): Observable<Responsable> {
-    return this.http.patch<Responsable>(`${this.apiUrl}/${id}`, responsable);
+    return this.http.put<Responsable>(`${this.apiUrl}/${id}`, responsable);
+  }
+  inactive(id: string): Observable<Responsable> {
+    return this.http.patch<Responsable>(`${this.apiUrl}/${id}/inactive`, {});
   }
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);

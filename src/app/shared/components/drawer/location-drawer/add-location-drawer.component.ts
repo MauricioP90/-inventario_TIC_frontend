@@ -34,7 +34,7 @@ import { Location } from '../../../../features/locations/domain/models/location.
             <p class="text-xs text-slate-500 mt-1">Registra un nuevo punto físico o bodega</p>
           </div>
           <button (click)="close()" class="p-2 hover:bg-slate-200 rounded-lg text-slate-400">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l18 18"/></svg>
+             X
           </button>
         </div>
 
@@ -69,15 +69,24 @@ import { Location } from '../../../../features/locations/domain/models/location.
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Responsable</label>
-              <select 
-                formControlName="responsibleId"
-                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm appearance-none bg-no-repeat bg-[right_1rem_center] bg-[length:1em]">
-                <option value="">Seleccione un responsable</option>
+              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Responsables Asignados</label>
+              <div class="space-y-2 max-h-48 overflow-y-auto p-3 border border-slate-100 rounded-xl bg-slate-50/30">
                 @for (resp of responsables(); track resp.id) {
-                  <option [value]="resp.id">{{ resp.name }}</option>
+                  <label class="flex items-center gap-3 p-2 hover:bg-white rounded-lg transition-colors cursor-pointer group">
+                    <input 
+                      type="checkbox" 
+                      [checked]="isResponsableSelected(resp.id)"
+                      (change)="toggleResponsable(resp.id)"
+                      class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                    <div class="flex flex-col">
+                      <span class="text-sm font-medium text-slate-700 group-hover:text-indigo-600 transition-colors">{{ resp.nombre }}</span>
+                      <span class="text-[10px] text-slate-400">{{ resp.email }}</span>
+                    </div>
+                  </label>
+                } @empty {
+                  <p class="text-[11px] text-slate-400 text-center py-4">No hay responsables registrados</p>
                 }
-              </select>
+              </div>
             </div>
 
             <div class="pt-4 border-t border-slate-50 flex gap-3">
@@ -106,6 +115,7 @@ export class AddLocationDrawerComponent implements OnInit {
   saving = signal(false);
   responsables = signal<Responsable[]>([]);
   selectedLocation = signal<Location | null>(null);
+  selectedResponsibleIds = signal<string[]>([]);
 
   @Output() onSave = new EventEmitter<void>();
 
@@ -121,36 +131,60 @@ export class AddLocationDrawerComponent implements OnInit {
       code: ['', [Validators.required]],
       nombre: ['', [Validators.required]],
       coordenadas: [''],
-      responsibleId: ['', [Validators.required]],
       estado: ['ACTIVO']
     });
   }
 
   ngOnInit() {
-    this.getAllResponsables.execute().subscribe((data: Responsable[]) => this.responsables.set(data));
+    this.getAllResponsables.execute().subscribe((data) => this.responsables.set(data));
   }
+
+  isResponsableSelected(id: string): boolean {
+    return this.selectedResponsibleIds().includes(id);
+  }
+
+  toggleResponsable(id: string) {
+    const current = this.selectedResponsibleIds();
+    if (current.includes(id)) {
+      this.selectedResponsibleIds.set(current.filter(item => item !== id));
+    } else {
+      this.selectedResponsibleIds.set([...current, id]);
+    }
+  }
+
   open(location?: Location) {
     this.selectedLocation.set(location || null);
 
     if (location) {
       this.locationForm.patchValue(location);
+      this.selectedResponsibleIds.set(location.responsibleIds || []);
     } else {
       this.locationForm.reset({ estado: 'ACTIVO' });
+      this.selectedResponsibleIds.set([]);
     }
     this.isOpen.set(true);
   }
-  close() { this.isOpen.set(false); this.locationForm.reset({ estado: 'ACTIVO' }); }
+
+  close() { 
+    this.isOpen.set(false); 
+    this.locationForm.reset({ estado: 'ACTIVO' }); 
+    this.selectedResponsibleIds.set([]);
+  }
 
   save() {
     if (this.locationForm.valid) {
       this.saving.set(true);
-
-      // Si tenemos una ubicación seleccionada, es una actualización (PUT)
       const currentLoc = this.selectedLocation();
+      
+      const payload = {
+        ...this.locationForm.value,
+        responsibleIds: this.selectedResponsibleIds()
+      };
 
       const request$ = currentLoc
-        ? this.updateLocation.execute(currentLoc.code, this.locationForm.value)
-        : this.createLocation.execute(this.locationForm.value);
+        ? this.updateLocation.execute(currentLoc.code, payload)
+        : this.createLocation.execute(payload);
+
       request$.subscribe({
         next: () => {
           this.saving.set(false);
@@ -160,7 +194,6 @@ export class AddLocationDrawerComponent implements OnInit {
         error: (err: any) => {
           this.saving.set(false);
           console.error('Error al guardar ubicación:', err);
-          // Tip: Aquí podrías añadir un mensaje de alerta para el usuario
         }
       });
     }
