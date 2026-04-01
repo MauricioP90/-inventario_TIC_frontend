@@ -1,7 +1,7 @@
 import { Component, EventEmitter, OnInit, Output, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Responsable, CreateResponsableDto, UpdateResponsableDto } from '../../../../features/responsables/domain/models/responsable.model';
+import { Responsable } from '../../../../features/responsables/domain/models/responsable.model';
 import { Location } from '../../../../features/locations/domain/models/location.model';
 import { CreateResponsableUseCase } from '../../../../features/responsables/application/use-cases/create-responsable.use-case';
 import { UpdateResponsableUseCase } from '../../../../features/responsables/application/use-cases/update-responsable.use-case';

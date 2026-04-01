@@ -44,16 +44,60 @@ import { AddResponsableDrawerComponent } from '../../../../../shared/components/
             (input)="searchTerm.set($any($event.target).value)"
             class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm">
         </div>
-        <div class="md:col-span-4">
-          <select 
-            [value]="locationFilter()"
-            (change)="locationFilter.set($any($event.target).value)"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white">
-            <option value="">Todas las sedes</option>
-            @for (loc of locations(); track loc.id) {
-              <option [value]="loc.id">{{ loc.nombre }}</option>
-            }
-          </select>
+        <!-- Filtro Multi-Sede Custom -->
+        <div class="md:col-span-4 relative">
+          <!-- Botón que abre el menú -->
+          <button 
+            type="button"
+            (click)="isLocationDropdownOpen.set(!isLocationDropdownOpen())"
+            class="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-all text-sm text-slate-600 text-left">
+            <span class="truncate">
+              {{ locationFilter().length === 0 ? 'Todas las sedes' : locationFilter().length + ' sedes seleccionadas' }}
+            </span>
+            <span class="text-[10px] text-slate-400">▼</span>
+          </button>
+
+          <!-- El Menú Flotante -->
+          @if (isLocationDropdownOpen()) {
+            <div class="absolute z-20 top-full left-0 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden p-2">
+              
+              <!-- Buscador -->
+              <div class="relative mb-2">
+                <span class="absolute inset-y-0 left-2 flex items-center text-slate-400 text-xs">🔍</span>
+                <input 
+                  type="text" 
+                  [value]="searchLocationTerm()"
+                  (input)="searchLocationTerm.set($any($event.target).value)"
+                  placeholder="Buscar sede..."
+                  class="w-full pl-7 pr-3 py-1.5 rounded-lg border border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-xs transition-all">
+              </div>
+
+              <!-- Lista con Checkboxes -->
+              <div class="max-h-48 overflow-y-auto space-y-1">
+                @for (loc of filteredLocationsDropdown(); track loc.id) {
+                  <label class="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded-md cursor-pointer group">
+                    <input 
+                      type="checkbox" 
+                      [checked]="locationFilter().includes(loc.id)"
+                      (change)="toggleLocationFilter(loc.id)"
+                      class="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                    <div class="flex flex-col">
+                      <span class="text-xs font-medium text-slate-700 group-hover:text-indigo-600 transition-colors truncate">{{ loc.nombre }}</span>
+                    </div>
+                  </label>
+                } @empty {
+                  <p class="text-[10px] text-slate-400 text-center py-2">Sede no encontrada</p>
+                }
+              </div>
+              
+              <!-- Botón cerrar (Opcional, de ayuda UX) -->
+               <div class="mt-2 pt-2 border-t border-slate-100 text-center">
+                 <button (click)="isLocationDropdownOpen.set(false)" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800">
+                   Cerrar Filtro
+                 </button>
+               </div>
+            </div>
+          }
         </div>
         <div class="md:col-span-3">
           <select 
@@ -157,17 +201,40 @@ export class ResponsablesPageComponent implements OnInit {
 
   // Filtros
   searchTerm = signal('');
-  locationFilter = signal('');
+  isLocationDropdownOpen = signal(false);
+  locationFilter = signal<string[]>([]);
+  searchLocationTerm = signal('');
+  filteredLocationsDropdown = computed(() => {
+    const term = this.searchLocationTerm().toLowerCase().trim();
+    if (!term) return this.locations();
+    return this.locations().filter(loc =>
+      loc.nombre.toLowerCase().includes(term) ||
+      loc.code.toLowerCase().includes(term)
+    );
+  });
+
+  toggleLocationFilter(id: string) {
+    const current = this.locationFilter();
+    if (current.includes(id)) {
+      this.locationFilter.set(current.filter(item => item !== id));
+    } else {
+      this.locationFilter.set([...current, id]);
+    }
+  }
+
   statusFilter = signal('');
 
   filteredResponsables = computed(() => {
     const term = this.searchTerm().toLowerCase().trim();
-    const locId = this.locationFilter();
+    const locIds = this.locationFilter(); // Ahora es un array
     const status = this.statusFilter();
-
     return this.responsables().filter(resp => {
       const matchesSearch = resp.nombre.toLowerCase().includes(term) || resp.email.toLowerCase().includes(term);
-      const matchesLocation = !locId || resp.locationIds?.includes(locId);
+
+      // La magia: Si no hay filtro, pasan todos. Si hay, verificamos si el responsable tiene alguna de las sedes seleccionadas.
+      const matchesLocation = locIds.length === 0 ||
+        locIds.some(id => resp.locationIds?.includes(id));
+
       const matchesStatus = !status || resp.estado === status;
       return matchesSearch && matchesLocation && matchesStatus;
     });
@@ -176,7 +243,7 @@ export class ResponsablesPageComponent implements OnInit {
   constructor(
     private getAllResponsables: GetAllResponsablesUseCase,
     private getAllLocations: GetAllLocationsUseCase
-  ) {}
+  ) { }
 
   ngOnInit() {
     this.fetchData();
@@ -188,7 +255,7 @@ export class ResponsablesPageComponent implements OnInit {
     this.getAllLocations.execute().subscribe({
       next: (locs) => {
         this.locations.set(locs);
-        
+
         // Cargar responsables
         this.getAllResponsables.execute().subscribe({
           next: (resps) => {

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, OnInit, Output, signal } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CreateLocationUseCase } from '../../../../features/locations/application/use-cases/create-location.use-case';
@@ -70,8 +70,21 @@ import { Location } from '../../../../features/locations/domain/models/location.
 
             <div>
               <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Responsables Asignados</label>
+              
+              <!-- Input de Búsqueda -->
+              <div class="relative mb-2">
+                <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">🔍</span>
+                <input 
+                  type="text" 
+                  [value]="searchResponsableTerm()"
+                  (input)="searchResponsableTerm.set($any($event.target).value)"
+                  placeholder="Buscar por nombre o correo..."
+                  class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-xs transition-all">
+              </div>
+
+              <!-- Lista con Checkboxes -->
               <div class="space-y-2 max-h-48 overflow-y-auto p-3 border border-slate-100 rounded-xl bg-slate-50/30">
-                @for (resp of responsables(); track resp.id) {
+                @for (resp of filteredResponsables(); track resp.id) {
                   <label class="flex items-center gap-3 p-2 hover:bg-white rounded-lg transition-colors cursor-pointer group">
                     <input 
                       type="checkbox" 
@@ -84,7 +97,7 @@ import { Location } from '../../../../features/locations/domain/models/location.
                     </div>
                   </label>
                 } @empty {
-                  <p class="text-[11px] text-slate-400 text-center py-4">No hay responsables registrados</p>
+                  <p class="text-[11px] text-slate-400 text-center py-4">No se encontraron responsables</p>
                 }
               </div>
             </div>
@@ -116,6 +129,22 @@ export class AddLocationDrawerComponent implements OnInit {
   responsables = signal<Responsable[]>([]);
   selectedLocation = signal<Location | null>(null);
   selectedResponsibleIds = signal<string[]>([]);
+  searchResponsableTerm = signal('');
+
+  filteredResponsables = computed(() => {
+    const term = this.searchResponsableTerm().toLowerCase().trim();
+    const all = this.responsables();
+    const selectedIds = this.selectedResponsibleIds();
+    if (term) {
+      return all.filter(resp =>
+        resp.nombre.toLowerCase().includes(term) ||
+        resp.email.toLowerCase().includes(term)
+      );
+    }
+    return all.filter(resp => selectedIds.includes(resp.id));
+  });
+
+
 
   @Output() onSave = new EventEmitter<void>();
 
@@ -154,6 +183,7 @@ export class AddLocationDrawerComponent implements OnInit {
 
   open(location?: Location) {
     this.selectedLocation.set(location || null);
+    this.searchResponsableTerm.set('');
 
     if (location) {
       this.locationForm.patchValue(location);
@@ -165,17 +195,18 @@ export class AddLocationDrawerComponent implements OnInit {
     this.isOpen.set(true);
   }
 
-  close() { 
-    this.isOpen.set(false); 
-    this.locationForm.reset({ estado: 'ACTIVO' }); 
+  close() {
+    this.isOpen.set(false);
+    this.locationForm.reset({ estado: 'ACTIVO' });
     this.selectedResponsibleIds.set([]);
+    this.searchResponsableTerm.set('');
   }
 
   save() {
     if (this.locationForm.valid) {
       this.saving.set(true);
       const currentLoc = this.selectedLocation();
-      
+
       const payload = {
         ...this.locationForm.value,
         responsibleIds: this.selectedResponsibleIds()
