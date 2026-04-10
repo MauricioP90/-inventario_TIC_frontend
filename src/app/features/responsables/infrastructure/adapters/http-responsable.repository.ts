@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Responsable, CreateResponsableDto, UpdateResponsableDto } from '../../domain/models/responsable.model';
+import { Role } from '../../domain/models/role.model';
 import { ResponsableRepository } from '../../domain/repositories/responsable.repository';
 import { environment } from '../../../../../environments/environment';
 
@@ -13,6 +14,10 @@ export class HttpResponsableRepository implements ResponsableRepository {
 
   getAll(): Observable<Responsable[]> {
     return this.http.get<Responsable[]>(this.apiUrl);
+  }
+
+  getRoles(): Observable<Role[]> {
+    return this.http.get<Role[]>(`${this.apiUrl}/roles`);
   }
   getById(id: string): Observable<Responsable> {
     return this.http.get<Responsable>(`${this.apiUrl}/${id}`);

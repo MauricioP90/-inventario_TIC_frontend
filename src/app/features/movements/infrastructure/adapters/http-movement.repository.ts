@@ -20,4 +20,12 @@ export class HttpMovementRepository implements MovementRepository {
   create(movement: CreateMovementDto): Observable<Movement> {
     return this.http.post<Movement>(this.apiUrl, movement);
   }
+
+  dispatch(id: string): Observable<Movement> {
+    return this.http.patch<Movement>(`${this.apiUrl}/${id}/dispatch`, {});
+  }
+
+  receive(id: string): Observable<Movement> {
+    return this.http.patch<Movement>(`${this.apiUrl}/${id}/receive`, {});
+  }
 }

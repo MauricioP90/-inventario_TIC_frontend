@@ -5,6 +5,13 @@ import { Location } from '../../../../locations/domain/models/location.model';
 import { Responsable } from '../../../../responsables/domain/models/responsable.model';
 import { GetAllLocationsUseCase } from '../../../../locations/application/use-cases/get-all-locations.use-case';
 import { GetAllResponsablesUseCase } from '../../../../responsables/application/use-cases/get-all-responsables.use-case';
+import { GetAllMovementsUseCase } from '../../../application/use-cases/get-all-movements.use-case';
+import { RegisterMovementUseCase } from '../../../application/use-cases/register-movement.use-case';
+import { DispatchMovementUseCase } from '../../../application/use-cases/dispatch-movement.use-case';
+import { ReceiveMovementUseCase } from '../../../application/use-cases/receive-movement.use-case';
+import { Movement, MovementStatus } from '../../../domain/models/movement.model';
+import { MovementItemComponent } from '../../components/movement-item/movement-item.component';
+import { LucideAngularModule } from 'lucide-angular';
 
 interface PickItem {
   placa: string;
@@ -16,7 +23,7 @@ interface PickItem {
 @Component({
   selector: 'app-movements-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MovementItemComponent, LucideAngularModule],
   template: `
     <div class="p-4 md:p-6 space-y-6 max-w-4xl mx-auto">
       <!-- Header -->
@@ -90,7 +97,7 @@ interface PickItem {
                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none appearance-none transition-all text-sm">
               <optgroup label="Sugeridos (Asignados a esta sede)">
                 @for (resp of suggestedResponsibles(); track resp.id) {
-                  <option [value]="resp.id">{{ resp.nombre }} ({{ resp.rol }})</option>
+                  <option [value]="resp.id">{{ resp.nombre }} ({{ resp.role.nombre }})</option>
                 }
               </optgroup>
               <optgroup label="Otros responsables">
@@ -159,13 +166,38 @@ interface PickItem {
               class="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 transition-all">
         Guardar Movimiento
       </button>
+      <div class="mt-12 space-y-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-bold text-slate-800">Envíos Recientes</h2>
+          <span class="text-xs text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+            {{ movements().length }} traslados totales
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          @for (mov of movements(); track mov.id) {
+            <app-movement-item  
+              [movement]="mov"
+              (onDispatch)="onDispatch($event)"
+              (onReceive)="onReceive($event)">
+            </app-movement-item>
+          }
+        </div>
+
+        @if (movements().length === 0 && !loading()) {
+          <div class="py-20 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-100">
+            <p class="text-slate-400 text-sm italic">No hay traslados registrados aún.</p>
+          </div>
+        }
+      </div>  
     </div>
-  `,
+    `,
   styles: []
 })
 export class MovementsPageComponent implements OnInit {
   locations = signal<Location[]>([]);
   responsables = signal<Responsable[]>([]);
+  movements = signal<Movement[]>([]);
   loading = signal(false);
 
   movementType = '';
@@ -188,8 +220,12 @@ export class MovementsPageComponent implements OnInit {
 
   constructor(
     private getAllLocations: GetAllLocationsUseCase,
-    private getAllResponsables: GetAllResponsablesUseCase
-  ) {}
+    private getAllResponsables: GetAllResponsablesUseCase,
+    private getAllMovements: GetAllMovementsUseCase,
+    private registerMovement: RegisterMovementUseCase,
+    private dispatchMovement: DispatchMovementUseCase,
+    private receiveMovement: ReceiveMovementUseCase
+  ) { }
 
   ngOnInit() {
     this.fetchData();
@@ -198,8 +234,13 @@ export class MovementsPageComponent implements OnInit {
   fetchData() {
     this.loading.set(true);
     this.getAllLocations.execute().subscribe(locs => this.locations.set(locs));
-    this.getAllResponsables.execute().subscribe(resps => {
-      this.responsables.set(resps);
+    this.getAllResponsables.execute().subscribe(resps => this.responsables.set(resps));
+    this.loadMovements();
+  }
+
+  loadMovements() {
+    this.getAllMovements.execute().subscribe(movs => {
+      this.movements.set(movs);
       this.loading.set(false);
     });
   }
@@ -225,7 +266,32 @@ export class MovementsPageComponent implements OnInit {
       alert('Completa los campos obligatorios');
       return;
     }
-    alert('Movimiento registrado. El responsable en destino ha sido notificado.');
-    this.pickList.set([]);
+
+    const dto = {
+      type: this.movementType,
+      originLocationId: this.originId,
+      destinationLocationId: this.destinationId,
+      responsibleId: this.responsibleId,
+      activoIds: this.pickList().map(i => i.placa), // En producción usaríamos IDs, aquí simplificamos con placa si es lo que envía el scanner
+      notes: ''
+    };
+
+    this.registerMovement.execute(dto).subscribe(() => {
+      alert('Movimiento registrado con éxito');
+      this.pickList.set([]);
+      this.loadMovements();
+    });
+  }
+
+  onDispatch(id: string) {
+    this.dispatchMovement.execute(id).subscribe(() => {
+      this.loadMovements();
+    });
+  }
+
+  onReceive(id: string) {
+    this.receiveMovement.execute(id).subscribe(() => {
+      this.loadMovements();
+    });
   }
 }

@@ -1,9 +1,11 @@
+import { Role } from './role.model';
+
 export interface Responsable {
   id: string;
   nombre: string;
   email: string;
   telefono: string;
-  rol: string;
+  role: Role;
   estado: 'ACTIVO' | 'INACTIVO';
   locationIds: string[];
   // Campos visuales opcionales (mapeados desde el adapter)

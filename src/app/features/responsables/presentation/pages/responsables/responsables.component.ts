@@ -35,7 +35,7 @@ import { AddResponsableDrawerComponent } from '../../../../../shared/components/
 
       <!-- Filtros -->
       <div class="grid grid-cols-1 md:grid-cols-12 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div class="md:col-span-5 relative">
+        <div class="md:col-span-4 relative">
           <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">🔍</span>
           <input 
             type="text" 
@@ -45,7 +45,7 @@ import { AddResponsableDrawerComponent } from '../../../../../shared/components/
             class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm">
         </div>
         <!-- Filtro Multi-Sede Custom -->
-        <div class="md:col-span-4 relative">
+        <div class="md:col-span-3 relative">
           <!-- Botón que abre el menú -->
           <button 
             type="button"
@@ -99,12 +99,24 @@ import { AddResponsableDrawerComponent } from '../../../../../shared/components/
             </div>
           }
         </div>
-        <div class="md:col-span-3">
+                <div class="md:col-span-3">
+          <select 
+            [value]="roleFilter()"
+            (change)="roleFilter.set($any($event.target).value)"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white cursor-pointer">
+            <option value="">Cualquier Rol</option>
+            <option value="ADMIN">Administrador</option>
+            <option value="TECNICO">Técnico</option>
+            <option value="COORDINADOR">Coordinador</option>
+            <option value="EXTERNO">Externo / Usuario</option>
+          </select>
+        </div>
+        <div class="md:col-span-2">
           <select 
             [value]="statusFilter()"
             (change)="statusFilter.set($any($event.target).value)"
             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white">
-            <option value="">Todos los estados</option>
+            <option value="">estados</option>
             <option value="ACTIVO">Activo</option>
             <option value="INACTIVO">Inactivo</option>
           </select>
@@ -144,7 +156,7 @@ import { AddResponsableDrawerComponent } from '../../../../../shared/components/
                     </div>
                   </td>
                   <td class="px-6 py-4">
-                    <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-600">{{ resp.rol }}</span>
+                    <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-600">{{ resp.role.nombre }}</span>
                   </td>
                   <td class="px-6 py-4">
                     <div class="flex flex-wrap gap-1">
@@ -223,11 +235,13 @@ export class ResponsablesPageComponent implements OnInit {
   }
 
   statusFilter = signal('');
+  roleFilter = signal('');
 
   filteredResponsables = computed(() => {
     const term = this.searchTerm().toLowerCase().trim();
     const locIds = this.locationFilter(); // Ahora es un array
     const status = this.statusFilter();
+    const role = this.roleFilter();
     return this.responsables().filter(resp => {
       const matchesSearch = resp.nombre.toLowerCase().includes(term) || resp.email.toLowerCase().includes(term);
 
@@ -236,7 +250,8 @@ export class ResponsablesPageComponent implements OnInit {
         locIds.some(id => resp.locationIds?.includes(id));
 
       const matchesStatus = !status || resp.estado === status;
-      return matchesSearch && matchesLocation && matchesStatus;
+      const matchesRol = !role || resp.role.nombre === role;
+      return matchesSearch && matchesLocation && matchesStatus && matchesRol;
     });
   });
 

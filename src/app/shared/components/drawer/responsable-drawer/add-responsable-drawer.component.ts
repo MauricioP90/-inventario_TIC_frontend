@@ -7,6 +7,9 @@ import { CreateResponsableUseCase } from '../../../../features/responsables/appl
 import { UpdateResponsableUseCase } from '../../../../features/responsables/application/use-cases/update-responsable.use-case';
 import { GetAllLocationsUseCase } from '../../../../features/locations/application/use-cases/get-all-locations.use-case';
 import { InactiveResponsableUseCase } from '../../../../features/responsables/application/use-cases/inactive-responsable.use-case';
+import { Role } from '../../../../features/responsables/domain/models/role.model';
+import { GetAllRolesUseCase } from '../../../../features/responsables/application/use-cases/get-all-roles.use-case';
+
 
 
 @Component({
@@ -73,12 +76,11 @@ import { InactiveResponsableUseCase } from '../../../../features/responsables/ap
               <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Rol</label>
                 <select 
-                  formControlName="rol"
+                  formControlName="roleId"
                   class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white">
-                  <option value="ADMIN">Administrador</option>
-                  <option value="TECNICO">Técnico</option>
-                  <option value="COORDINADOR">Coordinador</option>
-                  <option value="EXTERNO">Externo / Usuario</option>
+                  @for (role of roles(); track role.id) {
+                    <option [value]="role.id">{{ role.nombre }}</option>
+                  }
                 </select>
               </div>
             </div>
@@ -173,6 +175,7 @@ export class AddResponsableDrawerComponent implements OnInit {
   isOpen = signal(false);
   saving = signal(false);
   locations = signal<Location[]>([]);
+  roles = signal<Role[]>([]);
   selectedResponsable = signal<Responsable | null>(null);
   selectedLocationIds = signal<string[]>([]);
   showWarning = signal(false);
@@ -204,19 +207,21 @@ export class AddResponsableDrawerComponent implements OnInit {
     private createResponsable: CreateResponsableUseCase,
     private updateResponsable: UpdateResponsableUseCase,
     private getAllLocations: GetAllLocationsUseCase,
-    private inactiveResponsable: InactiveResponsableUseCase
+    private inactiveResponsable: InactiveResponsableUseCase,
+    private getAllRoles: GetAllRolesUseCase
   ) {
     this.responsibleForm = this.fb.group({
       nombre: ['', [Validators.required]],
       email: ['', [Validators.required, Validators.email]],
       telefono: ['', [Validators.required]],
-      rol: ['EXTERNO', [Validators.required]],
+      roleId: [null, [Validators.required]],
       estado: ['ACTIVO']
     });
   }
 
   ngOnInit() {
     this.fetchLocations();
+    this.getAllRoles.execute().subscribe(res => this.roles.set(res));
   }
 
   fetchLocations() {
@@ -250,10 +255,10 @@ export class AddResponsableDrawerComponent implements OnInit {
     this.showWarning.set(false);
 
     if (responsable) {
-      this.responsibleForm.patchValue(responsable);
+      this.responsibleForm.patchValue({ ...responsable, roleId: responsable.role?.id });
       this.selectedLocationIds.set(responsable.locationIds || []);
     } else {
-      this.responsibleForm.reset({ rol: 'EXTERNO', estado: 'ACTIVO' });
+      this.responsibleForm.reset({ roleId: null, estado: 'ACTIVO' });
       this.selectedLocationIds.set([]);
       this.searchLocationTerm.set('');
     }
@@ -262,7 +267,7 @@ export class AddResponsableDrawerComponent implements OnInit {
 
   close() {
     this.isOpen.set(false);
-    this.responsibleForm.reset({ rol: 'EXTERNO', estado: 'ACTIVO' });
+    this.responsibleForm.reset({ roleId: null, estado: 'ACTIVO' });
     this.selectedLocationIds.set([]);
     this.searchLocationTerm.set('');
   }
