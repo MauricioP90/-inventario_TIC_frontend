@@ -5,6 +5,6 @@ import { SimCardRepository } from '../../domain/repositories/sim-card.repository
 
 @Injectable({ providedIn: 'root' })
 export class GetAllSimCardsUseCase {
-  constructor(private repo: SimCardRepository) {}
-  execute(): Observable<SimCard[]> { return this.repo.getAll(); }
+  constructor(private repo: SimCardRepository) { }
+  execute(): Observable<SimCard[]> { return this.repo.findAll(); }
 }

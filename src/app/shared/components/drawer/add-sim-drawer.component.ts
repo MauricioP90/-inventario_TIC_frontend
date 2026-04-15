@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { CreateSimCardUseCase } from '../../../features/sim-cards/application/use-cases/create-sim-card.use-case';
 
 @Component({
   selector: 'app-add-sim-drawer',
@@ -48,7 +49,7 @@ import { FormsModule } from '@angular/forms';
         <!-- Número Telefónico -->
         <div class="space-y-1.5">
           <label class="block text-sm font-medium text-slate-700">Número Telefónico</label>
-          <input type="text" [(ngModel)]="phone" placeholder="Ej: 310-555-0101"
+          <input type="text" [(ngModel)]="numero" placeholder="Ej: 310-555-0101"
             class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" />
         </div>
 
@@ -62,7 +63,7 @@ import { FormsModule } from '@angular/forms';
         <!-- Operador -->
         <div class="space-y-1.5">
           <label class="block text-sm font-medium text-slate-700">Operador</label>
-          <select [(ngModel)]="operator" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <select [(ngModel)]="operador" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
             <option value="" disabled>Seleccionar operador</option>
             <option value="Claro">Claro</option>
             <option value="Movistar">Movistar</option>
@@ -74,7 +75,7 @@ import { FormsModule } from '@angular/forms';
         <!-- Ubicación Inicial -->
         <div class="space-y-1.5">
           <label class="block text-sm font-medium text-slate-700">Ubicación Inicial</label>
-          <select [(ngModel)]="location" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <select [(ngModel)]="ubicacion" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
             <option value="" disabled>Seleccionar ubicación</option>
             <option value="Bodega Principal">Bodega Principal</option>
             <option value="Oficina Bogotá">Oficina Bogotá</option>
@@ -100,11 +101,13 @@ export class AddSimDrawerComponent {
   @Output() openChange = new EventEmitter<boolean>();
   @Output() saved = new EventEmitter<void>();
 
-  phone = '';
+  numero = '';
   iccid = '';
-  operator = '';
-  location = '';
+  operador = '';
+  ubicacion = '';
   toast = signal<{ type: 'success' | 'error', message: string } | null>(null);
+
+  constructor(private createSimCard: CreateSimCardUseCase) { }
 
   close() {
     this.openChange.emit(false);
@@ -112,19 +115,37 @@ export class AddSimDrawerComponent {
 
   handleSave() {
     this.toast.set(null);
-    if (!this.phone || !this.iccid || !this.operator || !this.location) {
+    if (!this.numero || !this.iccid || !this.operador || !this.ubicacion) {
       this.toast.set({ type: 'error', message: 'Por favor completa todos los campos.' });
       return;
     }
-    this.toast.set({ type: 'success', message: `SIM "${this.phone}" guardada exitosamente.` });
-    this.resetForm();
-    setTimeout(() => { this.toast.set(null); this.close(); this.saved.emit(); }, 1200);
+
+    const dto = {
+      numero: this.numero,
+      iccid: this.iccid,
+      operador: this.operador,
+      estado: 'BODEGA' as 'BODEGA'
+    };
+
+    this.createSimCard.execute(dto).subscribe({
+      next: () => {
+        this.toast.set({ type: 'success', message: `SIM "${this.numero}" guardada exitosamente.` });
+        this.resetForm();
+        setTimeout(() => { 
+          this.close(); 
+          this.saved.emit(); 
+        }, 1200);
+      },
+      error: (err) => {
+        this.toast.set({ type: 'error', message: err.message || 'Error al guardar la SIM' });
+      }
+    });
   }
 
   private resetForm() {
-    this.phone = '';
+    this.numero = '';
     this.iccid = '';
-    this.operator = '';
-    this.location = '';
+    this.operador = '';
+    this.ubicacion = '';
   }
 }

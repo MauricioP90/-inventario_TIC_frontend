@@ -64,14 +64,14 @@ import { AddSimDrawerComponent } from '../../../../../shared/components/drawer/a
               @for (sim of simCards(); track sim.id) {
                 <tr class="hover:bg-slate-50/50 transition-colors">
                   <td class="px-6 py-4 text-slate-400 font-medium text-xs">{{ sim.iccid }}</td>
-                  <td class="px-6 py-4 font-bold text-slate-700">{{ sim.number }}</td>
+                  <td class="px-6 py-4 font-bold text-slate-700">{{ sim.numero }}</td>
                   <td class="px-6 py-4">
-                    <span [class]="carrierClass(sim.carrier)">{{ sim.carrier }}</span>
+                    <span [class]="carrierClass(sim.operador)">{{ sim.operador }}</span>
                   </td>
                   <td class="px-6 py-4">
-                    <span [class]="statusClass(sim.status)">{{ statusLabel(sim.status) }}</span>
+                    <span [class]="statusClass(sim.estado)">{{ statusLabel(sim.estado) }}</span>
                   </td>
-                  <td class="px-6 py-4 font-bold text-indigo-900/40">{{ sim.assignedTo ?? '—' }}</td>
+                  <td class="px-6 py-4 font-bold text-indigo-900/40">{{ sim.activoId ?? '—' }}</td>
                 </tr>
               } @empty {
                 <tr><td colspan="5" class="px-6 py-12 text-center text-slate-400 text-sm">Sin SIM cards registradas</td></tr>
@@ -99,26 +99,13 @@ export class SimCardsPageComponent implements OnInit {
   loading = signal(false);
   showDrawer = signal(false);
 
-  constructor(private getAllSimCards: GetAllSimCardsUseCase) {}
+  constructor(private getAllSimCards: GetAllSimCardsUseCase) { }
 
   ngOnInit() {
     this.loading.set(true);
     this.getAllSimCards.execute().subscribe({
       next: (data) => {
-        if (data && data.length > 0) {
-          this.simCards.set(data);
-        } else {
-          // Mock data matching Screenshot 3
-          this.simCards.set([
-            { id: '1', number: '310-555-0101', iccid: '8957101234567890001', carrier: 'Claro', status: 'available', assignedTo: 'FLM-002', createdAt: new Date(), updatedAt: new Date() },
-            { id: '2', number: '311-555-0202', iccid: '8957101234567890002', carrier: 'Movistar', status: 'available', assignedTo: 'FLM-002', createdAt: new Date(), updatedAt: new Date() },
-            { id: '3', number: '312-555-0303', iccid: '8957101234567890003', carrier: 'Tigo', status: 'available', assignedTo: 'FLM-003', createdAt: new Date(), updatedAt: new Date() },
-            { id: '4', number: '320-555-0404', iccid: '8957101234567890004', carrier: 'Claro', status: 'assigned', assignedTo: '—', createdAt: new Date(), updatedAt: new Date() },
-            { id: '5', number: '321-555-0505', iccid: '8957101234567890005', carrier: 'Wom', status: 'available', assignedTo: 'FLM-004', createdAt: new Date(), updatedAt: new Date() },
-            { id: '6', number: '310-555-0606', iccid: '8957101234567890006', carrier: 'Movistar', status: 'blocked', assignedTo: '—', createdAt: new Date(), updatedAt: new Date() },
-            { id: '7', number: '315-555-0707', iccid: '8957101234567890007', carrier: 'Tigo', status: 'assigned', assignedTo: '—', createdAt: new Date(), updatedAt: new Date() },
-          ]);
-        }
+        this.simCards.set(data || []);
         this.loading.set(false);
       },
       error: () => this.loading.set(false)
@@ -138,18 +125,18 @@ export class SimCardsPageComponent implements OnInit {
 
   statusClass(status: string): string {
     const base = 'text-[10px] font-bold px-2.5 py-1 rounded-lg text-white ';
-    switch (status.toLowerCase()) {
-      case 'available': return base + 'bg-emerald-500';
-      case 'assigned':  return base + 'bg-indigo-800/80';
-      case 'blocked':   return base + 'bg-red-600';
+    switch (status.toUpperCase()) {
+      case 'ASIGNADA': return base + 'bg-indigo-800/80';
+      case 'BODEGA': return base + 'bg-emerald-500';
+      case 'BAJA': return base + 'bg-red-600';
       default: return base + 'bg-slate-400';
     }
   }
 
   statusLabel(status: string): string {
     const map: Record<string, string> = {
-      available: 'Activa', assigned: 'Bodega', blocked: 'Baja'
+      BODEGA: 'Disponible', ASIGNADA: 'Asignada', BAJA: 'Inactiva'
     };
-    return map[status.toLowerCase()] ?? status;
+    return map[status.toUpperCase()] ?? status;
   }
 }

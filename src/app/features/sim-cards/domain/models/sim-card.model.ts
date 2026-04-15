@@ -1,14 +1,13 @@
 export interface SimCard {
   id: string;
-  number: string;
+  numero: string;    // Del backend: numero
   iccid: string;
-  carrier: string;
-  status: 'available' | 'assigned' | 'blocked';
-  assignedTo?: string;
+  operador: string;  // Del backend: operador
+  estado: 'BODEGA' | 'ASIGNADA' | 'BAJA'; // Sincronizado con EstadoSIM
   responsableId?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  activoId?: string;
 }
 
-export type CreateSimCardDto = Omit<SimCard, 'id' | 'createdAt' | 'updatedAt'>;
-export type UpdateSimCardDto = Partial<CreateSimCardDto>;
+export type CreateSimCardDto = Omit<SimCard, 'id'>;
+export type UpdateSimCardDto = Partial<SimCard>;
+
