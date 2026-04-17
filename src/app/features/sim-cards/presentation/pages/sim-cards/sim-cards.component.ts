@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SimCard } from '../../../domain/models/sim-card.model';
@@ -24,21 +24,28 @@ import { AddSimDrawerComponent } from '../../../../../shared/components/drawer/a
         </button>
       </div>
 
-      <!-- Filter Bar -->
+<!-- Filter Bar -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
         <div class="md:col-span-2 relative">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-          <input type="text" placeholder="Buscar por ICCID, número, equipo..." 
+          <!-- Conectamos el buscador -->
+          <input type="text" [(ngModel)]="searchTerm" placeholder="Buscar por ICCID, número o equipo" 
                  class="w-full pl-10 pr-4 h-10 bg-slate-50 border border-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500/20 outline-none text-sm transition-all">
         </div>
-        <select class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
-          <option>Todos los estados</option>
-          <option>Activa</option>
-          <option>Bodega</option>
-          <option>Baja</option>
+        <!-- Filtro de Estado -->
+        <select [(ngModel)]="statusFilter" class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
+          <option value="">Todos los estados</option>
+          <option value="BODEGA">Disponible (Bodega)</option>
+          <option value="ASIGNADA">Asignada</option>
+          <option value="BAJA">Inactiva (Baja)</option>
         </select>
-        <select class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
-          <option>Todos los...</option>
+        <!-- Filtro de Operador -->
+        <select [(ngModel)]="carrierFilter" class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
+          <option value="">Todos los operadores</option>
+          <option value="CLARO">Claro</option>
+          <option value="MOVISTAR">Movistar</option>
+          <option value="TIGO">Tigo</option>
+          <option value="WOM">Wom</option>
         </select>
       </div>
 
@@ -53,18 +60,18 @@ import { AddSimDrawerComponent } from '../../../../../shared/components/drawer/a
           <table class="w-full text-sm">
             <thead class="bg-slate-50/50 border-b border-slate-200">
               <tr>
-                <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">ICCID</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Número</th>
+                <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">ICCID</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Operador</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Estado</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Equipo Asignado</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              @for (sim of simCards(); track sim.id) {
+              @for (sim of filteredSimCards(); track sim.id) {
                 <tr class="hover:bg-slate-50/50 transition-colors">
-                  <td class="px-6 py-4 text-slate-400 font-medium text-xs">{{ sim.iccid }}</td>
                   <td class="px-6 py-4 font-bold text-slate-700">{{ sim.numero }}</td>
+                  <td class="px-6 py-4 text-slate-400 font-medium text-xs">{{ sim.iccid }}</td>
                   <td class="px-6 py-4">
                     <span [class]="carrierClass(sim.operador)">{{ sim.operador }}</span>
                   </td>
@@ -79,7 +86,7 @@ import { AddSimDrawerComponent } from '../../../../../shared/components/drawer/a
             </tbody>
           </table>
           <div class="px-6 py-4 bg-slate-50/30 border-t border-slate-100 text-xs text-slate-400 font-medium">
-            Mostrando {{ simCards().length }} de {{ simCards().length }} SIM cards
+            Mostrando {{ filteredSimCards().length }} de {{ simCards().length }} SIM cards
           </div>
         </div>
       }
@@ -98,6 +105,29 @@ export class SimCardsPageComponent implements OnInit {
   simCards = signal<SimCard[]>([]);
   loading = signal(false);
   showDrawer = signal(false);
+  searchTerm = signal('');
+  statusFilter = signal('');
+  carrierFilter = signal('');
+
+  // --- Lógica de filtrado inteligente ---
+  filteredSimCards = computed(() => {
+    const list = this.simCards();
+    const search = this.searchTerm().toLowerCase().trim();
+    const status = this.statusFilter();
+    const carrier = this.carrierFilter().toUpperCase();
+    return list.filter(sim => {
+      // 1. Filtro por texto (ICCID, Número o ID de Equipo)
+      const matchesSearch = !search ||
+        sim.iccid.toLowerCase().includes(search) ||
+        sim.numero.toLowerCase().includes(search) ||
+        (sim.activoId && sim.activoId.toLowerCase().includes(search));
+      // 2. Filtro por Estado
+      const matchesStatus = !status || sim.estado === status;
+      // 3. Filtro por Operador
+      const matchesCarrier = !carrier || sim.operador === carrier;
+      return matchesSearch && matchesStatus && matchesCarrier;
+    });
+  });
 
   constructor(private getAllSimCards: GetAllSimCardsUseCase) { }
 

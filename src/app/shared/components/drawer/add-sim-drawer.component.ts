@@ -1,7 +1,9 @@
-import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, OnInit, OnChanges, SimpleChanges, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CreateSimCardUseCase } from '../../../features/sim-cards/application/use-cases/create-sim-card.use-case';
+import { GetAllLocationsUseCase } from '../../../features/locations/application/use-cases/get-all-locations.use-case';
+import { Location } from '../../../features/locations/domain/models/location.model';
 
 @Component({
   selector: 'app-add-sim-drawer',
@@ -64,24 +66,54 @@ import { CreateSimCardUseCase } from '../../../features/sim-cards/application/us
         <div class="space-y-1.5">
           <label class="block text-sm font-medium text-slate-700">Operador</label>
           <select [(ngModel)]="operador" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-            <option value="" disabled>Seleccionar operador</option>
-            <option value="Claro">Claro</option>
-            <option value="Movistar">Movistar</option>
-            <option value="Tigo">Tigo</option>
-            <option value="Wom">Wom</option>
+            <option value="" disabled>Seleccionar operador...</option>
+            @for (op of operadoresLista; track op) {
+              <option [value]="op">{{ op }}</option>
+            }
           </select>
         </div>
 
         <!-- Ubicación Inicial -->
         <div class="space-y-1.5">
-          <label class="block text-sm font-medium text-slate-700">Ubicación Inicial</label>
-          <select [(ngModel)]="ubicacion" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-            <option value="" disabled>Seleccionar ubicación</option>
-            <option value="Bodega Principal">Bodega Principal</option>
-            <option value="Oficina Bogotá">Oficina Bogotá</option>
-            <option value="Oficina Medellín">Oficina Medellín</option>
-            <option value="Taller Técnico">Taller Técnico</option>
-          </select>
+          <label class="block text-sm font-medium text-slate-700">Ubicación Inicial</label>      <div class="relative mb-2">
+            <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </span>
+            <input 
+              type="text" 
+              [value]="searchLocationTerm()"
+              (input)="searchLocationTerm.set($any($event.target).value)"
+              placeholder="Escribe para buscar... Ej: Bodega"
+              class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-xs transition-all">
+          </div>
+          
+          <!-- Lista con scroll -->
+          <div class="space-y-1.5 max-h-48 overflow-y-auto p-2 border border-slate-200 rounded-lg bg-slate-50/50">
+            @for (loc of filteredLocations(); track loc.id) {
+              <!-- Le damos un halo azul elegante si es el seleccionado -->
+              <label class="flex items-center gap-3 p-2 border rounded-lg transition-colors cursor-pointer group hover:bg-white"
+                     [class.bg-indigo-50]="ubicacion === loc.id"
+                     [class.border-indigo-200]="ubicacion === loc.id"
+                     [class.border-transparent]="ubicacion !== loc.id">
+                
+                <input 
+                  type="radio" 
+                  name="ubicacionGroup"
+                  [value]="loc.id"
+                  [(ngModel)]="ubicacion"
+                  class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                
+                <div class="flex flex-col">
+                  <span class="text-sm font-medium text-slate-700">{{ loc.nombre }}</span>
+                  <span class="text-[10px] text-slate-400">{{ loc.code }}</span>
+                </div>
+              </label>
+            } @empty {
+              <p class="text-[11px] text-slate-400 text-center py-4">No se encontraron ubicaciones</p>
+            }
+          </div>
         </div>
       </div>
 
@@ -96,18 +128,53 @@ import { CreateSimCardUseCase } from '../../../features/sim-cards/application/us
   `,
   styles: []
 })
-export class AddSimDrawerComponent {
+export class AddSimDrawerComponent implements OnInit, OnChanges {
   @Input() open = false;
   @Output() openChange = new EventEmitter<boolean>();
   @Output() saved = new EventEmitter<void>();
 
+  // Tus variables de formulario
   numero = '';
   iccid = '';
   operador = '';
   ubicacion = '';
   toast = signal<{ type: 'success' | 'error', message: string } | null>(null);
 
-  constructor(private createSimCard: CreateSimCardUseCase) { }
+  // --- Lógica del buscador de ubicaciones ---
+  searchLocationTerm = signal('');
+  filteredLocations = computed(() => {
+    const term = this.searchLocationTerm().toLowerCase().trim();
+    if (!term) return this.ubicacionesLista(); // Si está vacío, muestra todo
+
+    // Si hay texto, filtramos por nombre o código
+    return this.ubicacionesLista().filter(loc =>
+      loc.nombre.toLowerCase().includes(term) ||
+      loc.code.toLowerCase().includes(term)
+    );
+  });
+
+  // Operadores estáticos en el Frontend:
+  operadoresLista = ['CLARO', 'MOVISTAR', 'TIGO', 'WOM'];
+
+  // Ubicaciones dinámicas desde el Backend:
+  ubicacionesLista = signal<Location[]>([]);
+  loaded = false;
+
+  constructor(
+    private createSimCard: CreateSimCardUseCase,
+    private getAllLocations: GetAllLocationsUseCase  // <- Inyectamos las ubicaciones
+  ) { }
+
+  ngOnInit() { }
+
+  // Este ciclo de vida detecta cuando haces clic para abrir el Drawer
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['open'] && changes['open'].currentValue === true && !this.loaded) {
+      // Cuando se abre por primera vez, vamos a la BD por las ubicaciones 
+      this.getAllLocations.execute().subscribe(data => this.ubicacionesLista.set(data));
+      this.loaded = true;
+    }
+  }
 
   close() {
     this.openChange.emit(false);
@@ -129,15 +196,15 @@ export class AddSimDrawerComponent {
 
     this.createSimCard.execute(dto).subscribe({
       next: () => {
-        this.toast.set({ type: 'success', message: `SIM "${this.numero}" guardada exitosamente.` });
-        this.resetForm();
-        setTimeout(() => { 
-          this.close(); 
-          this.saved.emit(); 
+        this.toast.set({ type: 'success', message: `SIM guardada exitosamente.` });
+        setTimeout(() => {
+          this.close();
+          this.saved.emit();
+          this.resetForm();
         }, 1200);
       },
       error: (err) => {
-        this.toast.set({ type: 'error', message: err.message || 'Error al guardar la SIM' });
+        this.toast.set({ type: 'error', message: err.message || 'Error al guardar.' });
       }
     });
   }
@@ -149,3 +216,4 @@ export class AddSimDrawerComponent {
     this.ubicacion = '';
   }
 }
+

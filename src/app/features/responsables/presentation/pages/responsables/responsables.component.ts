@@ -3,9 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Responsable } from '../../../domain/models/responsable.model';
 import { Location } from '../../../../locations/domain/models/location.model';
+import { Role } from '../../../domain/models/role.model';
 import { GetAllResponsablesUseCase } from '../../../application/use-cases/get-all-responsables.use-case';
 import { GetAllLocationsUseCase } from '../../../../locations/application/use-cases/get-all-locations.use-case';
 import { AddResponsableDrawerComponent } from '../../../../../shared/components/drawer/responsable-drawer/add-responsable-drawer.component';
+import { GetAllRolesUseCase } from '../../../application/use-cases/get-all-roles.use-case';
 
 @Component({
   selector: 'app-responsables-page',
@@ -105,10 +107,9 @@ import { AddResponsableDrawerComponent } from '../../../../../shared/components/
             (change)="roleFilter.set($any($event.target).value)"
             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white cursor-pointer">
             <option value="">Cualquier Rol</option>
-            <option value="ADMIN">Administrador</option>
-            <option value="TECNICO">Técnico</option>
-            <option value="COORDINADOR">Coordinador</option>
-            <option value="EXTERNO">Externo / Usuario</option>
+            @for (role of roles(); track role.id) {
+              <option [value]="role.nombre">{{ role.nombre }}</option>
+            }
           </select>
         </div>
         <div class="md:col-span-2">
@@ -210,6 +211,7 @@ export class ResponsablesPageComponent implements OnInit {
   responsables = signal<Responsable[]>([]);
   locations = signal<Location[]>([]);
   loading = signal(false);
+  roles = signal<Role[]>([]);
 
   // Filtros
   searchTerm = signal('');
@@ -257,7 +259,8 @@ export class ResponsablesPageComponent implements OnInit {
 
   constructor(
     private getAllResponsables: GetAllResponsablesUseCase,
-    private getAllLocations: GetAllLocationsUseCase
+    private getAllLocations: GetAllLocationsUseCase,
+    private getAllRoles: GetAllRolesUseCase
   ) { }
 
   ngOnInit() {
@@ -266,29 +269,17 @@ export class ResponsablesPageComponent implements OnInit {
 
   fetchData() {
     this.loading.set(true);
-    // Cargar sedes primero para los filtros
-    this.getAllLocations.execute().subscribe({
-      next: (locs) => {
-        this.locations.set(locs);
-
-        // Cargar responsables
-        this.getAllResponsables.execute().subscribe({
-          next: (resps) => {
-            this.responsables.set(resps);
-            this.loading.set(false);
-          },
-          error: (err) => {
-            console.error('Error loading responsables:', err);
-            this.loading.set(false);
-          }
-        });
-      },
-      error: (err) => {
-        console.error('Error loading locations:', err);
+    this.getAllLocations.execute().subscribe(locs => this.locations.set(locs));
+    this.getAllRoles.execute().subscribe(roles => this.roles.set(roles));
+    this.getAllResponsables.execute().subscribe({
+      next: (resps) => {
+        this.responsables.set(resps);
         this.loading.set(false);
-      }
+      },
+      error: () => this.loading.set(false)
     });
   }
+
 
   getInitials(name: string): string {
     return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
