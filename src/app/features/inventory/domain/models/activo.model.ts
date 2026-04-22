@@ -1,3 +1,6 @@
+import { Location } from "../../../locations/domain/models/location.model";
+import { Responsable } from "../../../responsables/domain/models/responsable.model";
+
 export interface Activo {
   id: string;
   placa: string;
@@ -10,6 +13,8 @@ export interface Activo {
   locationId: string;
   responsibleId: string;
   facturaUrl?: string;
+  location?: Location;
+  responsible?: Responsable;
 }
 
 export type CreateActivoDto = Omit<Activo, 'id'>;
