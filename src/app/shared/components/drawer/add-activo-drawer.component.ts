@@ -179,7 +179,7 @@ export class AddActivoDrawerComponent {
     }
 
     const payload = {
-      tipo: this.tipo,
+      tipoActivoId: this.tipo,
       marca: this.marca,
       modelo: this.modelo,
       serial: this.serial,

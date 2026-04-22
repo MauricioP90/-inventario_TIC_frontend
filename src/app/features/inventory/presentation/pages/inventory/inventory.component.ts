@@ -1,9 +1,11 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Activo } from '../../../domain/models/activo.model';
 import { GetAllActivosUseCase } from '../../../application/use-cases/get-all-activos.use-case';
+import { GetActivoMetadataUseCase } from '../../../application/use-cases/get-activo-metadata.use-case';
 import { AddActivoDrawerComponent } from '../../../../../shared/components/drawer/add-activo-drawer.component';
+import { ActivoMetadata } from '../../../domain/models/activo.model';
 
 @Component({
   selector: 'app-inventory-page',
@@ -31,12 +33,11 @@ import { AddActivoDrawerComponent } from '../../../../../shared/components/drawe
           <input type="text" placeholder="Buscar por placa, serial, modelo..." 
                  class="w-full pl-10 pr-4 h-10 bg-slate-50 border border-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500/20 outline-none text-sm transition-all">
         </div>
-        <select class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
-          <option>Todos los tipos</option>
-          <option>Laptop</option>
-          <option>Móvil</option>
-          <option>Tablet</option>
-          <option>Router</option>
+                <select class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
+          <option value="">Todos los tipos</option>
+          @for (type of metadata()?.types; track type.id) {
+            <option [value]="type.id">{{ type.label }}</option>
+          }
         </select>
         <select class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
           <option>Todas las ubicaciones</option>
@@ -71,14 +72,20 @@ import { AddActivoDrawerComponent } from '../../../../../shared/components/drawe
                 <tr class="hover:bg-slate-50/50 transition-colors">
                   <td class="px-6 py-4 font-bold text-slate-700 underline decoration-indigo-200 underline-offset-4">{{ activo.placa }}</td>
                   <td class="px-6 py-4">
-                    <span [class]="typeClass(activo.tipo)">{{ activo.tipo }}</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-600 border-slate-200">
+                      {{ typeMap()[activo.tipoActivoId]?.label || activo.tipoActivoId }}
+                    </span>
                   </td>
                   <td class="px-6 py-4 font-medium text-slate-600" italic>{{ activo.marca }}</td>
                   <td class="px-6 py-4 font-medium text-slate-600">{{ activo.modelo }}</td>
                   <td class="px-6 py-4 text-[11px] font-mono text-slate-400 tracking-tighter">{{ activo.serial }}</td>
                   <td class="px-6 py-4 text-slate-500 font-medium">{{ activo.locationId }}</td>
                   <td class="px-6 py-4">
-                    <span [class]="statusClass(activo.estado)">{{ statusLabel(activo.estado) }}</span>
+                    <span 
+                      [style.backgroundColor]="getStatusColor(activo.estado)"
+                      class="text-[10px] font-bold px-2.5 py-1 rounded-lg text-white shadow-sm inline-block">
+                      {{ getStatusLabel(activo.estado) }}
+                    </span>
                   </td>
                 </tr>
               } @empty {
@@ -106,67 +113,65 @@ export class InventoryPageComponent implements OnInit {
   activos = signal<Activo[]>([]);
   loading = signal(false);
   showDrawer = signal(false);
+  metadata = signal<ActivoMetadata | null>(null);
 
-  constructor(private getAllActivos: GetAllActivosUseCase) { }
+  statusMap = computed(() => {
+    const meta = this.metadata();
+    if (!meta) return {};
+    return meta.statuses.reduce((acc, curr) => ({ ...acc, [curr.id]: curr }), {} as Record<string, any>);
+  });
+
+  typeMap = computed(() => {
+    const meta = this.metadata();
+    if (!meta) return {};
+    return meta.types.reduce((acc, curr) => ({ ...acc, [curr.id]: curr }), {} as Record<string, any>);
+  });
+
+  constructor(
+    private getAllActivos: GetAllActivosUseCase,
+    private getMetadataUC: GetActivoMetadataUseCase // <-- Inyectamos el nuevo caso de uso
+  ) { }
 
   ngOnInit() {
+    this.fetchData();
+  }
+
+  fetchData() {
     this.loading.set(true);
+
+    // 1. Cargamos la Metadata (Filtros dinámicos)
+    this.getMetadataUC.execute().subscribe({
+      next: (meta) => this.metadata.set(meta),
+      error: (err) => console.error("Error cargando metadata", err)
+    });
+
+    // 2. Cargamos los Activos Reales
     this.getAllActivos.execute().subscribe({
       next: (data: Activo[]) => {
-        if (data && data.length > 0) {
-          this.activos.set(data);
-        } else {
-          // Mock data matching Screenshot 2
-          this.activos.set([
-            {
-              id: '1', placa: '1528-003001', tipo: 'Terminal', marca: 'Astro', modelo: 'Cs10C',
-              serial: 'SN62788911', locationId: 'BOG-01', responsibleId: 'USER-01',
-              estado: 'OPERACION', fechaIngreso: '2024-01-01'
-            },
-            {
-              id: '2', placa: '1528-003002', tipo: 'Terminal', marca: 'Spectra', modelo: 'Cs10C',
-              serial: 'SN62788912', locationId: 'Terminal Salitre', responsibleId: 'USER-01', estado: 'BODEGA', fechaIngreso: '2022-01-01'
-            },
-            {
-              id: '3', placa: '1528-003003', tipo: 'Terminal', marca: 'Spectra', modelo: 'Cs10C',
-              serial: 'SN62788913', locationId: 'Terminal Salitre', responsibleId: 'USER-01', estado: 'BODEGA', fechaIngreso: '2022-01-01'
-            },
-          ]);
-        }
+        this.activos.set(data); // <-- Ya no usamos Mock Data, solo datos reales
         this.loading.set(false);
       },
       error: () => this.loading.set(false)
     });
   }
 
-  typeClass(type: string): string {
-    const base = 'text-[10px] font-bold px-2 py-0.5 rounded-full border ';
-    const normalizedType = type?.toLowerCase() || '';
-    switch (normalizedType) {
-      case 'laptop': return base + 'bg-indigo-50 text-indigo-600 border-indigo-100';
-      case 'móvil': return base + 'bg-blue-50 text-blue-600 border-blue-100';
-      case 'tablet': return base + 'bg-emerald-50 text-emerald-600 border-emerald-100';
-      default: return base + 'bg-slate-50 text-slate-600 border-slate-100';
-    }
-  }
-
-  statusClass(status: string): string {
-    const base = 'text-[10px] font-bold px-2.5 py-1 rounded-lg text-white ';
-    const normalizedStatus = status?.toUpperCase() || '';
-    switch (normalizedStatus) {
-      case 'BODEGA': return base + 'bg-emerald-500';
-      case 'OPERACION': return base + 'bg-blue-600';
-      case 'MANTENIMIENTO': return base + 'bg-amber-500';
-      case 'BAJA': return base + 'bg-red-600';
-      default: return base + 'bg-slate-400';
-    }
-  }
-
-  statusLabel(status: string): string {
-    const map: Record<string, string> = {
-      BODEGA: 'Bodega', OPERACION: 'Operación', MANTENIMIENTO: 'Mantenimiento', BAJA: 'Baja'
+  getStatusColor(estado: string): string {
+    const colors: Record<string, string> = {
+      'BODEGA': '#10b981',
+      'OPERACION': '#2563eb',
+      'MANTENIMIENTO': '#f59e0b',
+      'BAJA': '#dc2626'
     };
-    const normalizedStatus = status?.toUpperCase() || '';
-    return map[normalizedStatus] ?? (status || 'Desconocido');
+    return colors[estado?.toUpperCase()] || '#64748b';
+  }
+
+  getStatusLabel(estado: string): string {
+    const labels: Record<string, string> = {
+      'BODEGA': 'En Bodega',
+      'OPERACION': 'En Operación',
+      'MANTENIMIENTO': 'Mantenimiento',
+      'BAJA': 'Baja / Inactivo'
+    };
+    return labels[estado?.toUpperCase()] || estado;
   }
 }

@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { Activo, CreateActivoDto, UpdateActivoDto } from '../../domain/models/activo.model';
 import { ActivoRepository } from '../../domain/repositories/activo.repository';
 import { environment } from '../../../../../environments/environment';
+import { ActivoMetadata } from '../../domain/models/activo.model';
 
 @Injectable({
   providedIn: 'root'
@@ -20,6 +21,10 @@ export class HttpActivoRepository implements ActivoRepository {
 
   getByPlaca(placa: string): Observable<Activo> {
     return this.http.get<Activo>(`${this.apiUrl}/${placa}`);
+  }
+
+  getMetadata(): Observable<ActivoMetadata> {
+    return this.http.get<ActivoMetadata>(`${this.apiUrl}/metadata`);
   }
 
   create(activo: CreateActivoDto): Observable<Activo> {
