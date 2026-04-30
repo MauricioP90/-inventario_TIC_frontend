@@ -279,6 +279,7 @@ export class AddResponsableDrawerComponent implements OnInit {
 
       const payload: any = {
         ...this.responsibleForm.value,
+        role: this.responsibleForm.value.roleId,
         locationIds: this.selectedLocationIds()
       };
 
@@ -333,6 +334,7 @@ export class AddResponsableDrawerComponent implements OnInit {
       // Armamos el payload tomando los datos del formulario, pero forzando el estado
       const payload: any = {
         ...this.responsibleForm.value,
+        role: this.responsibleForm.value.roleId,
         locationIds: this.selectedLocationIds(),
         estado: 'ACTIVO' // <-- Forzamos la activación
       };

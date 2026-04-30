@@ -5,11 +5,12 @@ import { Movement, CreateMovementDto } from '../../domain/models/movement.model'
 import { MovementRepository } from '../../domain/repositories/movement.repository';
 import { environment } from '../../../../../environments/environment';
 
+
 @Injectable({ providedIn: 'root' })
 export class HttpMovementRepository implements MovementRepository {
   private apiUrl = `${environment.apiUrl}/movements`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   getAll(): Observable<Movement[]> {
     return this.http.get<Movement[]>(this.apiUrl);
@@ -21,11 +22,11 @@ export class HttpMovementRepository implements MovementRepository {
     return this.http.post<Movement>(this.apiUrl, movement);
   }
 
-  dispatch(id: string): Observable<Movement> {
-    return this.http.patch<Movement>(`${this.apiUrl}/${id}/dispatch`, {});
+  dispatch(id: string, evidenceUrl: string): Observable<Movement> {
+    return this.http.patch<Movement>(`${this.apiUrl}/${id}/dispatch`, { evidenceUrl });
   }
 
-  receive(id: string): Observable<Movement> {
-    return this.http.patch<Movement>(`${this.apiUrl}/${id}/receive`, {});
+  receive(id: string, receiverId: string, receiverEvidenceUrl: string): Observable<Movement> {
+    return this.http.patch<Movement>(`${this.apiUrl}/${id}/receive`, { receiverId, receiverEvidenceUrl });
   }
 }

@@ -5,9 +5,9 @@ import { MovementRepository } from '../../domain/repositories/movement.repositor
 
 @Injectable({ providedIn: 'root' })
 export class ReceiveMovementUseCase {
-  constructor(private repository: MovementRepository) {}
+  constructor(private repository: MovementRepository) { }
 
-  execute(id: string): Observable<Movement> {
-    return this.repository.receive(id);
+  execute(id: string, receiverId: string, receiverEvidenceUrl: string): Observable<Movement> {
+    return this.repository.receive(id, receiverId, receiverEvidenceUrl);
   }
 }

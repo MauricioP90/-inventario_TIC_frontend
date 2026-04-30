@@ -11,6 +11,7 @@ export enum EstadoActivo {
 export interface ActivoMetadata {
   statuses: { id: EstadoActivo; label: string }[];
   types: { id: string; label: string }[];
+  bodegas: { id: string; nombre: string }[];
 }
 
 export interface Activo {

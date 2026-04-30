@@ -1,118 +1,104 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule } from 'lucide-angular';
 import { Movement, MovementStatus } from '../../../domain/models/movement.model';
+import { MovementTypePipe } from '../../../../../shared/pipes/movement-type.pipe';
 
 @Component({
-    selector: 'app-movement-item',
-    standalone: true,
-    imports: [CommonModule, LucideAngularModule],
-    template: `
-    <div class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all group">
-      <!-- Info del Envío -->
-      <div class="flex justify-between items-start mb-8">
-        <div>
-          <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-500 bg-indigo-50 px-2 py-1 rounded-md mb-2 inline-block">
-            Traslado #{{ movement.id.slice(-6).toUpperCase() }}
-          </span>
-          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-            {{ movement.originLocation?.nombre || 'Origen' }} 
-            <lucide-icon name="arrow-right" size="14" class="text-slate-400"></lucide-icon>
-            {{ movement.destinationLocation?.nombre || 'Destino' }}
-          </h3>
-        </div>
+  selector: 'app-movement-item',
+  standalone: true,
+  imports: [CommonModule, MovementTypePipe],
+  template: `
+    <div class="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group">
+      <!-- Header: ID & Fecha -->
+      <div class="flex justify-between items-start mb-4">
+        <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-500 bg-indigo-50 px-2 py-1 rounded-md">
+          {{ movement.type | movementTypeLabel }} #{{ movement.id.slice(-6).toUpperCase() }}
+        </span>
         <div class="text-right">
-          <p class="text-[11px] text-slate-400">Creado el</p>
-          <p class="text-xs font-semibold text-slate-600">{{ movement.createdAt | date:'shortDate' }}</p>
+          <p class="text-[10px] text-slate-400 uppercase font-bold">Fecha</p>
+          <p class="text-xs font-semibold text-slate-600">{{ movement.createdAt | date:'dd/MM/yyyy' }}</p>
         </div>
       </div>
 
-      <!-- VISUAL TIMELINE -->
-      <div class="relative pt-4 pb-8">
-        <!-- Línea de Fondo -->
-        <div class="absolute top-8 left-0 w-full h-1 bg-slate-100 rounded-full z-0"></div>
-        
-        <!-- Línea de Progreso Dinámica -->
-        <div class="absolute top-8 left-0 h-1 bg-indigo-500 rounded-full z-0 transition-all duration-700 ease-in-out"
-             [style.width.%]="getStatusProgress()"></div>
-
-        <!-- Nodos del Timeline -->
-        <div class="relative z-10 flex justify-between items-center px-1">
-          
-          <!-- Paso 1: Registrado -->
-          <div class="flex flex-col items-center gap-2">
-            <div [class]="'w-8 h-8 rounded-full border-4 border-white shadow-sm flex items-center justify-center transition-colors ' + 
-                 (getStatusIndex() >= 0 ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-500')">
-              <lucide-icon name="package" size="14"></lucide-icon>
-            </div>
-            <span class="text-[10px] font-bold text-slate-600">Registrado</span>
-          </div>
-
-          <!-- Paso 2: En Tránsito -->
-          <div class="flex flex-col items-center gap-2">
-            <div [class]="'w-8 h-8 rounded-full border-4 border-white shadow-sm flex items-center justify-center transition-colors ' + 
-                 (getStatusIndex() >= 1 ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-500')">
-              <lucide-icon name="truck" size="14"></lucide-icon>
-            </div>
-            <span class="text-[10px] font-bold text-slate-600">En Tránsito</span>
-          </div>
-
-          <!-- Paso 3: Recibido -->
-          <div class="flex flex-col items-center gap-2">
-            <div [class]="'w-8 h-8 rounded-full border-4 border-white shadow-sm flex items-center justify-center transition-colors ' + 
-                 (getStatusIndex() >= 2 ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500')">
-              <lucide-icon name="check-circle" size="14"></lucide-icon>
-            </div>
-            <span class="text-[10px] font-bold text-slate-600">Recibido</span>
-          </div>
-
+      <!-- Ruta: Origen -> Destino -->
+      <div class="flex items-center gap-3 mb-6">
+        <div class="flex-1 min-w-0">
+          <p class="text-[10px] text-slate-400 uppercase font-bold mb-1">Origen</p>
+          <p class="text-sm font-bold text-slate-800 truncate">{{ movement.originLocation?.nombre || 'Sede Origen' }}</p>
+        </div>
+        <div class="flex items-center justify-center">
+          <svg class="h-5 w-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-[10px] text-slate-400 uppercase font-bold mb-1">Destino</p>
+          <p class="text-sm font-bold text-slate-800 truncate">{{ movement.destinationLocation?.nombre || 'Sede Destino' }}</p>
         </div>
       </div>
 
-      <!-- Footer con Acciones -->
-      <div class="mt-4 pt-4 border-t border-slate-50 flex justify-between items-center">
-        <div class="flex -space-x-2">
-           <!-- Aquí podríamos poner las mini-fotos de los activos más adelante -->
-           <span class="text-[10px] text-slate-400 ml-4 italic">{{ movement.activoIds.length }} activos en viaje</span>
+      <!-- Info Adicional -->
+      <div class="grid grid-cols-2 gap-4 mb-6 py-3 border-y border-slate-50">
+        <div>
+          <p class="text-[10px] text-slate-400 uppercase font-bold">Activos</p>
+          <p class="text-xs font-bold text-slate-700 flex items-center gap-1">
+            <svg class="w-3 h-3 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {{ movement.activoIds.length }} equipos
+          </p>
         </div>
+        <div>
+          <p class="text-[10px] text-slate-400 uppercase font-bold">Estado</p>
+          <span [class]="statusClass">{{ statusLabel }}</span>
+        </div>
+      </div>
 
-        <div class="flex gap-2">
-          @if (movement.status === 'PENDING') {
-            <button (click)="onDispatch.emit(movement.id)"
-                    class="px-4 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100">
-              Despachar
-            </button>
-          }
-          @if (movement.status === 'EN_TRANSIT') {
-            <button (click)="onReceive.emit(movement.id)"
-                    class="px-4 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-all shadow-md shadow-emerald-100">
-              Recibir
-            </button>
-          }
-        </div>
+      <!-- Acciones -->
+      <div class="flex gap-2">
+        @if (movement.status === 'PENDING') {
+          <button (click)="onDispatch.emit(movement)"
+                  class="flex-1 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-100 flex items-center justify-center gap-2">
+            Despachar
+          </button>
+        }
+        @if (movement.status === 'EN_TRANSIT') {
+          <button (click)="onReceive.emit(movement)"
+                  class="flex-1 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-100 flex items-center justify-center gap-2">
+            Recibir
+          </button>
+        }
+        <button (click)="onViewRoute.emit(movement)"
+                class="px-4 py-2 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-200 transition-all flex items-center justify-center">
+          Ver Ruta
+        </button>
       </div>
     </div>
   `,
-    styles: []
+  styles: []
 })
 export class MovementItemComponent {
-    @Input({ required: true }) movement!: Movement;
-    @Output() onDispatch = new EventEmitter<string>();
-    @Output() onReceive = new EventEmitter<string>();
+  @Input({ required: true }) movement!: Movement;
+  @Output() onDispatch = new EventEmitter<Movement>();
+  @Output() onReceive = new EventEmitter<Movement>();
+  @Output() onViewRoute = new EventEmitter<Movement>();
 
-    getStatusIndex(): number {
-        const orders: Record<string, number> = {
-            [MovementStatus.PENDING]: 0,
-            [MovementStatus.EN_TRANSIT]: 1,
-            [MovementStatus.RECEIVED]: 2,
-            [MovementStatus.CANCELLED]: -1
-        };
-        return orders[this.movement.status] ?? 0;
-    }
+  get statusLabel(): string {
+    const labels: Record<string, string> = {
+      [MovementStatus.PENDING]: 'Pendiente',
+      [MovementStatus.EN_TRANSIT]: 'En Tránsito',
+      [MovementStatus.RECEIVED]: 'Recibido',
+      [MovementStatus.CANCELLED]: 'Cancelado',
+    };
+    return labels[this.movement.status] ?? this.movement.status;
+  }
 
-    getStatusProgress(): number {
-        const idx = this.getStatusIndex();
-        if (idx < 0) return 0;
-        return (idx / 2) * 100; // 0, 50, 100
-    }
+  get statusClass(): string {
+    const base = 'text-[10px] font-bold px-2 py-0.5 rounded-full ';
+    const classes: Record<string, string> = {
+      [MovementStatus.PENDING]: base + 'bg-amber-100 text-amber-700',
+      [MovementStatus.EN_TRANSIT]: base + 'bg-blue-100 text-blue-700',
+      [MovementStatus.RECEIVED]: base + 'bg-emerald-100 text-emerald-700',
+      [MovementStatus.CANCELLED]: base + 'bg-slate-100 text-slate-500',
+    };
+    return classes[this.movement.status] ?? base + 'bg-slate-100 text-slate-500';
+  }
 }
