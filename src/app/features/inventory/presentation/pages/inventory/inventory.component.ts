@@ -78,6 +78,7 @@ import { Location } from '../../../../locations/domain/models/location.model'; /
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Serial</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Ubicación</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Estado</th>
+                <th class="text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -101,6 +102,13 @@ import { Location } from '../../../../locations/domain/models/location.model'; /
                       class="text-[10px] font-bold px-2.5 py-1 rounded-lg text-white shadow-sm inline-block">
                       {{ getStatusLabel(activo.estado) }}
                     </span>
+                  </td>
+                  <td class="px-6 py-4 text-right">
+                    <button 
+                      (click)="(editarActivo(activo))"
+                      class="text-indigo-600 hover:text-indigo-900 font-medium transition-all">
+                      Editar
+                    </button>
                   </td>
                 </tr>
               } @empty {
@@ -130,6 +138,12 @@ export class InventoryPageComponent implements OnInit {
   loading = signal(false);
   showDrawer = signal(false);
   metadata = signal<ActivoMetadata | null>(null);
+  editarActivo(activo: Activo) {
+    // Por ahora, podrías simplemente abrir el drawer
+    // o imprimir en consola para probar que el botón responde
+    console.log('Editando activo:', activo.placa);
+    this.showDrawer.set(true);
+  }
 
   // Señales para filtros
   searchTerm = signal('');
@@ -144,9 +158,9 @@ export class InventoryPageComponent implements OnInit {
     const loc = this.selectedLocation();
 
     if (search) {
-      list = list.filter(a => 
-        a.placa.toLowerCase().includes(search) || 
-        a.serial.toLowerCase().includes(search) || 
+      list = list.filter(a =>
+        a.placa.toLowerCase().includes(search) ||
+        a.serial.toLowerCase().includes(search) ||
         a.modelo.toLowerCase().includes(search) ||
         a.marca.toLowerCase().includes(search)
       );
@@ -226,10 +240,10 @@ export class InventoryPageComponent implements OnInit {
 
   getStatusLabel(estado: string): string {
     const labels: Record<string, string> = {
-      'BODEGA': 'En Bodega',
-      'OPERACION': 'En Operación',
+      'BODEGA': 'Bodega',
+      'OPERACION': 'Operación',
       'MANTENIMIENTO': 'Mantenimiento',
-      'BAJA': 'Baja / Inactivo'
+      'BAJA': 'Inactivo'
     };
     return labels[estado?.toUpperCase()] || estado;
   }

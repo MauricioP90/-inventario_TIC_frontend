@@ -84,7 +84,7 @@ export class MovementItemComponent {
   get statusLabel(): string {
     const labels: Record<string, string> = {
       [MovementStatus.PENDING]: 'Pendiente',
-      [MovementStatus.EN_TRANSIT]: 'En Tránsito',
+      [MovementStatus.EN_TRANSIT]: 'Transito',
       [MovementStatus.RECEIVED]: 'Recibido',
       [MovementStatus.CANCELLED]: 'Cancelado',
     };
