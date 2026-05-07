@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, inject, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, inject, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -6,8 +6,11 @@ import { CreateActivoUseCase } from '../../../features/inventory/application/use
 import { GetAllResponsablesUseCase } from '../../../features/responsables/application/use-cases/get-all-responsables.use-case';
 import { GetActivoMetadataUseCase } from '../../../features/inventory/application/use-cases/get-activo-metadata.use-case';
 import { Responsable } from '../../../features/responsables/domain/models/responsable.model';
-import { ActivoMetadata } from '../../../features/inventory/domain/models/activo.model';
+import { Activo, ActivoMetadata } from '../../../features/inventory/domain/models/activo.model';
+import { Location } from '../../../features/locations/domain/models/location.model';
+import { GetAllLocationsUseCase } from '../../../features/locations/application/use-cases/get-all-locations.use-case';
 import { environment } from '../../../../environments/environment';
+import { UpdateActivoUseCase } from '../../../features/inventory/application/use-cases/update-activo.use-case';
 
 @Component({
   selector: 'app-add-activo-drawer',
@@ -31,8 +34,8 @@ import { environment } from '../../../../environments/environment';
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-5 border-b border-slate-200 shrink-0">
         <div>
-          <h2 class="text-base font-bold text-slate-800">Nuevo Activo</h2>
-          <p class="text-xs text-slate-500 mt-0.5">Completa los datos del equipo a registrar.</p>
+          <h2 class="text-base font-bold text-slate-800">{{ activo ? 'Editar Activo' : 'Nuevo Activo' }}</h2>
+          <p class="text-xs text-slate-500 mt-0.5">{{ activo ? 'Modifica los datos del equipo seleccionado.' : 'Completa los datos del equipo a registrar.' }}</p>
         </div>
         <button (click)="close()" class="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -91,16 +94,29 @@ import { environment } from '../../../../environments/environment';
             class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" />
         </div>
 
-        <!-- Bodega de ingreso (solo bodegas desde metadata) -->
+        <!-- Bodega de ingreso -->
         <div class="space-y-1.5">
-          <label class="block text-sm font-medium text-slate-700">Bodega de ingreso <span class="text-red-500">*</span></label>
-          <select [(ngModel)]="locationId" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-            <option value="" disabled>Seleccionar bodega</option>
-            @for (bodega of metadata()?.bodegas; track bodega.id) {
-              <option [value]="bodega.id">{{ bodega.nombre }}</option>
+          <label class="block text-sm font-medium text-slate-700">Ubicación Actual</label>
+          <select 
+            [(ngModel)]="locationId" 
+            [disabled]="!!(activo && activo.estado !== 'BODEGA')" 
+            class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg disabled:bg-slate-100 disabled:text-slate-500">
+            
+            @if (activo && activo.estado !== 'BODEGA') {
+              <option [value]="locationId">{{ locationMap()[locationId]?.nombre || 'Cargando...' }}</option>
+            } @else {
+              <option value="" disabled>Seleccionar bodega</option>
+              @for (bodega of metadata()?.bodegas; track bodega.id) {
+                <option [value]="bodega.id">{{ bodega.nombre }}</option>
+              }
             }
           </select>
-          <p class="text-xs text-slate-400">Solo las bodegas TI están disponibles para el ingreso inicial.</p>
+          
+          @if (activo && activo.estado !== 'BODEGA') {
+            <p class="text-[10px] text-amber-600 font-medium mt-1">
+              ⚠️ Para cambiar la ubicación de un equipo en operación, use el módulo de Movimientos.
+            </p>
+          }
         </div>
 
         <!-- Estado -->
@@ -164,7 +180,7 @@ import { environment } from '../../../../environments/environment';
             <div class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
             Guardando...
           } @else {
-            Guardar Activo
+            {{ activo ? 'Actualizar Activo' : 'Guardar Activo' }}
           }
         </button>
       </div>
@@ -173,17 +189,36 @@ import { environment } from '../../../../environments/environment';
   styles: []
 })
 export class AddActivoDrawerComponent implements OnInit {
+  private updateActivoUseCase = inject(UpdateActivoUseCase);
   private createActivoUseCase = inject(CreateActivoUseCase);
   private getResponsablesUC = inject(GetAllResponsablesUseCase);
   private getMetadataUC = inject(GetActivoMetadataUseCase);
+  private getLocationsUC = inject(GetAllLocationsUseCase);
   private http = inject(HttpClient);
 
   @Input() open = false;
+  @Input() set activo(val: Activo | null) {
+    this._activo = val;
+    if (val) {
+      this.populateForm(val);
+    } else {
+      this.resetForm();
+    }
+  }
+  get activo() { return this._activo; }
+  private _activo: Activo | null = null;
+
   @Output() openChange = new EventEmitter<boolean>();
   @Output() saved = new EventEmitter<void>();
 
   responsibles = signal<Responsable[]>([]);
+  locations = signal<Location[]>([]);
   metadata = signal<ActivoMetadata | null>(null);
+
+  locationMap = computed(() => {
+    return this.locations().reduce((acc, curr) => ({ ...acc, [curr.id]: curr }), {} as Record<string, any>);
+  });
+
   saving = signal(false);
   uploadingFile = signal(false);
   facturaUrl = signal<string | null>(null);
@@ -207,6 +242,24 @@ export class AddActivoDrawerComponent implements OnInit {
   private loadData() {
     this.getResponsablesUC.execute().subscribe(resps => this.responsibles.set(resps));
     this.getMetadataUC.execute().subscribe(meta => this.metadata.set(meta));
+    this.getLocationsUC.execute().subscribe(locs => this.locations.set(locs));
+  }
+
+  private populateForm(a: Activo) {
+    this.tipo = a.tipoActivoId;
+    this.marca = a.marca;
+    this.modelo = a.modelo;
+    this.serial = a.serial;
+    this.placa = a.placa;
+    this.estado = a.estado;
+    this.locationId = a.locationId;
+    this.responsibleId = a.responsibleId;
+    if (a.fechaIngreso) {
+      const d = new Date(a.fechaIngreso);
+      this.fechaIngreso = d.toISOString().split('T')[0];
+    }
+    this.facturaUrl.set(a.facturaUrl || null);
+    this.fileName = a.facturaUrl ? 'Factura cargada' : '';
   }
 
   close() {
@@ -217,18 +270,12 @@ export class AddActivoDrawerComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-
-    // Validar tamaño (5MB máx)
     if (file.size > 5 * 1024 * 1024) {
       this.toast.set({ type: 'error', message: 'El archivo no puede superar los 5MB.' });
       return;
     }
-
     this.fileName = file.name;
     this.uploadingFile.set(true);
-    this.toast.set(null);
-
-    // Convertir a Base64 y subir al servidor
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
@@ -243,7 +290,7 @@ export class AddActivoDrawerComponent implements OnInit {
         },
         error: () => {
           this.uploadingFile.set(false);
-          this.toast.set({ type: 'error', message: 'Error al subir el archivo. El activo se guardará sin factura.' });
+          this.toast.set({ type: 'error', message: 'Error al subir el archivo.' });
         }
       });
     };
@@ -252,14 +299,11 @@ export class AddActivoDrawerComponent implements OnInit {
 
   handleSave() {
     this.toast.set(null);
-
     if (!this.tipo || !this.marca || !this.modelo || !this.serial || !this.placa || !this.estado || !this.locationId || !this.responsibleId || !this.fechaIngreso) {
-      this.toast.set({ type: 'error', message: 'Por favor completa todos los campos obligatorios (marcados con *).' });
+      this.toast.set({ type: 'error', message: 'Por favor completa todos los campos obligatorios.' });
       return;
     }
-
     this.saving.set(true);
-
     const payload = {
       tipoActivoId: this.tipo,
       marca: this.marca,
@@ -272,12 +316,14 @@ export class AddActivoDrawerComponent implements OnInit {
       fechaIngreso: this.fechaIngreso,
       facturaUrl: this.facturaUrl() ?? undefined
     };
-
-    this.createActivoUseCase.execute(payload).subscribe({
+    const request$ = this.activo 
+      ? this.updateActivoUseCase.execute(this.activo.placa, payload) 
+      : this.createActivoUseCase.execute(payload);
+    request$.subscribe({
       next: () => {
         this.saving.set(false);
-        this.toast.set({ type: 'success', message: `Activo "${this.placa}" guardado exitosamente.` });
-        this.resetForm();
+        this.toast.set({ type: 'success', message: `Activo "${this.placa}" ${this.activo ? 'actualizado' : 'guardado'} exitosamente.` });
+        if (!this.activo) this.resetForm();
         setTimeout(() => {
           this.toast.set(null);
           this.close();
@@ -286,8 +332,7 @@ export class AddActivoDrawerComponent implements OnInit {
       },
       error: (err) => {
         this.saving.set(false);
-        // Mostrar el mensaje real del backend, no uno genérico
-        const msg = err.error?.message || 'Error inesperado. Intenta de nuevo.';
+        const msg = err.error?.message || 'Error inesperado.';
         this.toast.set({ type: 'error', message: msg });
       }
     });

@@ -22,7 +22,7 @@ import { Location } from '../../../../locations/domain/models/location.model'; /
           <p class="text-sm text-slate-500 mt-1">Gestión integral de hardware y dispositivos</p>
         </div>
         <button
-          (click)="showDrawer.set(true)"
+          (click)="abrirNuevo()"
           class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-100">
           <span class="text-xl leading-none">+</span> Añadir Nuevo Producto
         </button>
@@ -104,11 +104,17 @@ import { Location } from '../../../../locations/domain/models/location.model'; /
                     </span>
                   </td>
                   <td class="px-6 py-4 text-right">
-                    <button 
-                      (click)="(editarActivo(activo))"
-                      class="text-indigo-600 hover:text-indigo-900 font-medium transition-all">
-                      Editar
-                    </button>
+                    @if (activo.estado !== 'BAJA') {
+                      <button 
+                        (click)="editarActivo(activo)"
+                        class="text-indigo-600 hover:text-indigo-900 font-medium transition-all">
+                        Editar
+                      </button>
+                    } @else {
+                      <span class="text-slate-300 font-medium cursor-not-allowed" title="Equipo inactivo, no modificable">
+                        Editar
+                      </span>
+                    }
                   </td>
                 </tr>
               } @empty {
@@ -126,7 +132,8 @@ import { Location } from '../../../../locations/domain/models/location.model'; /
     <!-- Drawer para agregar activo -->
     <app-add-activo-drawer
       [open]="showDrawer()"
-      (openChange)="showDrawer.set($event)"
+      [activo]="selectedActivo()"
+      (openChange)="handleDrawerOpenChange($event)"
       (saved)="ngOnInit()"
     />
   `,
@@ -137,12 +144,24 @@ export class InventoryPageComponent implements OnInit {
   locations = signal<Location[]>([]);
   loading = signal(false);
   showDrawer = signal(false);
+  selectedActivo = signal<Activo | null>(null);
   metadata = signal<ActivoMetadata | null>(null);
-  editarActivo(activo: Activo) {
-    // Por ahora, podrías simplemente abrir el drawer
-    // o imprimir en consola para probar que el botón responde
-    console.log('Editando activo:', activo.placa);
+
+  abrirNuevo() {
+    this.selectedActivo.set(null); // Limpiamos selección para que sea "Nuevo"
     this.showDrawer.set(true);
+  }
+
+  editarActivo(activo: Activo) {
+    this.selectedActivo.set(activo); // Guardamos el activo para editar
+    this.showDrawer.set(true);
+  }
+
+  handleDrawerOpenChange(isOpen: boolean) {
+    this.showDrawer.set(isOpen);
+    if (!isOpen) {
+      this.selectedActivo.set(null); // Al cerrar, limpiamos selección
+    }
   }
 
   // Señales para filtros
@@ -240,10 +259,10 @@ export class InventoryPageComponent implements OnInit {
 
   getStatusLabel(estado: string): string {
     const labels: Record<string, string> = {
-      'BODEGA': 'Bodega',
-      'OPERACION': 'Operación',
-      'MANTENIMIENTO': 'Mantenimiento',
-      'BAJA': 'Inactivo'
+      'BODEGA': 'BODEGA',
+      'OPERACION': 'OPERACIÓN',
+      'MANTENIMIENTO': 'MANTENIMIENTO',
+      'BAJA': 'INACTIVO'
     };
     return labels[estado?.toUpperCase()] || estado;
   }
