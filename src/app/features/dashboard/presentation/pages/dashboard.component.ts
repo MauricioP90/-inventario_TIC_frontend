@@ -1,131 +1,351 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { forkJoin } from 'rxjs';
+import { GetAllActivosUseCase } from '../../../inventory/application/use-cases/get-all-activos.use-case';
+import { GetActivoMetadataUseCase } from '../../../inventory/application/use-cases/get-activo-metadata.use-case';
+import { GetAllLocationsUseCase } from '../../../locations/application/use-cases/get-all-locations.use-case';
+import { GetAllResponsablesUseCase } from '../../../responsables/application/use-cases/get-all-responsables.use-case';
+import { Activo } from '../../../inventory/domain/models/activo.model';
+
+export interface DashboardMetrics {
+  totalCount: number;
+  disponibleCount: number;
+  asignadoCount: number;
+  mantenimientoCount: number;
+  bajaCount: number;
+  typeStacked: Record<string, { disponible: number; asignado: number }>;
+  typeBaja: Record<string, number>;
+}
 
 @Component({
   selector: 'app-dashboard-page',
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="space-y-6">
-      <div>
-        <h2 class="text-2xl font-bold text-slate-800">Dashboard</h2>
-        <p class="text-sm text-slate-500 mt-1">Resumen general del inventario</p>
-      </div>
+    <div class="space-y-6 p-6">
 
-      <!-- KPI Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Total Productos -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-start justify-between hover:shadow-md transition-shadow">
-          <div>
-            <p class="text-xs text-slate-500 font-medium">Total Productos</p>
-            <p class="text-3xl font-bold text-slate-800 mt-1">245</p>
-            <p class="text-[11px] text-emerald-600 font-medium mt-1">+12 este mes</p>
-          </div>
-          <div class="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
-            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
-          </div>
-        </div>
-
-        <!-- SIMs Activas -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-start justify-between hover:shadow-md transition-shadow">
-          <div>
-            <p class="text-xs text-slate-500 font-medium">SIMs Activas</p>
-            <p class="text-3xl font-bold text-slate-800 mt-1">120</p>
-            <p class="text-[11px] text-emerald-600 font-medium mt-1">85% del total</p>
-          </div>
-          <div class="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
-            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-          </div>
-        </div>
-
-        <!-- Movimientos Hoy -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-start justify-between hover:shadow-md transition-shadow">
-          <div>
-            <p class="text-xs text-slate-500 font-medium">Movimientos Hoy</p>
-            <p class="text-3xl font-bold text-slate-800 mt-1">8</p>
-          </div>
-          <div class="h-10 w-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
-            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-          </div>
-        </div>
-
-        <!-- Equipo Descartado -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-start justify-between hover:shadow-md transition-shadow">
-          <div>
-            <p class="text-xs text-slate-500 font-medium">Equipo Descartado</p>
-            <p class="text-3xl font-bold text-slate-800 mt-1">23</p>
-          </div>
-          <div class="h-10 w-10 rounded-lg bg-red-50 flex items-center justify-center text-red-600">
-            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-          </div>
+      <!-- Header -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-800">Resumen del Sistema</h2>
+          <p class="text-sm text-slate-500 mt-1">Métricas clave e inventario de activos</p>
         </div>
       </div>
 
-      <!-- Charts Row -->
-      <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <!-- Inventario por Tipo (Bar Chart) -->
-        <div class="lg:col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h3 class="text-base font-bold text-slate-800 mb-6">Inventario por Tipo</h3>
-          <div class="flex items-end justify-between h-48 px-2 gap-4">
-            <div class="flex flex-col items-center gap-2 flex-1 group">
-              <div class="w-full bg-indigo-600 rounded-t-md transition-all group-hover:bg-indigo-500" [style.height]="'45px'"></div>
-              <span class="text-[10px] text-slate-500 font-medium">Laptop</span>
-            </div>
-            <div class="flex flex-col items-center gap-2 flex-1 group">
-              <div class="w-full bg-indigo-600 rounded-t-md transition-all group-hover:bg-indigo-500" [style.height]="'125px'"></div>
-              <span class="text-[10px] text-slate-500 font-medium">Móvil</span>
-            </div>
-            <div class="flex flex-col items-center gap-2 flex-1 group">
-              <div class="w-full bg-indigo-600 rounded-t-md transition-all group-hover:bg-indigo-500" [style.height]="'35px'"></div>
-              <span class="text-[10px] text-slate-500 font-medium">Tablet</span>
-            </div>
-            <div class="flex flex-col items-center gap-2 flex-1 group">
-              <div class="w-full bg-indigo-600 rounded-t-md transition-all group-hover:bg-indigo-500" [style.height]="'20px'"></div>
-              <span class="text-[10px] text-slate-500 font-medium">Router</span>
-            </div>
-            <div class="flex flex-col items-center gap-2 flex-1 group">
-              <div class="w-full bg-indigo-600 rounded-t-md transition-all group-hover:bg-indigo-500" [style.height]="'12px'"></div>
-              <span class="text-[10px] text-slate-500 font-medium">Impresora</span>
-            </div>
+      <!-- Cargando -->
+      <div *ngIf="loading()" class="text-center py-12 text-slate-400 text-sm">
+        Cargando métricas…
+      </div>
+
+      <!-- Error -->
+      <div *ngIf="error()" class="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
+        {{ error() }}
+      </div>
+
+      <ng-container *ngIf="!loading() && !error()">
+
+        <!-- Banner Principal: Total Productos (Color Indigo de la App, Cero Naranja) -->
+        <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-2xl p-8 shadow-lg relative overflow-hidden">
+          <div class="absolute right-0 top-0 opacity-10 translate-x-12 -translate-y-12 scale-150">
+            <svg class="w-72 h-72" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+            </svg>
+          </div>
+          <div class="relative z-10 text-center">
+            <p class="text-xs font-bold uppercase tracking-wider text-indigo-200">Total Productos Registrados</p>
+            <p class="text-6xl font-extrabold leading-none mt-2">{{ totalProducts() }}</p>
+            <p class="text-xs text-indigo-100 font-medium mt-3 opacity-90">Equipos y componentes activos en la plataforma</p>
           </div>
         </div>
 
-        <!-- Estado de SIM Cards (Donut Chart) -->
-        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h3 class="text-base font-bold text-slate-800 mb-6">Estado de SIM Cards</h3>
-          <div class="flex flex-col items-center">
-            <div class="relative h-40 w-40">
-              <svg viewBox="0 0 36 36" class="h-full w-full rotate-[-90deg]">
-                <!-- Outer circle segments -->
-                <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#f1f5f9" stroke-width="4"></circle>
-                <!-- Activa (Emerald) -->
-                <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#10b981" stroke-width="4" stroke-dasharray="60 40" stroke-dashoffset="0"></circle>
-                <!-- Bodega (Amber) -->
-                <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#f59e0b" stroke-width="4" stroke-dasharray="25 75" stroke-dashoffset="-60"></circle>
-                <!-- Descartada (Red) -->
-                <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#ef4444" stroke-width="4" stroke-dasharray="15 85" stroke-dashoffset="-85"></circle>
-              </svg>
+        <!-- Fila de KPIs de Alerta y Operación -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          <!-- KPI: Tasa de Operación -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tasa de Utilización</span>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-600">En uso</span>
             </div>
-            
-            <div class="flex gap-4 mt-6">
-              <div class="flex items-center gap-1.5">
-                <div class="h-2 w-2 rounded-full bg-amber-500"></div>
-                <span class="text-[10px] text-slate-600 font-medium">Bodega</span>
+            <div class="flex items-end justify-between mt-3">
+              <div>
+                <p class="text-3xl font-extrabold text-slate-800">{{ utilizationRate() }}%</p>
+                <p class="text-[11px] text-slate-500 font-medium mt-1">{{ asignadoCount() }} activos en operación</p>
               </div>
-              <div class="flex items-center gap-1.5">
-                <div class="h-2 w-2 rounded-full bg-emerald-500"></div>
-                <span class="text-[10px] text-slate-600 font-medium">Activa</span>
+              <div class="w-12 h-12 rounded-full border-4 border-slate-100 border-t-indigo-600 animate-spin-slow"></div>
+            </div>
+          </div>
+
+          <!-- KPI: Equipos en Mantenimiento (Alerta Púrpura) -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-shadow border-l-4 border-l-violet-500">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">En Mantenimiento</span>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-violet-50 text-violet-600">Alerta técnica</span>
+            </div>
+            <div class="mt-3">
+              <p class="text-3xl font-extrabold text-slate-800">{{ mantenimientoCount() }}</p>
+              <p class="text-[11px] text-slate-500 font-medium mt-1">Dispositivos en reparación o revisión técnica</p>
+            </div>
+          </div>
+
+          <!-- KPI: Equipos de Baja (Alerta Histórica Roja) -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-shadow border-l-4 border-l-rose-500">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Dados de Baja</span>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600">Descartados</span>
+            </div>
+            <div class="mt-3">
+              <p class="text-3xl font-extrabold text-slate-800">{{ bajaCount() }}</p>
+              <p class="text-[11px] text-slate-500 font-medium mt-1">Historial total de equipos dados de baja</p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Sección de Gráficos -->
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+          <!-- Gráfico principal: Inventario por Tipo (Gráfico de Barras de 2 Colores / Stacked) -->
+          <div class="lg:col-span-5 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h3 class="text-base font-bold text-slate-800">Inventario por tipo 📊</h3>
+                <p class="text-xs text-slate-500 mt-0.5">Distribución de equipos disponibles vs asignados</p>
               </div>
-              <div class="flex items-center gap-1.5">
-                <div class="h-2 w-2 rounded-full bg-red-500"></div>
-                <span class="text-[10px] text-slate-600 font-medium">Descartada</span>
+              
+              <!-- Leyenda de 2 colores (Verde y Morado/Índigo, sin naranja) -->
+              <div class="flex items-center gap-4 text-xs font-bold">
+                <div class="flex items-center gap-1.5">
+                  <div class="h-3 w-3 rounded-md bg-emerald-500"></div>
+                  <span class="text-slate-600">Disponible (Bodega)</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <div class="h-3 w-3 rounded-md bg-indigo-600"></div>
+                  <span class="text-slate-600">Asignado</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gráfico de barras apiladas (Stacked) -->
+            <div class="flex items-end justify-around h-64 px-4 gap-6 border-b border-slate-100 pb-2">
+              <div *ngFor="let item of deviceTypeStacked()"
+                   class="flex flex-col items-center gap-2 flex-1 max-w-[120px] group">
+                
+                <!-- Info popup al pasar el mouse -->
+                <div class="opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded-lg p-2 absolute mb-64 shadow-xl z-20 pointer-events-none">
+                  <p class="font-bold border-b border-slate-700 pb-1 mb-1">{{ item.key }}</p>
+                  <p class="flex items-center justify-between gap-3 text-emerald-400">Bodega: <span class="font-extrabold">{{ item.disponible }}</span></p>
+                  <p class="flex items-center justify-between gap-3 text-indigo-300">Asignados: <span class="font-extrabold">{{ item.asignado }}</span></p>
+                </div>
+
+                <!-- Barra stacked -->
+                <div class="w-full flex flex-col justify-end bg-slate-100 rounded-lg overflow-hidden transition-all duration-300 group-hover:shadow-md"
+                     [style.height.px]="item.barHeight">
+                  <!-- Segmento Asignado (Indigo) -->
+                  <div *ngIf="item.asignado > 0"
+                       class="bg-indigo-600 w-full transition-colors group-hover:bg-indigo-500"
+                       [style.height.%]="item.asignadoHeight"
+                       title="Asignado: {{ item.asignado }}">
+                  </div>
+                  <!-- Segmento Disponible/Bodega (Verde) -->
+                  <div *ngIf="item.disponible > 0"
+                       class="bg-emerald-500 w-full transition-colors group-hover:bg-emerald-400"
+                       [style.height.%]="item.disponibleHeight"
+                       title="Disponible: {{ item.disponible }}">
+                  </div>
+                </div>
+
+                <!-- Label de dispositivo -->
+                <span class="text-xs text-slate-600 font-bold text-center leading-tight mt-1 truncate w-full">{{ item.key }}</span>
+                <span class="text-[10px] text-slate-400 font-extrabold">Total: {{ item.total }}</span>
               </div>
             </div>
           </div>
+
+          <!-- Gráfico inferior: Dispositivos en Baja (Histórico) -->
+          <div class="lg:col-span-5 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h3 class="text-base font-bold text-slate-800 text-rose-700">📉 Dispositivos en Baja (Histórico)</h3>
+                <p class="text-xs text-slate-500 mt-0.5">Historial acumulado de descarte de equipos por tipo</p>
+              </div>
+              <div class="flex items-center gap-1.5 text-xs font-bold">
+                <div class="h-3 w-3 rounded-md bg-rose-600"></div>
+                <span class="text-slate-600">Equipos Dados de Baja</span>
+              </div>
+            </div>
+
+            <!-- Gráfico de barras simples rojas para bajas -->
+            <div *ngIf="bajaDevices().length > 0; else noBajas" 
+                 class="flex items-end justify-around h-64 px-4 gap-6 border-b border-slate-100 pb-2">
+              <div *ngFor="let item of bajaDevices()"
+                   class="flex flex-col items-center gap-2 flex-1 max-w-[120px] group">
+                
+                <!-- Valor encima de la barra -->
+                <span class="text-xs font-bold text-rose-700 opacity-80">{{ item.value }}</span>
+
+                <!-- Barra de baja (Crimson Rose) -->
+                <div class="w-full bg-rose-600 rounded-t-lg transition-all group-hover:bg-rose-500"
+                     [style.height.px]="item.barHeight">
+                </div>
+
+                <!-- Label -->
+                <span class="text-xs text-slate-600 font-bold text-center leading-tight mt-1 truncate w-full">{{ item.key }}</span>
+              </div>
+            </div>
+
+            <!-- Estado vacío para bajas -->
+            <ng-template #noBajas>
+              <div class="text-center py-12 text-slate-400 text-sm font-medium bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                ✅ No se registran equipos dados de baja en el sistema.
+              </div>
+            </ng-template>
+          </div>
+
         </div>
-      </div>
+
+      </ng-container>
     </div>
   `,
-  styles: []
+  styles: [`
+    .animate-spin-slow {
+      animation: spin 8s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  `]
 })
-export class DashboardPageComponent {}
+export class DashboardComponent implements OnInit {
+
+  metrics   = signal<DashboardMetrics | null>(null);
+  loading   = signal(true);
+  error     = signal<string | null>(null);
+
+  // Computed properties
+  totalProducts    = computed(() => this.metrics()?.totalCount ?? 0);
+  disponibleCount  = computed(() => this.metrics()?.disponibleCount ?? 0);
+  asignadoCount    = computed(() => this.metrics()?.asignadoCount ?? 0);
+  mantenimientoCount = computed(() => this.metrics()?.mantenimientoCount ?? 0);
+  bajaCount        = computed(() => this.metrics()?.bajaCount ?? 0);
+
+  utilizationRate = computed(() => {
+    const total = this.totalProducts() - this.bajaCount();
+    if (total <= 0) return 0;
+    return Math.round((this.asignadoCount() / total) * 100);
+  });
+
+  // Data agrupada para gráfico apilado (2 colores: Disponible vs Asignado)
+  deviceTypeStacked = computed(() => {
+    const data = this.metrics()?.typeStacked ?? {};
+    const entries = Object.entries(data);
+    if (entries.length === 0) return [];
+    
+    const max = Math.max(...entries.map(([_, v]) => v.disponible + v.asignado), 1);
+
+    return entries.map(([key, v]) => {
+      const total = v.disponible + v.asignado;
+      return {
+        key,
+        total,
+        disponible: v.disponible,
+        asignado: v.asignado,
+        disponibleHeight: total > 0 ? Math.round((v.disponible / total) * 100) : 0,
+        asignadoHeight: total > 0 ? Math.round((v.asignado / total) * 100) : 0,
+        barHeight: Math.round((total / max) * 160)
+      };
+    });
+  });
+
+  // Data agrupada para gráfico de bajas
+  bajaDevices = computed(() => {
+    const data = this.metrics()?.typeBaja ?? {};
+    const entries = Object.entries(data);
+    if (entries.length === 0) return [];
+
+    const max = Math.max(...Object.values(data), 1);
+
+    return entries.map(([key, value]) => ({
+      key,
+      value,
+      barHeight: Math.round((value / max) * 160)
+    }));
+  });
+
+  constructor(
+    private getAllActivosUC: GetAllActivosUseCase,
+    private getMetadataUC: GetActivoMetadataUseCase,
+    private getLocationsUC: GetAllLocationsUseCase,
+    private getResponsablesUC: GetAllResponsablesUseCase
+  ) {}
+
+  ngOnInit(): void {
+    this.loading.set(true);
+
+    forkJoin({
+      activos: this.getAllActivosUC.execute(),
+      metadata: this.getMetadataUC.execute(),
+      locations: this.getLocationsUC.execute(),
+      responsables: this.getResponsablesUC.execute()
+    }).subscribe({
+      next: ({ activos, metadata, locations, responsables }) => {
+        // Mapeadores rápidos de IDs a Etiquetas
+        const statusMap = new Map<string, string>();
+        metadata.statuses.forEach(s => statusMap.set(s.id, s.label));
+
+        const typeMap = new Map<string, string>();
+        metadata.types.forEach(t => typeMap.set(t.id, t.label));
+
+        let totalCount = activos.length;
+        let disponibleCount = 0;
+        let asignadoCount = 0;
+        let mantenimientoCount = 0;
+        let bajaCount = 0;
+
+        // Estructuras de datos para barras
+        const typeStacked: Record<string, { disponible: number; asignado: number }> = {};
+        const typeBaja: Record<string, number> = {};
+
+        activos.forEach((activo: Activo) => {
+          const typeLabel = typeMap.get(activo.tipoActivoId) || activo.tipoActivoId || 'Sin tipo';
+
+          if (activo.estado === 'BODEGA') {
+            disponibleCount++;
+            if (!typeStacked[typeLabel]) typeStacked[typeLabel] = { disponible: 0, asignado: 0 };
+            typeStacked[typeLabel].disponible++;
+          } else if (activo.estado === 'OPERACION') {
+            asignadoCount++;
+            if (!typeStacked[typeLabel]) typeStacked[typeLabel] = { disponible: 0, asignado: 0 };
+            typeStacked[typeLabel].asignado++;
+          } else if (activo.estado === 'MANTENIMIENTO') {
+            mantenimientoCount++;
+            // Mantenimiento se agrupa bajo asignado para el gráfico apilado de 2 colores
+            if (!typeStacked[typeLabel]) typeStacked[typeLabel] = { disponible: 0, asignado: 0 };
+            typeStacked[typeLabel].asignado++;
+          } else if (activo.estado === 'BAJA') {
+            bajaCount++;
+            typeBaja[typeLabel] = (typeBaja[typeLabel] ?? 0) + 1;
+          }
+        });
+
+        this.metrics.set({
+          totalCount,
+          disponibleCount,
+          asignadoCount,
+          mantenimientoCount,
+          bajaCount,
+          typeStacked,
+          typeBaja
+        });
+
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Error calculando métricas de inventario:', err);
+        this.error.set('No se pudieron calcular las métricas. Verifica que el backend esté activo.');
+        this.loading.set(false);
+      }
+    });
+  }
+}
