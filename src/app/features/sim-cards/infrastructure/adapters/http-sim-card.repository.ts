@@ -39,4 +39,8 @@ export class HttpSimCardRepository implements SimCardRepository {
   countByResponsible(responsibleId: string): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/count/responsible/${responsibleId}`).pipe(map(res => res.count));
   }
+
+  assign(simCardId: string, placaActivo: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/assign`, { simCardId, placaActivo });
+  }
 }

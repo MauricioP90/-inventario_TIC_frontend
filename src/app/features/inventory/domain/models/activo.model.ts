@@ -28,6 +28,7 @@ export interface Activo {
   facturaUrl?: string;
   location?: Location;
   responsible?: Responsable;
+  simCards?: any[];
 }
 
 export type CreateActivoDto = Omit<Activo, 'id' | 'tipoActivo' | 'location' | 'responsible'>;

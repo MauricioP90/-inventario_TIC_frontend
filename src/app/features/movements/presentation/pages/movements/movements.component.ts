@@ -14,6 +14,9 @@ import { MovementItemComponent } from '../../components/movement-item/movement-i
 import { GetOneActivoUseCase } from '../../../application/use-cases/get-one-activo.use-case';
 import { GetAllActivosUseCase } from '../../../../inventory/application/use-cases/get-all-activos.use-case';
 import { Activo } from '../../../../inventory/domain/models/activo.model';
+import { GetAllSimCardsUseCase } from '../../../../sim-cards/application/use-cases/get-all-sim-cards.use-case';
+import { SimCardRepository } from '../../../../sim-cards/domain/repositories/sim-card.repository';
+import { SimCard } from '../../../../sim-cards/domain/models/sim-card.model';
 
 interface PickItem {
   id: string;
@@ -183,6 +186,182 @@ interface PickItem {
             </div>
           </div>
 
+          <!-- INFORMACIÓN SIMCARD (Sección Dinámica) -->
+          @if (['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)) {
+            <div class="border-2 border-dashed border-purple-300 bg-purple-50/10 rounded-2xl p-6 space-y-6 animate-in fade-in slide-in-from-top-2 duration-200">
+              <h3 class="text-sm font-bold text-purple-700 flex items-center gap-2">
+                <span>📱</span> Información SIMCARD
+              </h3>
+
+              <!-- ALERTA DE BLOQUEO (Para Asignación si ya hay 2 SIMs) -->
+              @if (movementType === 'SIM_ASIGNACION' && selectedActivo()?.simCards?.length === 2) {
+                <div class="bg-red-50 text-red-700 border border-red-200 rounded-xl p-4 text-xs font-bold flex items-center gap-2">
+                  <span>🚫</span> BLOQUEADO: Este equipo ya tiene 2 SIMs asignadas ({{ selectedActivo()?.simCards?.[0]?.numero }}, {{ selectedActivo()?.simCards?.[1]?.numero }}). No puedes asignar más.
+                </div>
+              }
+
+              <!-- FORM: Asignación de SIMCARD -->
+              @if (movementType === 'SIM_ASIGNACION' && (selectedActivo()?.simCards?.length || 0) < 2) {
+                <div class="space-y-2">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Seleccionar SIM en Bodega para Asignar *</label>
+                  <div class="relative">
+                    <input type="text"
+                           [(ngModel)]="simSearchQuery"
+                           placeholder="Escriba número o ICCID..."
+                           (focus)="showSimDropdown = true"
+                           (input)="showSimDropdown = true"
+                           class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none transition-all text-sm">
+                    
+                    @if (showSimDropdown && filteredBodegaSims().length > 0) {
+                      <div class="absolute z-30 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-40 overflow-y-auto">
+                        @for (sim of filteredBodegaSims(); track sim.id) {
+                          <div (click)="selectSimForAssign(sim)"
+                               class="p-3 hover:bg-purple-50 cursor-pointer border-b border-slate-50 last:border-none flex flex-col gap-0.5 transition-colors">
+                            <p class="text-sm font-bold text-slate-800">{{ sim.numero }}</p>
+                            <div class="flex items-center justify-between">
+                              <p class="text-[10px] text-slate-500">ICCID: {{ sim.iccid }}</p>
+                              <span class="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold uppercase">{{ sim.operador }}</span>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- FORM: Cambio de SIMCARD -->
+              @if (movementType === 'SIM_CAMBIO') {
+                <div class="space-y-4">
+                  <!-- Reemplazo -->
+                  <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">¿Cuál SIM del equipo deseas reemplazar? *</label>
+                    <div class="flex flex-col gap-2">
+                      @for (sim of selectedActivo()?.simCards; track sim.id; let i = $index) {
+                        <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                          <input type="radio" name="simToReplace" [value]="sim" [(ngModel)]="selectedSimToReplace" class="text-purple-600 focus:ring-purple-500">
+                          <span class="text-sm text-slate-700 font-medium">📱 SIM {{ i + 1 }}: {{ sim.numero }} ({{ sim.operador }})</span>
+                        </label>
+                      } @empty {
+                        <p class="text-xs text-slate-400 italic">Este equipo no tiene SIMs asignadas para reemplazar.</p>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Nueva SIM -->
+                  <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Seleccionar SIM en Bodega para Asignar *</label>
+                    <div class="relative">
+                      <input type="text"
+                             [(ngModel)]="simSearchQuery"
+                             placeholder="Escriba número o ICCID..."
+                             (focus)="showSimDropdown = true"
+                             (input)="showSimDropdown = true"
+                             class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none transition-all text-sm">
+                      
+                      @if (showSimDropdown && filteredBodegaSims().length > 0) {
+                        <div class="absolute z-30 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-40 overflow-y-auto">
+                          @for (sim of filteredBodegaSims(); track sim.id) {
+                            <div (click)="selectSimForAssign(sim)"
+                                 class="p-3 hover:bg-purple-50 cursor-pointer border-b border-slate-50 last:border-none flex flex-col gap-0.5 transition-colors">
+                              <p class="text-sm font-bold text-slate-800">{{ sim.numero }}</p>
+                              <div class="flex items-center justify-between">
+                                <p class="text-[10px] text-slate-500">ICCID: {{ sim.iccid }}</p>
+                                <span class="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold uppercase">{{ sim.operador }}</span>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Ubicación Bodega SIM que SALE -->
+                  <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación de BODEGA para la SIM que SALE *</label>
+                    <select [(ngModel)]="removedSimLocationId"
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none appearance-none text-sm transition-all">
+                      <option value="">Escriba Código o Nombre...</option>
+                      @for (loc of locations(); track loc.id) {
+                        <option [value]="loc.id">{{ loc.nombre }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+              }
+
+              <!-- FORM: Retiro de SIMCARD -->
+              @if (movementType === 'SIM_RETIRO') {
+                <div class="space-y-4">
+                  <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Seleccionar SIM a Retirar del Equipo *</label>
+                    <select [(ngModel)]="selectedSimToRemove"
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none appearance-none text-sm transition-all">
+                      <option [ngValue]="null">Seleccione...</option>
+                      @for (sim of selectedActivo()?.simCards; track sim.id) {
+                        <option [ngValue]="sim">{{ sim.numero }} ({{ sim.operador }})</option>
+                      }
+                    </select>
+                  </div>
+
+                  <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Nuevo Estado de la SIM *</label>
+                    <select [(ngModel)]="removedSimNewState"
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none appearance-none text-sm transition-all">
+                      <option value="BODEGA">Bodega</option>
+                      <option value="BAJA">Baja</option>
+                    </select>
+                  </div>
+
+                  <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación donde quedará la SIM *</label>
+                    <select [(ngModel)]="removedSimLocationId"
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none appearance-none text-sm transition-all">
+                      <option value="">Escriba Código o Nombre...</option>
+                      @for (loc of locations(); track loc.id) {
+                        <option [value]="loc.id">{{ loc.nombre }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+              }
+
+              <!-- FORM: Retiro de TODAS las SIMs -->
+              @if (movementType === 'SIM_RETIRO_TOTAL') {
+                <div class="space-y-6">
+                  @for (sim of selectedActivo()?.simCards; track sim.id; let i = $index) {
+                    <div class="p-4 bg-white border border-slate-200 rounded-xl space-y-4">
+                      <p class="text-sm font-bold text-purple-700">📱 SIM {{ i + 1 }}: {{ sim.numero }} ({{ sim.operador }})</p>
+                      
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                          <label class="text-[10px] font-bold text-slate-500 uppercase">Ubicación destino SIM {{ i + 1 }} *</label>
+                          <select [(ngModel)]="simDestinations[i]"
+                                  class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-purple-500">
+                            <option value="">Seleccione ubicación...</option>
+                            @for (loc of locations(); track loc.id) {
+                              <option [value]="loc.id">{{ loc.nombre }}</option>
+                            }
+                          </select>
+                        </div>
+                        <div class="space-y-2">
+                          <label class="text-[10px] font-bold text-slate-500 uppercase">Nuevo estado SIM {{ i + 1 }} *</label>
+                          <select [(ngModel)]="simStates[i]"
+                                  class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-purple-500">
+                            <option value="BODEGA">Bodega</option>
+                            <option value="BAJA">Baja</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  } @empty {
+                    <p class="text-xs text-slate-400 italic">Este equipo no tiene SIMs asignadas para retirar.</p>
+                  }
+                </div>
+              }
+            </div>
+          }
+
           <!-- Footer -->
           <div class="pt-4 flex justify-start">
             <button (click)="saveMovement()"
@@ -323,6 +502,41 @@ export class MovementsPageComponent implements OnInit {
   notes = '';
   selectedActivo = signal<Activo | null>(null);
 
+  // SIM Card form states
+  simCards = signal<SimCard[]>([]);
+  simSearchQuery = '';
+  showSimDropdown = false;
+  selectedSimForAssign: SimCard | null = null;
+
+  // Reemplazo/Cambio
+  selectedSimToReplace: SimCard | null = null;
+  removedSimLocationId = '';
+
+  // Retiro
+  selectedSimToRemove: SimCard | null = null;
+  removedSimNewState: 'BODEGA' | 'BAJA' = 'BODEGA';
+
+  // Retiro de TODAS
+  simDestinations: string[] = ['', ''];
+  simStates: ('BODEGA' | 'BAJA')[] = ['BODEGA', 'BODEGA'];
+
+  filteredBodegaSims = computed(() => {
+    const term = this.simSearchQuery.toLowerCase().trim();
+    const available = this.simCards().filter(s => s.estado === 'BODEGA');
+    if (!term) return available;
+    return available.filter(s =>
+      s.numero.toLowerCase().includes(term) ||
+      (s.iccid && s.iccid.toLowerCase().includes(term)) ||
+      (s.operador && s.operador.toLowerCase().includes(term))
+    );
+  });
+
+  selectSimForAssign(sim: SimCard) {
+    this.selectedSimForAssign = sim;
+    this.simSearchQuery = `${sim.numero} | ICCID: ${sim.iccid} | ${sim.operador}`;
+    this.showSimDropdown = false;
+  }
+
   filteredActivos = computed(() => {
     const term = this.searchQuery().toLowerCase().trim();
     const todos = this.activos();
@@ -349,7 +563,9 @@ export class MovementsPageComponent implements OnInit {
     private dispatchMovement: DispatchMovementUseCase,
     private receiveMovement: ReceiveMovementUseCase,
     private getOneActivo: GetOneActivoUseCase,
-    private getAllActivos: GetAllActivosUseCase
+    private getAllActivos: GetAllActivosUseCase,
+    private getAllSimCards: GetAllSimCardsUseCase,
+    private simCardRepo: SimCardRepository
   ) { }
 
   ngOnInit() {
@@ -361,6 +577,7 @@ export class MovementsPageComponent implements OnInit {
     this.getAllLocations.execute().subscribe(locs => this.locations.set(locs));
     this.getAllResponsables.execute().subscribe(resps => this.responsables.set(resps));
     this.getAllActivos.execute().subscribe(acts => this.activos.set(acts));
+    this.getAllSimCards.execute().subscribe(sims => this.simCards.set(sims));
     this.loadMovements();
   }
 
@@ -416,6 +633,54 @@ export class MovementsPageComponent implements OnInit {
       return;
     }
 
+    // Validaciones específicas de SIM
+    if (this.movementType === 'SIM_ASIGNACION') {
+      if ((this.selectedActivo()?.simCards?.length || 0) >= 2) {
+        alert('Este equipo ya tiene 2 SIMs asignadas. No puedes asignar más.');
+        return;
+      }
+      if (!this.selectedSimForAssign) {
+        alert('Por favor selecciona la SIM Card a asignar.');
+        return;
+      }
+    } else if (this.movementType === 'SIM_CAMBIO') {
+      if (!this.selectedSimToReplace) {
+        alert('Por favor selecciona la SIM que deseas reemplazar.');
+        return;
+      }
+      if (!this.selectedSimForAssign) {
+        alert('Por favor selecciona la nueva SIM a asignar.');
+        return;
+      }
+      if (!this.removedSimLocationId) {
+        alert('Por favor selecciona la ubicación de bodega para la SIM que sale.');
+        return;
+      }
+    } else if (this.movementType === 'SIM_RETIRO') {
+      if (!this.selectedSimToRemove) {
+        alert('Por favor selecciona la SIM a retirar del equipo.');
+        return;
+      }
+      if (!this.removedSimLocationId) {
+        alert('Por favor selecciona la ubicación donde quedará la SIM.');
+        return;
+      }
+    } else if (this.movementType === 'SIM_RETIRO_TOTAL') {
+      const activeSims = this.selectedActivo()?.simCards || [];
+      if (activeSims.length === 0) {
+        alert('Este equipo no tiene SIMs asignadas para retirar.');
+        return;
+      }
+      if (activeSims.length >= 1 && !this.simDestinations[0]) {
+        alert('Por favor selecciona la ubicación destino de la SIM 1.');
+        return;
+      }
+      if (activeSims.length >= 2 && !this.simDestinations[1]) {
+        alert('Por favor selecciona la ubicación destino de la SIM 2.');
+        return;
+      }
+    }
+
     const dto = {
       type: this.movementType,
       originLocationId: this.originId(),
@@ -425,14 +690,60 @@ export class MovementsPageComponent implements OnInit {
       notes: this.notes
     };
 
-    this.registerMovement.execute(dto).subscribe(() => {
-      this.showSuccess.set(true);
-      this.searchQuery.set('');
-      this.selectedActivo.set(null);
-      this.notes = '';
-      this.loadMovements();
-      setTimeout(() => this.showSuccess.set(false), 5000);
+    this.registerMovement.execute(dto).subscribe({
+      next: () => {
+        // Ejecutar las operaciones de SIM Card correspondientes
+        if (this.movementType === 'SIM_ASIGNACION' && this.selectedSimForAssign) {
+          this.simCardRepo.assign(this.selectedSimForAssign.id, this.selectedActivo()!.placa).subscribe(() => this.finishSave());
+        } else if (this.movementType === 'SIM_CAMBIO' && this.selectedSimToReplace && this.selectedSimForAssign) {
+          // Desvincular SIM vieja
+          this.simCardRepo.update(this.selectedSimToReplace.id, { estado: 'BODEGA', activoId: '' }).subscribe(() => {
+            // Vincular SIM nueva
+            this.simCardRepo.assign(this.selectedSimForAssign!.id, this.selectedActivo()!.placa).subscribe(() => this.finishSave());
+          });
+        } else if (this.movementType === 'SIM_RETIRO' && this.selectedSimToRemove) {
+          this.simCardRepo.update(this.selectedSimToRemove.id, { estado: this.removedSimNewState, activoId: '' }).subscribe(() => this.finishSave());
+        } else if (this.movementType === 'SIM_RETIRO_TOTAL') {
+          const sims = this.selectedActivo()?.simCards || [];
+          if (sims.length === 0) {
+            this.finishSave();
+          } else {
+            let processed = 0;
+            sims.forEach((sim, idx) => {
+              const newState = this.simStates[idx];
+              this.simCardRepo.update(sim.id, { estado: newState, activoId: '' }).subscribe(() => {
+                processed++;
+                if (processed === sims.length) {
+                  this.finishSave();
+                }
+              });
+            });
+          }
+        } else {
+          this.finishSave();
+        }
+      },
+      error: (err) => {
+        alert(err.message || 'Error al registrar el movimiento');
+      }
     });
+  }
+
+  finishSave() {
+    this.showSuccess.set(true);
+    this.searchQuery.set('');
+    this.selectedActivo.set(null);
+    this.notes = '';
+    // Reset SIM selections
+    this.selectedSimForAssign = null;
+    this.simSearchQuery = '';
+    this.selectedSimToReplace = null;
+    this.removedSimLocationId = '';
+    this.selectedSimToRemove = null;
+    this.simDestinations = ['', ''];
+    this.simStates = ['BODEGA', 'BODEGA'];
+    this.fetchData(); // Recarga todo (incluyendo SIM cards actualizadas y activos)
+    setTimeout(() => this.showSuccess.set(false), 5000);
   }
 
   // Modal Logic
