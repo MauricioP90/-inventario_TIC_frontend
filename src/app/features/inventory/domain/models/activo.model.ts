@@ -5,7 +5,8 @@ export enum EstadoActivo {
   BODEGA = 'BODEGA',
   OPERACION = 'OPERACION',
   MANTENIMIENTO = 'MANTENIMIENTO',
-  BAJA = 'BAJA'
+  BAJA = 'BAJA',
+  RECHAZADO = 'RECHAZADO'
 }
 
 export interface ActivoMetadata {

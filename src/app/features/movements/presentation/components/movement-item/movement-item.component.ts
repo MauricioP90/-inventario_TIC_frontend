@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Movement, MovementStatus } from '../../../domain/models/movement.model';
+import { Movement, MovementStatus, MovementType } from '../../../domain/models/movement.model';
 import { MovementTypePipe } from '../../../../../shared/pipes/movement-type.pipe';
 
 @Component({
@@ -11,7 +11,7 @@ import { MovementTypePipe } from '../../../../../shared/pipes/movement-type.pipe
     <div class="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group">
       <!-- Header: ID & Fecha -->
       <div class="flex justify-between items-start mb-4">
-        <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-500 bg-indigo-50 px-2 py-1 rounded-md">
+        <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md" [ngClass]="typeBadgeClass">
           {{ movement.type | movementTypeLabel }} #{{ movement.id.slice(-6).toUpperCase() }}
         </span>
         <div class="text-right">
@@ -24,7 +24,9 @@ import { MovementTypePipe } from '../../../../../shared/pipes/movement-type.pipe
       <div class="flex items-center gap-3 mb-6">
         <div class="flex-1 min-w-0">
           <p class="text-[10px] text-slate-400 uppercase font-bold mb-1">Origen</p>
-          <p class="text-sm font-bold text-slate-800 truncate">{{ movement.originLocation?.nombre || 'Sede Origen' }}</p>
+          <p class="text-sm font-bold text-slate-800 line-clamp-2 leading-tight" [title]="movement.originLocation?.nombre || 'Sede Origen'">
+            {{ movement.originLocation?.nombre || 'Sede Origen' }}
+          </p>
         </div>
         <div class="flex items-center justify-center">
           <svg class="h-5 w-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -33,7 +35,9 @@ import { MovementTypePipe } from '../../../../../shared/pipes/movement-type.pipe
         </div>
         <div class="flex-1 min-w-0">
           <p class="text-[10px] text-slate-400 uppercase font-bold mb-1">Destino</p>
-          <p class="text-sm font-bold text-slate-800 truncate">{{ movement.destinationLocation?.nombre || 'Sede Destino' }}</p>
+          <p class="text-sm font-bold text-slate-800 line-clamp-2 leading-tight" [title]="movement.destinationLocation?.nombre || 'Sede Destino'">
+            {{ movement.destinationLocation?.nombre || 'Sede Destino' }}
+          </p>
         </div>
       </div>
 
@@ -80,6 +84,13 @@ export class MovementItemComponent {
   @Output() onDispatch = new EventEmitter<Movement>();
   @Output() onReceive = new EventEmitter<Movement>();
   @Output() onViewRoute = new EventEmitter<Movement>();
+
+  get typeBadgeClass(): string {
+    if (this.movement.type === MovementType.RETURN_BY_REJECTION) {
+      return 'text-rose-600 bg-rose-50 border border-rose-100';
+    }
+    return 'text-indigo-500 bg-indigo-50 border border-indigo-50';
+  }
 
   get statusLabel(): string {
     const labels: Record<string, string> = {

@@ -252,7 +252,8 @@ export class InventoryPageComponent implements OnInit {
       'BODEGA': '#10b981',
       'OPERACION': '#2563eb',
       'MANTENIMIENTO': '#f59e0b',
-      'BAJA': '#dc2626'
+      'BAJA': '#dc2626',
+      'RECHAZADO': '#f43f5e'
     };
     return colors[estado?.toUpperCase()] || '#64748b';
   }
@@ -262,7 +263,8 @@ export class InventoryPageComponent implements OnInit {
       'BODEGA': 'BODEGA',
       'OPERACION': 'OPERACIÓN',
       'MANTENIMIENTO': 'MANTENIMIENTO',
-      'BAJA': 'INACTIVO'
+      'BAJA': 'INACTIVO',
+      'RECHAZADO': 'RECHAZADO / NOVEDAD'
     };
     return labels[estado?.toUpperCase()] || estado;
   }

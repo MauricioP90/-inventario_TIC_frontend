@@ -14,6 +14,7 @@ export enum MovementType {
   PROVIDER_WARRANTY = 'ENVIO_GARANTIA',
   SUPPORT_REENTRY = 'REINGRESO_SOPORTE',
   DISPOSAL = 'BAJA_ACTIVO',
+  RETURN_BY_REJECTION = 'RETORNO_POR_RECHAZO',
   // SIM Cards
   SIM_ASSIGNMENT = 'SIM_ASIGNACION',
   SIM_CHANGE = 'SIM_CAMBIO',
@@ -24,6 +25,7 @@ export enum MovementType {
 
 export interface Movement {
   id: string;
+  parentMovementId?: string;
   type: MovementType | string;
   originLocationId: string;
   destinationLocationId: string;
@@ -43,7 +45,7 @@ export interface Movement {
   activos?: any[];
 }
 
-export type CreateMovementDto = Omit<Movement, 'id' | 'createdAt' | 'status' | 'shippedAt' | 'receivedAt'>;
+export type CreateMovementDto = Omit<Movement, 'id' | 'createdAt' | 'status' | 'shippedAt' | 'receivedAt'> & { recipients?: string[] };
 
 export const MOVEMENT_TYPE_LABELS: Record<string, string> = {
   // Activos
@@ -54,6 +56,7 @@ export const MOVEMENT_TYPE_LABELS: Record<string, string> = {
   [MovementType.PROVIDER_WARRANTY]: 'Envío a Proveedor (Garantía)',
   [MovementType.SUPPORT_REENTRY]: 'Reingreso de Soporte/Proveedor',
   [MovementType.DISPOSAL]: 'Baja de Activo',
+  [MovementType.RETURN_BY_REJECTION]: 'Retorno Automático (Por Rechazo)',
   // SIM Cards
   [MovementType.SIM_ASSIGNMENT]: 'Asignación de SIMCARD',
   [MovementType.SIM_CHANGE]: 'Cambio de SIMCARD',

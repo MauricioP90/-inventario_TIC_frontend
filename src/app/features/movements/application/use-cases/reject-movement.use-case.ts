@@ -3,12 +3,11 @@ import { Observable } from 'rxjs';
 import { Movement } from '../../domain/models/movement.model';
 import { MovementRepository } from '../../domain/repositories/movement.repository';
 
-
 @Injectable({ providedIn: 'root' })
-export class ReceiveMovementUseCase {
+export class RejectMovementUseCase {
   constructor(private repository: MovementRepository) { }
 
-  execute(id: string, receiverId: string, receiverEvidenceUrl: string, destinationLocationId?: string): Observable<Movement> {
-    return this.repository.receive(id, receiverId, receiverEvidenceUrl, destinationLocationId);
+  execute(id: string, rejectionReason: string): Observable<Movement> {
+    return this.repository.reject(id, rejectionReason);
   }
 }

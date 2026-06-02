@@ -26,7 +26,11 @@ export class HttpMovementRepository implements MovementRepository {
     return this.http.patch<Movement>(`${this.apiUrl}/${id}/dispatch`, { evidenceUrl });
   }
 
-  receive(id: string, receiverId: string, receiverEvidenceUrl: string): Observable<Movement> {
-    return this.http.patch<Movement>(`${this.apiUrl}/${id}/receive`, { receiverId, receiverEvidenceUrl });
+  receive(id: string, receiverId: string, receiverEvidenceUrl: string, destinationLocationId?: string): Observable<Movement> {
+    return this.http.patch<Movement>(`${this.apiUrl}/${id}/receive`, { receiverId, receiverEvidenceUrl, destinationLocationId });
+  }
+
+  reject(id: string, rejectionReason: string): Observable<Movement> {
+    return this.http.patch<Movement>(`${this.apiUrl}/${id}/reject`, { rejectionReason });
   }
 }

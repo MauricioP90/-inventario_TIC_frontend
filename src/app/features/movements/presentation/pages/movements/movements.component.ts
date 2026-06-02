@@ -9,6 +9,7 @@ import { GetAllMovementsUseCase } from '../../../application/use-cases/get-all-m
 import { RegisterMovementUseCase } from '../../../application/use-cases/register-movement.use-case';
 import { DispatchMovementUseCase } from '../../../application/use-cases/dispatch-movement.use-case';
 import { ReceiveMovementUseCase } from '../../../application/use-cases/receive-movement.use-case';
+import { RejectMovementUseCase } from '../../../application/use-cases/reject-movement.use-case';
 import { Movement, MovementStatus, MOVEMENT_TYPE_LABELS } from '../../../domain/models/movement.model';
 import { MovementItemComponent } from '../../components/movement-item/movement-item.component';
 import { GetOneActivoUseCase } from '../../../application/use-cases/get-one-activo.use-case';
@@ -63,7 +64,7 @@ interface PickItem {
             <select [(ngModel)]="responsibleId"
                     class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm appearance-none">
               <option value="">Seleccione el responsable...</option>
-              @for (resp of responsables(); track resp.id) {
+              @for (resp of filteredResponsiblesForDestination(); track resp.id) {
                 <option [value]="resp.id">{{ resp.nombre }} ({{ resp.role.nombre }})</option>
               }
             </select>
@@ -148,15 +149,48 @@ interface PickItem {
               <input type="text" [value]="selectedActivo()?.location?.nombre || 'Se cargará automáticamente...'" disabled
                      class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm">
             </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicacion Destino *</label>
-              <select [(ngModel)]="destinationId"
-                      class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none appearance-none text-sm transition-all">
-                <option value="">Escriba Código o Nombre...</option>
-                @for (loc of locations(); track loc.id) {
-                  <option [value]="loc.id">{{ loc.nombre }}</option>
+<!-- Ubicación Destino Predictiva y Dinámica -->
+            <div class="space-y-1.5 relative">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación Destino *</label>
+              <div class="relative group">
+                <input type="text" 
+                       [ngModel]="destinationSearchQuery()" 
+                       (focus)="showDestinationDropdown.set(true)"
+                       (input)="destinationSearchQuery.set($any($event.target).value); showDestinationDropdown.set(true)"
+                       placeholder="Escriba Código o Nombre de la Sede..."
+                       class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm">
+                
+                <!-- Botón de Limpiar (X) -->
+                @if (destinationSearchQuery() || selectedDestination()) {
+                  <button (click)="clearDestinationSelection()" 
+                          class="absolute right-3 top-3 text-slate-300 hover:text-slate-500 transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 }
-              </select>
+                <!-- Resultados de búsqueda predictiva -->
+                @if (showDestinationDropdown() && filteredDestinations().length > 0) {
+                  <div class="absolute z-20 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+                    @for (loc of filteredDestinations(); track loc.id) {
+                      <div (click)="selectDestination(loc)" 
+                           class="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none flex flex-col gap-0.5 transition-colors">
+                        <p class="text-sm font-bold text-slate-800">{{ loc.nombre }}</p>
+                        <p class="text-[10px] text-slate-500">Código: {{ loc.code }}</p>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+              <!-- ADVERTENCIA DE SEDE SIN RESPONSABLE ASIGNADO -->
+              @if (selectedDestination() && (!selectedDestination()!.responsibleIds || selectedDestination()!.responsibleIds.length === 0)) {
+                <div class="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 animate-in fade-in duration-200">
+                  <span class="text-amber-500 text-sm">⚠️</span>
+                  <p class="text-[11px] font-bold text-amber-800 leading-normal">
+                    Advertencia: Esta sede no tiene responsables asignados. El traslado se registrará, pero te recomendamos asignarle uno en la sección de "Ubicaciones" para que alguien reciba el acta de entrega.
+                  </p>
+                </div>
+              }
             </div>
           </div>
 
@@ -361,7 +395,34 @@ interface PickItem {
               }
             </div>
           }
-
+               @if (movementType && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL', 'SIM_TRASLADO'].includes(movementType)) {
+            <div class="space-y-3.5 p-6 bg-slate-50/80 border border-slate-200 rounded-2xl animate-in fade-in duration-200">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  📧 Enviar Soporte por Correo a:
+                </label>
+                <button (click)="selectAllEmails()" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold transition-colors">
+                  Seleccionar Todos
+                </button>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-48 overflow-y-auto pr-2">
+                @for (resp of responsables(); track resp.id) {
+                  @if (resp.email) {
+                    <label class="flex items-center gap-3 p-3 bg-white border border-slate-100 hover:border-slate-200 rounded-xl cursor-pointer transition-all shadow-sm">
+                      <input type="checkbox" 
+                             [checked]="selectedEmails().includes(resp.email)"
+                             (change)="toggleEmail(resp.email)"
+                             class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                      <div class="flex flex-col min-w-0">
+                        <span class="text-xs font-bold text-slate-800 truncate">{{ resp.nombre }}</span>
+                        <span class="text-[10px] text-slate-400 truncate">{{ resp.email }}</span>
+                      </div>
+                    </label>
+                  }
+                }
+              </div>
+            </div>
+          }
           <!-- Footer -->
           <div class="pt-4 flex justify-start">
             <button (click)="saveMovement()"
@@ -441,27 +502,64 @@ interface PickItem {
                     <span class="text-[10px] font-bold text-slate-600">Destino</span>
                   </div>
                 </div>
-                <div class="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100 text-xs space-y-2">
+                <div class="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100 text-xs space-y-3">
                   <p class="flex justify-between">
                     <span class="text-slate-500">ID Traslado:</span> 
                     <span class="font-bold text-slate-800">{{ selectedMovementForAction.id.slice(-8) }}</span>
                   </p>
                   <p class="flex justify-between">
-                    <span class="text-slate-500">Activos:</span> 
-                    <span class="font-bold text-slate-800">{{ selectedMovementForAction.activoIds.length }}</span>
+                    <span class="text-slate-500">Origen:</span> 
+                    <span class="font-bold text-slate-800">{{ selectedMovementForAction.originLocation?.nombre || 'N/A' }}</span>
+                  </p>
+                  <p class="flex justify-between">
+                    <span class="text-slate-500">Destino:</span> 
+                    <span class="font-bold text-slate-800">{{ selectedMovementForAction.destinationLocation?.nombre || 'N/A' }}</span>
                   </p>
                   <p class="flex justify-between">
                     <span class="text-slate-500">Responsable:</span> 
                     <span class="font-bold text-slate-800">{{ selectedMovementForAction.responsible?.nombre || 'N/A' }}</span>
                   </p>
+                  <div class="border-t border-indigo-100/50 pt-2 space-y-1.5">
+                    <p class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Equipos Trasladados:</p>
+                    @for (act of selectedMovementForAction.activos; track act.id) {
+                      <div class="bg-white/80 p-2.5 rounded-lg border border-indigo-100/30 flex flex-col gap-0.5">
+                        <p class="font-bold text-slate-800 text-[11px] flex items-center justify-between">
+                          <span>💻 Placa: {{ act.placa }}</span>
+                          <span class="text-[10px] text-slate-500 font-medium">{{ act.marca }} {{ act.modelo }}</span>
+                        </p>
+                        <p class="text-[10px] text-slate-500 font-mono">S/N: {{ act.serial || 'N/A' }}</p>
+                        @if (act.simCards && act.simCards.length > 0) {
+                          <p class="text-[10px] text-purple-600 font-bold flex items-center gap-1 mt-0.5">
+                            <span>📱 SIM Cards:</span>
+                            <span>{{ act.simCards.map(s => s.numero).join(' - ') }}</span>
+                          </p>
+                        }
+                      </div>
+                    }
+                  </div>
                 </div>
               } @else {
                 <div class="space-y-5">
                   @if (actionType === 'receive') {
                     <div class="space-y-1.5">
                       <label class="text-xs font-bold text-slate-500 uppercase">Responsable que recibe (ID):</label>
-                      <input type="text" [(ngModel)]="modalReceiverId" placeholder="Ej: 77f1f7d5..."
+                      <select [(ngModel)]="modalReceiverId"
                              class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none text-sm transition-all">
+                      <option value="">Seleccione el responsable...</option>
+                      @for (resp of responsables(); track resp.id) {
+                        <option [value]="resp.id">{{ resp.nombre }} ({{ resp.role.nombre || 'N/A' }})</option>
+                      }
+                      </select>
+                    </div>
+                       <div class="space-y-1.5">
+                      <label class="text-xs font-bold text-slate-500 uppercase">Sede de Recepción real:</label>
+                      <select [(ngModel)]="modalDestinationId"
+                              class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none text-sm appearance-none transition-all">
+                        <option value="">Seleccione la sede...</option>
+                        @for (loc of locations(); track loc.id) {
+                          <option [value]="loc.id">{{ loc.nombre }}</option>
+                        }
+                      </select>
                     </div>
                   }
                   <div class="space-y-1.5">
@@ -474,6 +572,43 @@ interface PickItem {
                           class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-xl shadow-indigo-100 transition-all mt-4 flex items-center justify-center gap-2">
                     {{ actionType === 'dispatch' ? 'Confirmar Despacho' : 'Confirmar Recepción' }}
                   </button>
+
+                  <!-- BOTÓN Y FORMULARIO DE RECHAZO / NOVEDADES -->
+                  @if (actionType === 'receive' && selectedMovementForAction.type !== 'RETORNO_POR_RECHAZO') {
+                    <div class="border-t border-slate-100 pt-4 mt-2">
+                      @if (!showRejectionForm()) {
+                        <button (click)="showRejectionForm.set(true)"
+                                class="w-full py-3 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-xs">
+                          ⚠️ Reportar Novedad / Rechazar Traslado
+                        </button>
+                      } @else {
+                        <div class="space-y-3 bg-rose-50/50 border border-rose-100 rounded-2xl p-4 animate-in fade-in duration-200">
+                          <p class="text-xs font-bold text-rose-800 flex items-center gap-1.5">
+                            <span>⚠️</span> Reportar Novedad y Devolver Equipos
+                          </p>
+                          <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-rose-700 uppercase tracking-wider">Motivo de Rechazo / Novedad *</label>
+                            <textarea [ngModel]="rejectionReason()"
+                                      (input)="rejectionReason.set($any($event.target).value)"
+                                      rows="3"
+                                      placeholder="Describa la novedad detalladamente (ej: El dispositivo llegó con la pantalla rota, faltan componentes, etc.)..."
+                                      class="w-full px-3 py-2 bg-white border border-rose-200 rounded-xl focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none text-xs transition-all placeholder:text-slate-400"></textarea>
+                          </div>
+                          <div class="flex gap-2 pt-1">
+                            <button (click)="confirmReject()"
+                                    [disabled]="!rejectionReason().trim()"
+                                    class="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition-all disabled:opacity-50 flex items-center justify-center gap-1.5">
+                              ❌ Confirmar Rechazo
+                            </button>
+                            <button (click)="showRejectionForm.set(false)"
+                                    class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs transition-all">
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
                 </div>
               }
             </div>
@@ -492,6 +627,25 @@ export class MovementsPageComponent implements OnInit {
   loading = signal(false);
   showSuccess = signal(false);
   isLoadingPlaca = signal(false);
+  // 👇 Guarda los correos de los destinatarios elegidos
+  selectedEmails = signal<string[]>([]);
+
+  // Agrega o quita un correo del listado
+  toggleEmail(email: string) {
+    const current = this.selectedEmails();
+    if (current.includes(email)) {
+      this.selectedEmails.set(current.filter(e => e !== email));
+    } else {
+      this.selectedEmails.set([...current, email]);
+    }
+  }
+  // Permite seleccionar todos los correos activos a la vez
+  selectAllEmails() {
+    const emails = this.responsables()
+      .map(r => r.email)
+      .filter((email): email is string => !!email);
+    this.selectedEmails.set(emails);
+  }
 
   movementTypes = Object.entries(MOVEMENT_TYPE_LABELS);
   movementType = '';
@@ -501,6 +655,40 @@ export class MovementsPageComponent implements OnInit {
   searchQuery = signal('');
   notes = '';
   selectedActivo = signal<Activo | null>(null);
+
+  // 👇 Control del buscador predictivo para Ubicación Destino
+  destinationSearchQuery = signal('');
+  showDestinationDropdown = signal(false);
+  selectedDestination = signal<Location | null>(null);
+  showRejectionForm = signal(false);
+  rejectionReason = signal('');
+
+  // Filtra las sedes activas según el término ingresado
+  filteredDestinations = computed(() => {
+    const term = this.destinationSearchQuery().toLowerCase().trim();
+    const todos = this.locations().filter(loc => loc.estado === 'ACTIVO');
+    if (!term) return todos;
+    return todos.filter(loc =>
+      loc.nombre.toLowerCase().includes(term) ||
+      loc.code.toLowerCase().includes(term)
+    );
+  });
+
+  // 👇 Filtra los responsables según la Sede Destino seleccionada
+  filteredResponsiblesForDestination = computed(() => {
+    const dest = this.selectedDestination();
+    const all = this.responsables().filter(r => r.estado === 'ACTIVO');
+
+    if (!dest) {
+      return all;
+    }
+
+    // Filtra solo los responsables que tienen asignada la sede destino
+    const assigned = all.filter(r => r.locationIds?.includes(dest.id));
+
+    // Si la sede no tiene a nadie asignado, retorna todos para permitir seleccionar una contingencia
+    return assigned.length > 0 ? assigned : all;
+  });
 
   // SIM Card form states
   simCards = signal<SimCard[]>([]);
@@ -537,9 +725,36 @@ export class MovementsPageComponent implements OnInit {
     this.showSimDropdown = false;
   }
 
+  selectDestination(loc: Location) {
+    this.selectedDestination.set(loc);
+    this.destinationId = loc.id;
+    this.destinationSearchQuery.set(loc.nombre);
+    this.showDestinationDropdown.set(false);
+  }
+  clearDestinationSelection() {
+    this.selectedDestination.set(null);
+    this.destinationId = '';
+    this.destinationSearchQuery.set('');
+    this.showDestinationDropdown.set(false);
+  }
+
   filteredActivos = computed(() => {
     const term = this.searchQuery().toLowerCase().trim();
-    const todos = this.activos();
+
+    // Obtener los IDs de activos que están actualmente en un movimiento activo
+    const activeMovementActivoIds = new Set<string>();
+    this.movements().forEach(m => {
+      if (m.status === 'PENDING' || m.status === 'EN_TRANSIT') {
+        m.activoIds.forEach(id => activeMovementActivoIds.add(id));
+      }
+    });
+
+    // Excluir BAJA, RECHAZADO y activos con movimientos activos pendientes/en tránsito
+    const todos = this.activos().filter(a =>
+      a.estado !== 'BAJA' &&
+      a.estado !== 'RECHAZADO' &&
+      !activeMovementActivoIds.has(a.id)
+    );
 
     if (!term) return todos;
     return todos.filter(a =>
@@ -554,6 +769,7 @@ export class MovementsPageComponent implements OnInit {
   actionType: 'dispatch' | 'receive' | 'route' | null = null;
   modalEvidenceUrl = '';
   modalReceiverId = '';
+  modalDestinationId = '';
 
   constructor(
     private getAllLocations: GetAllLocationsUseCase,
@@ -562,6 +778,7 @@ export class MovementsPageComponent implements OnInit {
     private registerMovement: RegisterMovementUseCase,
     private dispatchMovement: DispatchMovementUseCase,
     private receiveMovement: ReceiveMovementUseCase,
+    private rejectMovementUC: RejectMovementUseCase,
     private getOneActivo: GetOneActivoUseCase,
     private getAllActivos: GetAllActivosUseCase,
     private getAllSimCards: GetAllSimCardsUseCase,
@@ -687,7 +904,8 @@ export class MovementsPageComponent implements OnInit {
       destinationLocationId: this.destinationId,
       responsibleId: this.responsibleId,
       activoIds: [this.selectedActivo()!.id],
-      notes: this.notes
+      notes: this.notes,
+      recipients: this.selectedEmails() // 👈 Enviamos los destinatarios elegidos
     };
 
     this.registerMovement.execute(dto).subscribe({
@@ -734,14 +952,14 @@ export class MovementsPageComponent implements OnInit {
     this.searchQuery.set('');
     this.selectedActivo.set(null);
     this.notes = '';
-    // Reset SIM selections
-    this.selectedSimForAssign = null;
+    this.selectedSimForAssign = null; // Reset SIM selections
     this.simSearchQuery = '';
     this.selectedSimToReplace = null;
     this.removedSimLocationId = '';
     this.selectedSimToRemove = null;
     this.simDestinations = ['', ''];
     this.simStates = ['BODEGA', 'BODEGA'];
+    this.clearDestinationSelection(); // Limpieza de sede destino
     this.fetchData(); // Recarga todo (incluyendo SIM cards actualizadas y activos)
     setTimeout(() => this.showSuccess.set(false), 5000);
   }
@@ -754,6 +972,10 @@ export class MovementsPageComponent implements OnInit {
   openReceiveModal(movement: Movement) {
     this.selectedMovementForAction = movement;
     this.actionType = 'receive';
+    this.modalReceiverId = '';
+    this.modalEvidenceUrl = '';
+    this.modalDestinationId = movement.destinationLocationId || '';
+
   }
   openRouteModal(movement: Movement) {
     this.selectedMovementForAction = movement;
@@ -762,6 +984,8 @@ export class MovementsPageComponent implements OnInit {
   closeModal() {
     this.selectedMovementForAction = null;
     this.actionType = null;
+    this.showRejectionForm.set(false);
+    this.rejectionReason.set('');
   }
   confirmAction() {
     if (!this.selectedMovementForAction) return;
@@ -775,11 +999,25 @@ export class MovementsPageComponent implements OnInit {
       });
     } else if (this.actionType === 'receive') {
       if (!this.modalReceiverId || !this.modalEvidenceUrl) return alert('Completa datos');
-      this.receiveMovement.execute(id, this.modalReceiverId, this.modalEvidenceUrl).subscribe({
+      this.receiveMovement.execute(id, this.modalReceiverId, this.modalEvidenceUrl, this.modalDestinationId).subscribe({
         next: () => { this.loadMovements(); this.closeModal(); },
         error: (err) => alert(err.message)
       });
     }
+  }
+
+  confirmReject() {
+    if (!this.selectedMovementForAction) return;
+    const reason = this.rejectionReason().trim();
+    if (!reason) return alert('Por favor, ingresa el motivo del rechazo / novedad.');
+
+    this.rejectMovementUC.execute(this.selectedMovementForAction.id, reason).subscribe({
+      next: () => {
+        this.fetchData(); // Recarga todo (incluyendo SIM cards actualizadas y activos)
+        this.closeModal();
+      },
+      error: (err) => alert(err.message)
+    });
   }
 
   getRouteProgress() {
@@ -793,4 +1031,13 @@ export class MovementsPageComponent implements OnInit {
   isReceived() {
     return this.selectedMovementForAction?.status === 'RECEIVED';
   }
+
+  getFilteredLocations(): Location[] {
+    const allLocs = this.locations();
+    if (!this.responsibleId) return allLocs;
+    const selectedResp = this.responsables().find(r => r.id === this.responsibleId);
+    if (!selectedResp || !selectedResp.locationIds || selectedResp.locationIds.length === 0) return allLocs;
+    return allLocs.filter(loc => selectedResp.locationIds.includes(loc.id));
+  }
+
 }

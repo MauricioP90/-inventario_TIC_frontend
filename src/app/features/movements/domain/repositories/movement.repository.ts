@@ -6,5 +6,6 @@ export abstract class MovementRepository {
   abstract getById(id: string): Observable<Movement>;
   abstract create(movement: CreateMovementDto): Observable<Movement>;
   abstract dispatch(id: string, evidenceUrl: string): Observable<Movement>;
-  abstract receive(id: string, receiverId: string, receiverEvidenceUrl: string): Observable<Movement>;
+  abstract receive(id: string, receiverId: string, receiverEvidenceUrl: string, destinationLocationId?: string): Observable<Movement>;
+  abstract reject(id: string, rejectionReason: string): Observable<Movement>;
 }
