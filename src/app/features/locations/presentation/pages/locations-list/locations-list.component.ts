@@ -1,6 +1,7 @@
 import { Component, OnInit, signal, ViewChild, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Location } from '../../../domain/models/location.model';
 import { GetAllLocationsUseCase } from '../../../application/use-cases/get-all-locations.use-case';
 import { AddLocationDrawerComponent } from '../../../../../shared/components/drawer/location-drawer/add-location-drawer.component';
@@ -69,7 +70,16 @@ import { AddLocationDrawerComponent } from '../../../../../shared/components/dra
                 <tr class="hover:bg-slate-50/50 transition-colors">
                   <td class="px-6 py-4 font-bold text-slate-700">{{ location.code }}</td>
                   <td class="px-6 py-4 font-medium text-slate-600">{{ location.nombre }}</td>
-                  <td class="px-6 py-4 text-slate-500 font-mono text-[11px]">{{ location.coordenadas || 'N/A' }}</td>
+                  <td class="px-6 py-4 text-slate-500 font-mono text-[11px] cursor-pointer hover:text-indigo-600 transition-colors" (click)="toggleExpand(location)">
+                    <div class="flex items-center gap-1.5">
+                      <span>{{ location.coordenadas || 'N/A' }}</span>
+                      @if (location.coordenadas) {
+                        <span class="text-[10px] text-slate-400">
+                          {{ expandedLocationId() === location.id ? '▲' : '▼' }}
+                        </span>
+                      }
+                    </div>
+                  </td>
                   <td class="px-6 py-4">
                     <span [class]="statusClass(location.estado)">{{ location.estado }}</span>
                   </td>
@@ -84,6 +94,63 @@ import { AddLocationDrawerComponent } from '../../../../../shared/components/dra
                     </button>
                   </td>
                 </tr>
+                @if (expandedLocationId() === location.id) {
+                  <tr class="bg-slate-50/50">
+                    <td colspan="5" class="px-8 py-5 border-y border-slate-100">
+                      @if (parseCoordinates(location.coordenadas); as coords) {
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <!-- Col 1: Geocoding Details -->
+                          <div class="space-y-4">
+                            <div>
+                              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Dirección Física Estimada</h4>
+                              @if (resolvedAddresses()[location.id]; as addrState) {
+                                @if (addrState.loading) {
+                                  <div class="flex items-center gap-2 mt-2 text-xs text-slate-500">
+                                    <div class="animate-spin h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full"></div>
+                                    <span>Consultando dirección en mapa...</span>
+                                  </div>
+                                }
+                                @if (!addrState.loading && addrState.address) {
+                                  <p class="text-xs font-semibold text-slate-700 mt-2 bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex items-start gap-2 leading-relaxed">
+                                    <span class="text-indigo-600 text-base">📍</span>
+                                    <span>{{ addrState.address }}</span>
+                                  </p>
+                                }
+                                @if (addrState.error) {
+                                  <p class="text-xs text-rose-500 mt-2 bg-rose-50 border border-rose-100 p-2 rounded-lg">
+                                    ⚠️ {{ addrState.error }}
+                                  </p>
+                                }
+                              }
+                            </div>
+                            
+                            <div class="space-y-1.5 text-xs text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
+                              <p><strong>Latitud:</strong> {{ coords.lat }}</p>
+                              <p><strong>Longitud:</strong> {{ coords.lon }}</p>
+                            </div>
+                            <p class="text-[9px] text-slate-400 italic">
+                              * La dirección física se resuelve de manera automática usando el servicio gratuito de OpenStreetMap Nominatim.
+                            </p>
+                          </div>
+                          <!-- Col 2: Iframe map -->
+                          <div class="h-64 rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-white">
+                            <iframe 
+                              [src]="getSafeMapUrl(coords.lat, coords.lon)"
+                              class="w-full h-full border-0" 
+                              allowfullscreen="" 
+                              loading="lazy" 
+                              referrerpolicy="no-referrer-when-downgrade">
+                            </iframe>
+                          </div>
+                        </div>
+                      } @else {
+                        <div class="text-center py-6 text-slate-400 text-xs">
+                          📍 No hay coordenadas válidas registradas para esta ubicación. Edite la ubicación e ingréselas en formato "Latitud, Longitud" (ej. 4.6538,-74.1164).
+                        </div>
+                      }
+                    </td>
+                  </tr>
+                }
               } @empty {
                 <tr><td colspan="5" class="px-6 py-12 text-center text-slate-400 text-sm">Sin ubicaciones registradas</td></tr>
               }
@@ -104,6 +171,8 @@ export class LocationsListComponent implements OnInit {
   locations = signal<Location[]>([]);
   searchTerm = signal('');
   statusFilter = signal('');
+  expandedLocationId = signal<string | null>(null);
+  resolvedAddresses = signal<Record<string, { address: string; loading: boolean; error?: string }>>({});
 
   filteredLocations = computed(() => {
     const term = this.searchTerm().toLowerCase().trim();
@@ -120,7 +189,10 @@ export class LocationsListComponent implements OnInit {
 
   loading = signal(false);
 
-  constructor(private getAllLocations: GetAllLocationsUseCase) { }
+  constructor(
+    private getAllLocations: GetAllLocationsUseCase,
+    private sanitizer: DomSanitizer
+  ) { }
 
   ngOnInit() {
     this.fetchLocations();
@@ -135,6 +207,59 @@ export class LocationsListComponent implements OnInit {
       },
       error: () => this.loading.set(false)
     });
+  }
+
+  toggleExpand(location: Location) {
+    if (this.expandedLocationId() === location.id) {
+      this.expandedLocationId.set(null);
+    } else {
+      this.expandedLocationId.set(location.id);
+      const coords = this.parseCoordinates(location.coordenadas);
+      if (coords && !this.resolvedAddresses()[location.id]) {
+        this.resolveAddress(location.id, coords.lat, coords.lon);
+      }
+    }
+  }
+
+  parseCoordinates(coordenadas?: string | null): { lat: number; lon: number } | null {
+    if (!coordenadas) return null;
+    const parts = coordenadas.split(',');
+    if (parts.length !== 2) return null;
+    const lat = parseFloat(parts[0].trim());
+    const lon = parseFloat(parts[1].trim());
+    if (isNaN(lat) || isNaN(lon)) return null;
+    return { lat, lon };
+  }
+
+  resolveAddress(locationId: string, lat: number, lon: number) {
+    this.resolvedAddresses.update(prev => ({
+      ...prev,
+      [locationId]: { address: '', loading: true }
+    }));
+
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es`)
+      .then(res => {
+        if (!res.ok) throw new Error('Error al consultar servidor de mapas');
+        return res.json();
+      })
+      .then(data => {
+        const addressName = data.display_name || 'Dirección no encontrada';
+        this.resolvedAddresses.update(prev => ({
+          ...prev,
+          [locationId]: { address: addressName, loading: false }
+        }));
+      })
+      .catch(err => {
+        this.resolvedAddresses.update(prev => ({
+          ...prev,
+          [locationId]: { address: '', loading: false, error: err.message || 'Error al geolocalizar' }
+        }));
+      });
+  }
+
+  getSafeMapUrl(lat: number, lon: number): SafeResourceUrl {
+    const url = `https://maps.google.com/maps?q=${lat},${lon}&z=16&output=embed`;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 
   statusClass(status: string): string {
