@@ -2,8 +2,10 @@ import { Component, Input, Output, EventEmitter, signal, OnInit, OnChanges, Simp
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CreateSimCardUseCase } from '../../../features/sim-cards/application/use-cases/create-sim-card.use-case';
+import { UpdateSimCardUseCase } from '../../../features/sim-cards/application/use-cases/update-sim-card.use-case';
 import { GetAllLocationsUseCase } from '../../../features/locations/application/use-cases/get-all-locations.use-case';
 import { Location } from '../../../features/locations/domain/models/location.model';
+import { SimCard } from '../../../features/sim-cards/domain/models/sim-card.model';
 
 @Component({
   selector: 'app-add-sim-drawer',
@@ -27,8 +29,8 @@ import { Location } from '../../../features/locations/domain/models/location.mod
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-5 border-b border-slate-200 shrink-0">
         <div>
-          <h2 class="text-base font-bold text-slate-800">Nueva SIM Card</h2>
-          <p class="text-xs text-slate-500 mt-0.5">Registra una nueva tarjeta SIM en el inventario.</p>
+          <h2 class="text-base font-bold text-slate-800">{{ simCard ? 'Editar SIM Card' : 'Nueva SIM Card' }}</h2>
+          <p class="text-xs text-slate-500 mt-0.5">{{ simCard ? 'Modifica los datos de la tarjeta SIM.' : 'Registra una nueva tarjeta SIM en el inventario.' }}</p>
         </div>
         <button (click)="close()" class="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -73,47 +75,69 @@ import { Location } from '../../../features/locations/domain/models/location.mod
           </select>
         </div>
 
+        <!-- Estado (solo en edición) -->
+        @if (simCard) {
+          <div class="space-y-1.5">
+            <label class="block text-sm font-medium text-slate-700">Estado</label>
+            <select [(ngModel)]="estado" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+              <option value="BODEGA">Disponible (Bodega)</option>
+              <option value="ASIGNADA">Asignada</option>
+              <option value="BAJA">Inactiva (Baja)</option>
+            </select>
+          </div>
+        }
+
         <!-- Ubicación Inicial -->
         <div class="space-y-1.5">
-          <label class="block text-sm font-medium text-slate-700">Ubicación Inicial</label>      <div class="relative mb-2">
-            <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
-              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
-            </span>
-            <input 
-              type="text" 
-              [value]="searchLocationTerm()"
-              (input)="searchLocationTerm.set($any($event.target).value)"
-              placeholder="Escribe para buscar... Ej: Bodega"
-              class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-xs transition-all">
-          </div>
+          <label class="block text-sm font-medium text-slate-700">{{ simCard ? 'Ubicación' : 'Ubicación Inicial' }}</label>
           
-          <!-- Lista con scroll -->
-          <div class="space-y-1.5 max-h-48 overflow-y-auto p-2 border border-slate-200 rounded-lg bg-slate-50/50">
-            @for (loc of filteredLocations(); track loc.id) {
-              <!-- Le damos un halo azul elegante si es el seleccionado -->
-              <label class="flex items-center gap-3 p-2 border rounded-lg transition-colors cursor-pointer group hover:bg-white"
-                     [class.bg-indigo-50]="ubicacion === loc.id"
-                     [class.border-indigo-200]="ubicacion === loc.id"
-                     [class.border-transparent]="ubicacion !== loc.id">
-                
-                <input 
-                  type="radio" 
-                  name="ubicacionGroup"
-                  [value]="loc.id"
-                  [(ngModel)]="ubicacion"
-                  class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-slate-300">
-                
-                <div class="flex flex-col">
-                  <span class="text-sm font-medium text-slate-700">{{ loc.nombre }}</span>
-                  <span class="text-[10px] text-slate-400">{{ loc.code }}</span>
-                </div>
-              </label>
-            } @empty {
-              <p class="text-[11px] text-slate-400 text-center py-4">No se encontraron ubicaciones</p>
-            }
-          </div>
+          @if (simCard?.activoId) {
+            <!-- SIM vinculada: mostramos advertencia y deshabilitamos selección -->
+            <div class="p-3.5 bg-amber-50/60 border border-amber-200/50 rounded-xl text-amber-800 text-xs flex flex-col gap-1.5">
+              <span class="font-bold flex items-center gap-1">⚠️ Ubicación Vinculada</span>
+              <span>Esta SIM Card está asignada al dispositivo con placa <strong>{{ simCard?.activo?.placa }}</strong>. Su ubicación se hereda de este dispositivo y no se puede modificar individualmente.</span>
+            </div>
+          } @else {
+            <div class="relative mb-2">
+              <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+              </span>
+              <input 
+                type="text" 
+                [value]="searchLocationTerm()"
+                (input)="searchLocationTerm.set($any($event.target).value)"
+                placeholder="Escribe para buscar... Ej: Bodega"
+                class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-xs transition-all">
+            </div>
+            
+            <!-- Lista con scroll -->
+            <div class="space-y-1.5 max-h-48 overflow-y-auto p-2 border border-slate-200 rounded-lg bg-slate-50/50">
+              @for (loc of filteredLocations(); track loc.id) {
+                <!-- Le damos un halo azul elegante si es el seleccionado -->
+                <label class="flex items-center gap-3 p-2 border rounded-lg transition-colors cursor-pointer group hover:bg-white"
+                       [class.bg-indigo-50]="ubicacion === loc.id"
+                       [class.border-indigo-200]="ubicacion === loc.id"
+                       [class.border-transparent]="ubicacion !== loc.id">
+                  
+                  <input 
+                    type="radio" 
+                    name="ubicacionGroup"
+                    [value]="loc.id"
+                    [(ngModel)]="ubicacion"
+                    class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                  
+                  <div class="flex flex-col">
+                    <span class="text-sm font-medium text-slate-700">{{ loc.nombre }}</span>
+                    <span class="text-[10px] text-slate-400">{{ loc.code }}</span>
+                  </div>
+                </label>
+              } @empty {
+                <p class="text-[11px] text-slate-400 text-center py-4">No se encontraron ubicaciones</p>
+              }
+            </div>
+          }
         </div>
       </div>
 
@@ -121,7 +145,7 @@ import { Location } from '../../../features/locations/domain/models/location.mod
       <div class="px-6 py-4 border-t border-slate-200 shrink-0">
         <button (click)="handleSave()"
           class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg transition-colors">
-          Guardar SIM
+          {{ simCard ? 'Guardar Cambios' : 'Guardar SIM' }}
         </button>
       </div>
     </div>
@@ -130,6 +154,7 @@ import { Location } from '../../../features/locations/domain/models/location.mod
 })
 export class AddSimDrawerComponent implements OnInit, OnChanges {
   @Input() open = false;
+  @Input() simCard: SimCard | null = null;
   @Output() openChange = new EventEmitter<boolean>();
   @Output() saved = new EventEmitter<void>();
 
@@ -138,6 +163,7 @@ export class AddSimDrawerComponent implements OnInit, OnChanges {
   iccid = '';
   operador = '';
   ubicacion = '';
+  estado = 'BODEGA';
   toast = signal<{ type: 'success' | 'error', message: string } | null>(null);
 
   // --- Lógica del buscador de ubicaciones ---
@@ -162,6 +188,7 @@ export class AddSimDrawerComponent implements OnInit, OnChanges {
 
   constructor(
     private createSimCard: CreateSimCardUseCase,
+    private updateSimCard: UpdateSimCardUseCase,
     private getAllLocations: GetAllLocationsUseCase  // <- Inyectamos las ubicaciones
   ) { }
 
@@ -169,10 +196,21 @@ export class AddSimDrawerComponent implements OnInit, OnChanges {
 
   // Este ciclo de vida detecta cuando haces clic para abrir el Drawer
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['open'] && changes['open'].currentValue === true && !this.loaded) {
-      // Cuando se abre por primera vez, vamos a la BD por las ubicaciones 
-      this.getAllLocations.execute().subscribe(data => this.ubicacionesLista.set(data));
-      this.loaded = true;
+    if (changes['open'] && changes['open'].currentValue === true) {
+      if (!this.loaded) {
+        // Cuando se abre por primera vez, vamos a la BD por las ubicaciones 
+        this.getAllLocations.execute().subscribe(data => this.ubicacionesLista.set(data));
+        this.loaded = true;
+      }
+      if (this.simCard) {
+        this.numero = this.simCard.numero;
+        this.iccid = this.simCard.iccid;
+        this.operador = this.simCard.operador;
+        this.ubicacion = this.simCard.locationId || '';
+        this.estado = this.simCard.estado;
+      } else {
+        this.resetForm();
+      }
     }
   }
 
@@ -182,31 +220,63 @@ export class AddSimDrawerComponent implements OnInit, OnChanges {
 
   handleSave() {
     this.toast.set(null);
-    if (!this.numero || !this.iccid || !this.operador || !this.ubicacion) {
+    if (!this.numero || !this.iccid || !this.operador) {
       this.toast.set({ type: 'error', message: 'Por favor completa todos los campos.' });
       return;
     }
 
-    const dto = {
-      numero: this.numero,
-      iccid: this.iccid,
-      operador: this.operador,
-      estado: 'BODEGA' as 'BODEGA'
-    };
+    // Si la SIM no está vinculada a un dispositivo, la ubicación es obligatoria
+    const isAssigned = !!(this.simCard && this.simCard.activoId);
+    if (!isAssigned && !this.ubicacion) {
+      this.toast.set({ type: 'error', message: 'Por favor selecciona una ubicación.' });
+      return;
+    }
 
-    this.createSimCard.execute(dto).subscribe({
-      next: () => {
-        this.toast.set({ type: 'success', message: `SIM guardada exitosamente.` });
-        setTimeout(() => {
-          this.close();
-          this.saved.emit();
-          this.resetForm();
-        }, 1200);
-      },
-      error: (err) => {
-        this.toast.set({ type: 'error', message: err.message || 'Error al guardar.' });
-      }
-    });
+    if (this.simCard) {
+      const dto = {
+        numero: this.numero,
+        iccid: this.iccid,
+        operador: this.operador,
+        estado: this.estado as 'BODEGA' | 'ASIGNADA' | 'BAJA',
+        locationId: isAssigned ? undefined : (this.ubicacion || undefined)
+      };
+
+      this.updateSimCard.execute(this.simCard.id, dto).subscribe({
+        next: () => {
+          this.toast.set({ type: 'success', message: `SIM actualizada exitosamente.` });
+          setTimeout(() => {
+            this.close();
+            this.saved.emit();
+            this.resetForm();
+          }, 1200);
+        },
+        error: (err) => {
+          this.toast.set({ type: 'error', message: err.message || 'Error al guardar.' });
+        }
+      });
+    } else {
+      const dto = {
+        numero: this.numero,
+        iccid: this.iccid,
+        operador: this.operador,
+        estado: 'BODEGA' as 'BODEGA',
+        locationId: this.ubicacion || undefined
+      };
+
+      this.createSimCard.execute(dto).subscribe({
+        next: () => {
+          this.toast.set({ type: 'success', message: `SIM guardada exitosamente.` });
+          setTimeout(() => {
+            this.close();
+            this.saved.emit();
+            this.resetForm();
+          }, 1200);
+        },
+        error: (err) => {
+          this.toast.set({ type: 'error', message: err.message || 'Error al guardar.' });
+        }
+      });
+    }
   }
 
   private resetForm() {
@@ -214,6 +284,7 @@ export class AddSimDrawerComponent implements OnInit, OnChanges {
     this.iccid = '';
     this.operador = '';
     this.ubicacion = '';
+    this.estado = 'BODEGA';
   }
 }
 

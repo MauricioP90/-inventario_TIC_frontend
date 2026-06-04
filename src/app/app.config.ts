@@ -38,7 +38,8 @@ export const appConfig: ApplicationConfig = {
         clientId: environment.keycloak.clientId
       },
       initOptions: {
-        onLoad: 'login-required',
+        onLoad: 'check-sso',
+        silentCheckSsoRedirectUri: window.location.origin + '/assets/silent-check-sso.html',
         checkLoginIframe: false
       }
     }),

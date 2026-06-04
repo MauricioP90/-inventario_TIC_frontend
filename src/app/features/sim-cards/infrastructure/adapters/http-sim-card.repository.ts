@@ -22,7 +22,7 @@ export class HttpSimCardRepository implements SimCardRepository {
     return this.http.post<SimCard>(this.apiUrl, simCard);
   }
   update(id: string, simCard: UpdateSimCardDto): Observable<SimCard> {
-    return this.http.patch<SimCard>(`${this.apiUrl}/${id}`, simCard);
+    return this.http.put<SimCard>(`${this.apiUrl}/${id}`, simCard);
   }
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);

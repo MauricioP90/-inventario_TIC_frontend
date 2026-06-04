@@ -44,11 +44,19 @@ import { MovementTypePipe } from '../../../../../shared/pipes/movement-type.pipe
       <!-- Info Adicional -->
       <div class="grid grid-cols-2 gap-4 mb-6 py-3 border-y border-slate-50">
         <div>
-          <p class="text-[10px] text-slate-400 uppercase font-bold">Activos</p>
-          <p class="text-xs font-bold text-slate-700 flex items-center gap-1">
-            <svg class="w-3 h-3 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            {{ movement.activoIds.length }} equipos
-          </p>
+          @if (movement.type === 'SIM_TRASLADO') {
+            <p class="text-[10px] text-slate-400 uppercase font-bold">SIM Cards</p>
+            <p class="text-xs font-bold text-slate-700 flex items-center gap-1">
+              <svg class="w-3 h-3 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              {{ movement.simCardIds?.length || 0 }} chips
+            </p>
+          } @else {
+            <p class="text-[10px] text-slate-400 uppercase font-bold">Activos</p>
+            <p class="text-xs font-bold text-slate-700 flex items-center gap-1">
+              <svg class="w-3 h-3 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              {{ movement.activoIds.length }} equipos
+            </p>
+          }
         </div>
         <div>
           <p class="text-[10px] text-slate-400 uppercase font-bold">Estado</p>
@@ -69,6 +77,12 @@ import { MovementTypePipe } from '../../../../../shared/pipes/movement-type.pipe
                   class="flex-1 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-100 flex items-center justify-center gap-2">
             Recibir
           </button>
+          @if (movement.magicLinkToken) {
+            <button (click)="onCopyMagicLink.emit(movement)" title="Copiar Enlace Mágico para recepción externa"
+                    class="px-3 py-2 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center border border-indigo-200">
+              🔗
+            </button>
+          }
         }
         <button (click)="onViewRoute.emit(movement)"
                 class="px-4 py-2 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-200 transition-all flex items-center justify-center">
@@ -84,6 +98,7 @@ export class MovementItemComponent {
   @Output() onDispatch = new EventEmitter<Movement>();
   @Output() onReceive = new EventEmitter<Movement>();
   @Output() onViewRoute = new EventEmitter<Movement>();
+  @Output() onCopyMagicLink = new EventEmitter<Movement>();
 
   get typeBadgeClass(): string {
     if (this.movement.type === MovementType.RETURN_BY_REJECTION) {

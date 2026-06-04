@@ -8,6 +8,8 @@ import { GetAllResponsablesUseCase } from '../../../application/use-cases/get-al
 import { GetAllLocationsUseCase } from '../../../../locations/application/use-cases/get-all-locations.use-case';
 import { AddResponsableDrawerComponent } from '../../../../../shared/components/drawer/responsable-drawer/add-responsable-drawer.component';
 import { GetAllRolesUseCase } from '../../../application/use-cases/get-all-roles.use-case';
+import { Activo } from '../../../../inventory/domain/models/activo.model';
+import { GetAllActivosUseCase } from '../../../../inventory/application/use-cases/get-all-activos.use-case';
 
 @Component({
   selector: 'app-responsables-page',
@@ -168,7 +170,7 @@ import { GetAllRolesUseCase } from '../../../application/use-cases/get-all-roles
                       }
                     </div>
                   </td>
-                  <td class="px-6 py-4">
+                  <td class="px-6 py-4 cursor-pointer hover:bg-slate-100/50 transition-colors" (click)="toggleExpand(resp.id)">
                     <div class="flex items-center justify-center gap-4">
                       <div class="flex flex-col items-center">
                         <span class="text-[10px] text-slate-400">Activos</span>
@@ -178,6 +180,9 @@ import { GetAllRolesUseCase } from '../../../application/use-cases/get-all-roles
                         <span class="text-[10px] text-slate-400">SIMs</span>
                         <span class="font-bold text-slate-700">{{ resp.totalSIMCards || 0 }}</span>
                       </div>
+                      <span class="text-xs text-slate-400 ml-1">
+                        {{ expandedResponsibleId() === resp.id ? '▲' : '▼' }}
+                      </span>
                     </div>
                   </td>
                   <td class="px-6 py-4 text-center">
@@ -191,6 +196,79 @@ import { GetAllRolesUseCase } from '../../../application/use-cases/get-all-roles
                     </button>
                   </td>
                 </tr>
+                @if (expandedResponsibleId() === resp.id) {
+                  <tr class="bg-slate-50/50">
+                    <td colspan="6" class="px-8 py-5 border-y border-slate-100">
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Column 1: Equipos Asignados -->
+                        <div class="space-y-3">
+                          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                            💻 Equipos Asignados ({{ getActivosForResponsible(resp.id).length }})
+                          </h4>
+                          @if (getActivosForResponsible(resp.id).length > 0) {
+                            <div class="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                              <table class="w-full text-xs">
+                                <thead class="bg-slate-50 border-b border-slate-200 text-slate-400 font-semibold">
+                                  <tr>
+                                    <th class="text-left px-3 py-2">Placa</th>
+                                    <th class="text-left px-3 py-2">Equipo</th>
+                                    <th class="text-left px-3 py-2">Ubicación</th>
+                                  </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-slate-600">
+                                  @for (act of getActivosForResponsible(resp.id); track act.id) {
+                                    <tr>
+                                      <td class="px-3 py-2 font-bold text-indigo-600">{{ act.placa }}</td>
+                                      <td class="px-3 py-2">{{ act.marca }} {{ act.modelo }} <span class="text-[10px] text-slate-400">({{ act.serial }})</span></td>
+                                      <td class="px-3 py-2">
+                                        {{ act.locationId ? (getLocNames([act.locationId])[0]) : 'Disponible' }}
+                                      </td>
+                                    </tr>
+                                  }
+                                </tbody>
+                              </table>
+                            </div>
+                          } @else {
+                            <p class="text-xs text-slate-400 italic">No tiene equipos asignados actualmente.</p>
+                          }
+                        </div>
+                        <!-- Column 2: SIM Cards Asignadas -->
+                        <div class="space-y-3">
+                          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                            📶 SIM Cards Asignadas ({{ getSIMCardsForResponsible(resp.id).length }})
+                          </h4>
+                          @if (getSIMCardsForResponsible(resp.id).length > 0) {
+                            <div class="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                              <table class="w-full text-xs">
+                                <thead class="bg-slate-50 border-b border-slate-200 text-slate-400 font-semibold">
+                                  <tr>
+                                    <th class="text-left px-3 py-2">Número / ICCID</th>
+                                    <th class="text-left px-3 py-2">Operador</th>
+                                    <th class="text-left px-3 py-2">En Equipo</th>
+                                  </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-slate-600">
+                                  @for (sim of getSIMCardsForResponsible(resp.id); track sim.id) {
+                                    <tr>
+                                      <td class="px-3 py-2 font-bold text-slate-700">
+                                        {{ sim.numero }}
+                                        <div class="text-[10px] text-slate-400 font-normal">{{ sim.iccid }}</div>
+                                      </td>
+                                      <td class="px-3 py-2"><span class="px-2 py-0.5 rounded bg-slate-100 text-[10px]">{{ sim.operador }}</span></td>
+                                      <td class="px-3 py-2 font-medium text-slate-500">{{ sim.activoPlaca }}</td>
+                                    </tr>
+                                  }
+                                </tbody>
+                              </table>
+                            </div>
+                          } @else {
+                            <p class="text-xs text-slate-400 italic">No tiene tarjetas SIM asignadas actualmente.</p>
+                          }
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
               } @empty {
                 <tr><td colspan="6" class="px-6 py-12 text-center text-slate-400">No se encontraron responsables</td></tr>
               }
@@ -210,6 +288,8 @@ export class ResponsablesPageComponent implements OnInit {
 
   responsables = signal<Responsable[]>([]);
   locations = signal<Location[]>([]);
+  activos = signal<Activo[]>([]);
+  expandedResponsibleId = signal<string | null>(null);
   loading = signal(false);
   roles = signal<Role[]>([]);
 
@@ -260,7 +340,8 @@ export class ResponsablesPageComponent implements OnInit {
   constructor(
     private getAllResponsables: GetAllResponsablesUseCase,
     private getAllLocations: GetAllLocationsUseCase,
-    private getAllRoles: GetAllRolesUseCase
+    private getAllRoles: GetAllRolesUseCase,
+    private getAllActivos: GetAllActivosUseCase
   ) { }
 
   ngOnInit() {
@@ -271,6 +352,7 @@ export class ResponsablesPageComponent implements OnInit {
     this.loading.set(true);
     this.getAllLocations.execute().subscribe(locs => this.locations.set(locs));
     this.getAllRoles.execute().subscribe(roles => this.roles.set(roles));
+    this.getAllActivos.execute().subscribe(acts => this.activos.set(acts));
     this.getAllResponsables.execute().subscribe({
       next: (resps) => {
         this.responsables.set(resps);
@@ -278,6 +360,27 @@ export class ResponsablesPageComponent implements OnInit {
       },
       error: () => this.loading.set(false)
     });
+  }
+
+  toggleExpand(id: string) {
+    if (this.expandedResponsibleId() === id) {
+      this.expandedResponsibleId.set(null);
+    } else {
+      this.expandedResponsibleId.set(id);
+    }
+  }
+
+  getActivosForResponsible(responsibleId: string): Activo[] {
+    return this.activos().filter(a => a.responsibleId === responsibleId);
+  }
+
+  getSIMCardsForResponsible(responsibleId: string): any[] {
+    const acts = this.getActivosForResponsible(responsibleId);
+    return acts.flatMap(a => (a.simCards || []).map(sim => ({
+      ...sim,
+      activoPlaca: a.placa,
+      activoModel: a.modelo
+    })));
   }
 
 

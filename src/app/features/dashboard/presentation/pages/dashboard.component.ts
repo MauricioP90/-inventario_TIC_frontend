@@ -5,7 +5,7 @@ import { GetAllActivosUseCase } from '../../../inventory/application/use-cases/g
 import { GetActivoMetadataUseCase } from '../../../inventory/application/use-cases/get-activo-metadata.use-case';
 import { GetAllLocationsUseCase } from '../../../locations/application/use-cases/get-all-locations.use-case';
 import { GetAllResponsablesUseCase } from '../../../responsables/application/use-cases/get-all-responsables.use-case';
-import { Activo } from '../../../inventory/domain/models/activo.model';
+import { Activo, EstadoActivo } from '../../../inventory/domain/models/activo.model';
 
 export interface DashboardMetrics {
   totalCount: number;
@@ -310,20 +310,20 @@ export class DashboardComponent implements OnInit {
         activos.forEach((activo: Activo) => {
           const typeLabel = typeMap.get(activo.tipoActivoId) || activo.tipoActivoId || 'Sin tipo';
 
-          if (activo.estado === 'BODEGA') {
+          if (activo.estado === EstadoActivo.DISPONIBLE) {
             disponibleCount++;
             if (!typeStacked[typeLabel]) typeStacked[typeLabel] = { disponible: 0, asignado: 0 };
             typeStacked[typeLabel].disponible++;
-          } else if (activo.estado === 'OPERACION') {
+          } else if (activo.estado === EstadoActivo.OPERACION) {
             asignadoCount++;
             if (!typeStacked[typeLabel]) typeStacked[typeLabel] = { disponible: 0, asignado: 0 };
             typeStacked[typeLabel].asignado++;
-          } else if (activo.estado === 'MANTENIMIENTO') {
+          } else if (activo.estado === EstadoActivo.MANTENIMIENTO) {
             mantenimientoCount++;
             // Mantenimiento se agrupa bajo asignado para el gráfico apilado de 2 colores
             if (!typeStacked[typeLabel]) typeStacked[typeLabel] = { disponible: 0, asignado: 0 };
             typeStacked[typeLabel].asignado++;
-          } else if (activo.estado === 'BAJA') {
+          } else if (activo.estado === EstadoActivo.BAJA) {
             bajaCount++;
             typeBaja[typeLabel] = (typeBaja[typeLabel] ?? 0) + 1;
           }

@@ -33,16 +33,21 @@ export interface Movement {
   receiverId?: string;
   status: MovementStatus;
   activoIds: string[];
+  simCardIds?: string[];
   notes?: string;
   evidenceUrl?: string;
   receivedEvidenceUrl?: string;
   createdAt: Date;
   shippedAt?: Date;
   receivedAt?: Date;
+  magicLinkToken?: string;
+  physicalReceiverName?: string;
   originLocation?: any;
   destinationLocation?: any;
   responsible?: any;
+  receiver?: any;
   activos?: any[];
+  simCards?: any[];
 }
 
 export type CreateMovementDto = Omit<Movement, 'id' | 'createdAt' | 'status' | 'shippedAt' | 'receivedAt'> & { recipients?: string[] };

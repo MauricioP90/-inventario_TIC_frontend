@@ -249,6 +249,7 @@ export class InventoryPageComponent implements OnInit {
 
   getStatusColor(estado: string): string {
     const colors: Record<string, string> = {
+      'DISPONIBLE': '#10b981',
       'BODEGA': '#10b981',
       'OPERACION': '#2563eb',
       'MANTENIMIENTO': '#f59e0b',
@@ -260,7 +261,8 @@ export class InventoryPageComponent implements OnInit {
 
   getStatusLabel(estado: string): string {
     const labels: Record<string, string> = {
-      'BODEGA': 'BODEGA',
+      'DISPONIBLE': 'DISPONIBLE',
+      'BODEGA': 'DISPONIBLE',
       'OPERACION': 'OPERACIÓN',
       'MANTENIMIENTO': 'MANTENIMIENTO',
       'BAJA': 'INACTIVO',

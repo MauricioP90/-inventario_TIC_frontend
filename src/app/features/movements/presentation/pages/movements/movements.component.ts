@@ -70,18 +70,50 @@ interface PickItem {
             </select>
           </div>
 
-          <!-- Row 2: Placa & Tipo Mov -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Pestañas de Selección de Modo (Segmented Tab Control) -->
+          <div class="flex p-1 bg-slate-100 rounded-xl border border-slate-200/60 shadow-inner">
+            <button 
+              type="button"
+              (click)="setOperationMode('ACTIVO')"
+              [class]="operationMode() === 'ACTIVO' ? 'flex-1 flex items-center justify-center gap-2 py-3 bg-white text-indigo-700 font-bold rounded-lg shadow-sm border border-slate-200/50 transition-all text-xs uppercase tracking-wider' : 'flex-1 flex items-center justify-center gap-2 py-3 text-slate-500 hover:text-slate-700 font-medium transition-all text-xs uppercase tracking-wider'">
+              <span>💻</span> Operaciones de Activos
+            </button>
+            <button 
+              type="button"
+              (click)="setOperationMode('SIM')"
+              [class]="operationMode() === 'SIM' ? 'flex-1 flex items-center justify-center gap-2 py-3 bg-white text-indigo-700 font-bold rounded-lg shadow-sm border border-slate-200/50 transition-all text-xs uppercase tracking-wider' : 'flex-1 flex items-center justify-center gap-2 py-3 text-slate-500 hover:text-slate-700 font-medium transition-all text-xs uppercase tracking-wider'">
+              <span>📱</span> Traslado SIM en Bodega
+            </button>
+          </div>
+
+          <!-- Row 1: Responsable -->
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-500 flex items-center gap-1 uppercase tracking-wider">
+              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Usuario Responsable *
+            </label>
+            <select [(ngModel)]="responsibleId"
+                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm appearance-none">
+              <option value="">Seleccione el responsable...</option>
+              @for (resp of filteredResponsiblesForDestination(); track resp.id) {
+                <option [value]="resp.id">{{ resp.nombre }} ({{ resp.role.nombre }})</option>
+              }
+            </select>
+          </div>
+
+          @if (operationMode() === 'ACTIVO') {
+            <!-- MODO ACTIVO: Flujo Lineal de Activos -->
+            
+            <!-- Buscador de Activo -->
             <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Placa de Inventario</label>          
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Placa de Inventario *</label>          
               <div class="relative group">
                 <input type="text" 
                        [ngModel]="searchQuery()" 
                        (input)="onSearchInput($any($event.target).value)" 
-                       placeholder="Escriba Placa o Tipo..."
+                       placeholder="Escriba Placa, Serie o Marca para buscar..."
                        class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm">
                 
-                <!-- Botón de Limpiar (X) -->
                 @if (searchQuery() || selectedActivo()) {
                   <button (click)="clearSelection()" 
                           class="absolute right-3 top-3 text-slate-300 hover:text-slate-500 transition-colors">
@@ -91,7 +123,6 @@ interface PickItem {
                   </button>
                 }
 
-                <!-- Resultados de búsqueda predictiva -->
                 @if (searchQuery() && !selectedActivo()) {
                   <div class="absolute z-20 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
                     @for (activo of filteredActivos(); track activo.id) {
@@ -116,83 +147,249 @@ interface PickItem {
                 }
               </div>
             </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tipo de Movimiento *</label>
-              <select [(ngModel)]="movementType"
-                      class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none appearance-none text-sm transition-all">
-                <option value="">Seleccione...</option>
-                @for (type of movementTypes; track type[0]) {
-                  <option [value]="type[0]">{{ type[1] }}</option>
+
+            <!-- Vista Previa de Activo Premium -->
+            @if (selectedActivo()) {
+              <div class="p-4 bg-indigo-50/40 border border-indigo-100/50 rounded-2xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-1">
+                <div class="flex items-center gap-3">
+                  <span class="text-3xl">💻</span>
+                  <div>
+                    <h4 class="font-bold text-slate-800 text-sm leading-none flex items-center gap-2">
+                      {{ selectedActivo()?.placa }}
+                      <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700">
+                        {{ selectedActivo()?.marca }}
+                      </span>
+                    </h4>
+                    <p class="text-xs text-slate-500 mt-1.5">
+                      <span>Modelo: {{ selectedActivo()?.modelo || 'N/A' }}</span>
+                      <span class="mx-2 text-slate-300">|</span>
+                      <span class="font-mono">S/N: {{ selectedActivo()?.serial || 'N/A' }}</span>
+                    </p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-200/50 bg-indigo-50/50 text-indigo-600">
+                    {{ selectedActivo()?.location?.nombre || 'Sede N/A' }}
+                  </span>
+                  @if (selectedActivo()?.simCards?.length) {
+                    <p class="text-[10px] text-purple-600 font-bold mt-1.5 flex items-center justify-end gap-1">
+                      <span>📱 SIMs:</span>
+                      <span class="font-mono">{{ getSimCardsNumbers(selectedActivo()?.simCards || []) }}</span>
+                    </p>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Grid: Tipo Movimiento y Origen -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tipo de Movimiento *</label>
+                <select [(ngModel)]="movementType"
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none appearance-none text-sm transition-all">
+                  <option value="">Seleccione...</option>
+                  @for (type of filteredMovementTypes(); track type[0]) {
+                    <option [value]="type[0]">{{ type[1] }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación Origen</label>
+                <input type="text" [value]="selectedActivo()?.location?.nombre || 'Se cargará automáticamente...'" disabled
+                       class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm">
+              </div>
+            </div>
+
+            <!-- Ubicación Destino (Si no es movimiento interno de SIM) -->
+            @if (movementType && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)) {
+              <div class="space-y-1.5 relative">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación Destino *</label>
+                <div class="relative group">
+                  <input type="text" 
+                         [ngModel]="destinationSearchQuery()" 
+                         (focus)="showDestinationDropdown.set(true)"
+                         (input)="destinationSearchQuery.set($any($event.target).value); showDestinationDropdown.set(true)"
+                         placeholder="Escriba Código o Nombre de la Sede..."
+                         class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm">
+                  
+                  @if (destinationSearchQuery() || selectedDestination()) {
+                    <button (click)="clearDestinationSelection()" 
+                            class="absolute right-3 top-3 text-slate-300 hover:text-slate-500 transition-colors">
+                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  }
+
+                  @if (showDestinationDropdown() && filteredDestinations().length > 0) {
+                    <div class="absolute z-20 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+                      @for (loc of filteredDestinations(); track loc.id) {
+                        <div (click)="selectDestination(loc)" 
+                             class="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none flex flex-col gap-0.5 transition-colors">
+                          <p class="text-sm font-bold text-slate-800">{{ loc.nombre }}</p>
+                          <p class="text-[10px] text-slate-500">Código: {{ loc.code }}</p>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+
+                @if (selectedDestination() && (!selectedDestination()!.responsibleIds || selectedDestination()!.responsibleIds.length === 0)) {
+                  <div class="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 animate-in fade-in duration-200">
+                    <span class="text-amber-500 text-sm">⚠️</span>
+                    <p class="text-[11px] font-bold text-amber-800 leading-normal">
+                      Advertencia: Esta sede no tiene responsables asignados. El traslado se registrará, pero te recomendamos asignarle uno en la sección de "Ubicaciones" para que alguien reciba el acta de entrega.
+                    </p>
+                  </div>
                 }
-              </select>
-            </div>
-          </div>
+              </div>
+            }
 
-          <!-- Row 3: Tipo Dispositivo & Serial -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          } @else {
+            <!-- MODO SIM: Flujo Lineal Traslado SIM en Bodega -->
+            
+            <!-- Buscador de SIM (Siempre habilitado) -->
             <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tipo de Dispositivo</label>
-              <input type="text" [value]="selectedActivo()?.marca || 'Se cargará automáticamente...'" disabled
-                     class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm">
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Número de Serie *</label>
-              <input type="text" [value]="selectedActivo()?.serial || ''" placeholder="Serial" disabled
-                     class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm">
-            </div>
-          </div>
-
-          <!-- Row 4: Origen & Destino -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicacion Origen*</label>
-              <input type="text" [value]="selectedActivo()?.location?.nombre || 'Se cargará automáticamente...'" disabled
-                     class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm">
-            </div>
-<!-- Ubicación Destino Predictiva y Dinámica -->
-            <div class="space-y-1.5 relative">
-              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación Destino *</label>
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Buscar SIM Card en Bodega *</label>
               <div class="relative group">
                 <input type="text" 
-                       [ngModel]="destinationSearchQuery()" 
-                       (focus)="showDestinationDropdown.set(true)"
-                       (input)="destinationSearchQuery.set($any($event.target).value); showDestinationDropdown.set(true)"
-                       placeholder="Escriba Código o Nombre de la Sede..."
+                       [ngModel]="simTransferSearchQuery()" 
+                       (focus)="showSimTransferDropdown.set(true)"
+                       (input)="simTransferSearchQuery.set($any($event.target).value); showSimTransferDropdown.set(true)"
+                       placeholder="Escriba ICCID, Número o Proveedor..."
                        class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm">
                 
-                <!-- Botón de Limpiar (X) -->
-                @if (destinationSearchQuery() || selectedDestination()) {
-                  <button (click)="clearDestinationSelection()" 
+                @if (simTransferSearchQuery() || selectedSimForTransfer()) {
+                  <button (click)="clearSimTransferSelection()" 
                           class="absolute right-3 top-3 text-slate-300 hover:text-slate-500 transition-colors">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 }
-                <!-- Resultados de búsqueda predictiva -->
-                @if (showDestinationDropdown() && filteredDestinations().length > 0) {
+                
+                @if (showSimTransferDropdown() && filteredSimsForTransfer().length > 0) {
                   <div class="absolute z-20 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
-                    @for (loc of filteredDestinations(); track loc.id) {
-                      <div (click)="selectDestination(loc)" 
+                    @for (sim of filteredSimsForTransfer(); track sim.id) {
+                      <div (click)="selectSimForTransfer(sim)" 
                            class="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none flex flex-col gap-0.5 transition-colors">
-                        <p class="text-sm font-bold text-slate-800">{{ loc.nombre }}</p>
-                        <p class="text-[10px] text-slate-500">Código: {{ loc.code }}</p>
+                        <p class="text-sm font-bold text-slate-800">{{ sim.numero }}</p>
+                        <div class="flex items-center justify-between">
+                          <p class="text-[10px] text-slate-500">ICCID: {{ sim.iccid }} - Operador: {{ sim.operador }}</p>
+                          <span class="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">{{ sim.location?.nombre || 'Sin Ubicación' }}</span>
+                        </div>
                       </div>
                     }
                   </div>
                 }
               </div>
-              <!-- ADVERTENCIA DE SEDE SIN RESPONSABLE ASIGNADO -->
-              @if (selectedDestination() && (!selectedDestination()!.responsibleIds || selectedDestination()!.responsibleIds.length === 0)) {
-                <div class="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 animate-in fade-in duration-200">
-                  <span class="text-amber-500 text-sm">⚠️</span>
-                  <p class="text-[11px] font-bold text-amber-800 leading-normal">
-                    Advertencia: Esta sede no tiene responsables asignados. El traslado se registrará, pero te recomendamos asignarle uno en la sección de "Ubicaciones" para que alguien reciba el acta de entrega.
-                  </p>
-                </div>
-              }
             </div>
-          </div>
+
+            <!-- Vista Previa Premium de SIM Física -->
+            @if (selectedSimForTransfer()) {
+              <div [class]="'p-4 rounded-2xl border flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-1 ' + getSimCardBrandClasses(selectedSimForTransfer()?.operador)">
+                <div class="flex items-center gap-3">
+                  <span class="text-3xl">📱</span>
+                  <div>
+                    <h4 class="font-bold text-sm leading-none flex items-center gap-2">
+                      {{ selectedSimForTransfer()?.numero }}
+                      <span class="text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded-full bg-white/60 border border-white/80">
+                        {{ selectedSimForTransfer()?.operador }}
+                      </span>
+                    </h4>
+                    <p class="text-[11px] font-mono opacity-80 mt-1.5">ICCID: {{ selectedSimForTransfer()?.iccid }}</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <span class="text-[10px] font-extrabold tracking-wider uppercase px-2 py-0.5 rounded bg-indigo-600 text-white shadow-sm">
+                    BODEGA
+                  </span>
+                  <p class="text-[11px] opacity-75 mt-1.5 font-medium">Ubicación: {{ selectedSimForTransfer()?.location?.nombre || 'Sin Ubicación' }}</p>
+                </div>
+              </div>
+            }
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Sede Origen de la SIM (Autocomplete) -->
+              <div class="space-y-1.5 relative">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación Origen SIM *</label>
+                <div class="relative group">
+                  <input type="text" 
+                         [ngModel]="originSearchQuery()" 
+                         (focus)="selectedSimForTransfer()?.locationId ? null : showOriginDropdown.set(true)"
+                         (input)="originSearchQuery.set($any($event.target).value); showOriginDropdown.set(true)"
+                         [disabled]="!!selectedSimForTransfer()?.locationId"
+                         placeholder="Escriba Código o Nombre de la Sede Origen..."
+                         class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm disabled:bg-slate-100 disabled:text-slate-500">
+                  
+                  @if (originSearchQuery() && !selectedSimForTransfer()?.locationId) {
+                    <button (click)="clearOriginSelection()" 
+                            class="absolute right-3 top-3 text-slate-300 hover:text-slate-500 transition-colors">
+                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  }
+
+                  @if (showOriginDropdown() && !selectedSimForTransfer()?.locationId && filteredOrigins().length > 0) {
+                    <div class="absolute z-20 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+                      @for (loc of filteredOrigins(); track loc.id) {
+                        <div (click)="selectOrigin(loc)" 
+                             class="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none flex flex-col gap-0.5 transition-colors">
+                          <p class="text-sm font-bold text-slate-800">{{ loc.nombre }}</p>
+                          <p class="text-[10px] text-slate-500">Código: {{ loc.code }}</p>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- Sede Destino de la SIM -->
+              <div class="space-y-1.5 relative">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación Destino *</label>
+                <div class="relative group">
+                  <input type="text" 
+                         [ngModel]="destinationSearchQuery()" 
+                         (focus)="showDestinationDropdown.set(true)"
+                         (input)="destinationSearchQuery.set($any($event.target).value); showDestinationDropdown.set(true)"
+                         placeholder="Escriba Código o Nombre de la Sede Destino..."
+                         class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm">
+                  
+                  @if (destinationSearchQuery() || selectedDestination()) {
+                    <button (click)="clearDestinationSelection()" 
+                            class="absolute right-3 top-3 text-slate-300 hover:text-slate-500 transition-colors">
+                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  }
+
+                  @if (showDestinationDropdown() && filteredDestinations().length > 0) {
+                    <div class="absolute z-20 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+                      @for (loc of filteredDestinations(); track loc.id) {
+                        <div (click)="selectDestination(loc)" 
+                             class="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none flex flex-col gap-0.5 transition-colors">
+                          <p class="text-sm font-bold text-slate-800">{{ loc.nombre }}</p>
+                          <p class="text-[10px] text-slate-500">Código: {{ loc.code }}</p>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+
+                @if (selectedDestination() && (!selectedDestination()!.responsibleIds || selectedDestination()!.responsibleIds.length === 0)) {
+                  <div class="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 animate-in fade-in duration-200 font-bold">
+                    <span class="text-amber-500 text-sm">⚠️</span>
+                    <p class="text-[11px] text-amber-800 leading-normal font-bold">
+                      Advertencia: Esta sede no tiene responsables asignados. El traslado se registrará, pero te recomendamos asignarle uno en la sección de "Ubicaciones" para que alguien reciba el acta de entrega.
+                    </p>
+                  </div>
+                }
+              </div>
+            </div>
+          }
 
           <!-- Row 5: Observaciones & Documento -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -426,7 +623,7 @@ interface PickItem {
           <!-- Footer -->
           <div class="pt-4 flex justify-start">
             <button (click)="saveMovement()"
-                    [disabled]="loading() || !responsibleId || !searchQuery || !destinationId"
+                    [disabled]="loading() || !responsibleId || !originId() || (movementType !== 'SIM_TRASLADO' && !selectedActivo()) || (movementType === 'SIM_TRASLADO' && !selectedSimForTransfer()) || (!destinationId && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType))"
                     class="px-8 py-3.5 bg-[#4f39f6a9] hover:bg-[#594af3] text-white font-bold rounded-xl shadow-lg shadow-orange-100 transition-all flex items-center gap-3 disabled:opacity-50">
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke-width="2"/></svg>
               Registrar y Enviar Correo
@@ -435,29 +632,79 @@ interface PickItem {
         </div>
       </div>
 
-      <!-- LISTADO: Envíos Recientes (Cards) -->
+      <!-- LISTADO: Gestión de Envíos (Tabs + Búsqueda) -->
       <div class="space-y-6">
-        <div class="flex items-center justify-between">
-          <h2 class="text-xl font-bold text-slate-800">Envíos Recientes</h2>
-          <span class="text-[10px] bg-slate-100 text-slate-500 px-3 py-1 rounded-full border border-slate-200 font-bold">
-            {{ movements().length }} TRASLADOS TOTALES
-          </span>
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <h2 class="text-xl font-bold text-slate-800">Gestión de Envíos</h2>
+          
+          <!-- Buscador -->
+          <div class="relative w-full md:w-72">
+            <input type="text"
+                   [ngModel]="searchMovementQuery()"
+                   (input)="searchMovementQuery.set($any($event.target).value)"
+                   placeholder="Buscar placa, sede, responsable..."
+                   class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none text-sm transition-all shadow-sm">
+            <svg class="w-5 h-5 text-slate-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            @if (searchMovementQuery()) {
+              <button (click)="searchMovementQuery.set('')" class="absolute right-3 top-2.5 text-slate-300 hover:text-slate-500 transition-colors">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            }
+          </div>
         </div>
 
+        <!-- Pestañas (Tabs) -->
+        <div class="flex items-center gap-2 p-1 bg-slate-100 rounded-xl w-fit">
+          <button (click)="activeTab.set('PENDING')"
+                  [class.bg-white]="activeTab() === 'PENDING'"
+                  [class.shadow-sm]="activeTab() === 'PENDING'"
+                  [class.text-indigo-700]="activeTab() === 'PENDING'"
+                  [class.text-slate-500]="activeTab() !== 'PENDING'"
+                  [class.hover:text-slate-700]="activeTab() !== 'PENDING'"
+                  class="px-5 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            En Curso
+          </button>
+          <button (click)="activeTab.set('HISTORY')"
+                  [class.bg-white]="activeTab() === 'HISTORY'"
+                  [class.shadow-sm]="activeTab() === 'HISTORY'"
+                  [class.text-indigo-700]="activeTab() === 'HISTORY'"
+                  [class.text-slate-500]="activeTab() !== 'HISTORY'"
+                  [class.hover:text-slate-700]="activeTab() !== 'HISTORY'"
+                  class="px-5 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            Histórico
+          </button>
+        </div>
+
+        <!-- Resultados (Cards) -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          @for (mov of movements(); track mov.id) {
+          @for (mov of filteredMovements(); track mov.id) {
             <app-movement-item  
               [movement]="mov"
               (onDispatch)="openDispatchModal(mov)"
               (onReceive)="openReceiveModal(mov)"
-              (onViewRoute)="openRouteModal(mov)">
+              (onViewRoute)="openRouteModal(mov)"
+              (onCopyMagicLink)="copyMagicLink(mov)">
             </app-movement-item>
           }
         </div>
 
-        @if (movements().length === 0 && !loading()) {
+        <!-- Empty States -->
+        @if (filteredMovements().length === 0 && !loading()) {
           <div class="py-20 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
-            <p class="text-slate-400 text-sm italic">No hay traslados registrados aún.</p>
+            @if (searchMovementQuery()) {
+              <p class="text-slate-500 font-medium text-sm">No se encontraron resultados para "{{ searchMovementQuery() }}" en esta pestaña.</p>
+            } @else if (activeTab() === 'PENDING') {
+              <p class="text-slate-500 font-medium text-sm">✨ ¡Todo al día! No hay traslados en curso.</p>
+            } @else {
+              <p class="text-slate-500 font-medium text-sm">No hay registro histórico de movimientos.</p>
+            }
           </div>
         }
       </div>  
@@ -520,21 +767,34 @@ interface PickItem {
                     <span class="font-bold text-slate-800">{{ selectedMovementForAction.responsible?.nombre || 'N/A' }}</span>
                   </p>
                   <div class="border-t border-indigo-100/50 pt-2 space-y-1.5">
-                    <p class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Equipos Trasladados:</p>
-                    @for (act of selectedMovementForAction.activos; track act.id) {
-                      <div class="bg-white/80 p-2.5 rounded-lg border border-indigo-100/30 flex flex-col gap-0.5">
-                        <p class="font-bold text-slate-800 text-[11px] flex items-center justify-between">
-                          <span>💻 Placa: {{ act.placa }}</span>
-                          <span class="text-[10px] text-slate-500 font-medium">{{ act.marca }} {{ act.modelo }}</span>
-                        </p>
-                        <p class="text-[10px] text-slate-500 font-mono">S/N: {{ act.serial || 'N/A' }}</p>
-                        @if (act.simCards && act.simCards.length > 0) {
-                          <p class="text-[10px] text-purple-600 font-bold flex items-center gap-1 mt-0.5">
-                            <span>📱 SIM Cards:</span>
-                            <span>{{ act.simCards.map(s => s.numero).join(' - ') }}</span>
+                    @if (selectedMovementForAction.type === 'SIM_TRASLADO') {
+                      <p class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">SIM Cards Trasladadas:</p>
+                      @for (sim of selectedMovementForAction.simCards; track sim.id) {
+                        <div class="bg-purple-50/50 p-2.5 rounded-lg border border-purple-100/30 flex flex-col gap-0.5">
+                          <p class="font-bold text-slate-800 text-[11px] flex items-center justify-between">
+                            <span>📱 Número: {{ sim.numero }}</span>
+                            <span class="text-[10px] text-purple-600 font-medium uppercase font-bold">{{ sim.operador }}</span>
                           </p>
-                        }
-                      </div>
+                          <p class="text-[10px] text-slate-500 font-mono">ICCID: {{ sim.iccid || 'N/A' }}</p>
+                        </div>
+                      }
+                    } @else {
+                      <p class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Equipos Trasladados:</p>
+                      @for (act of selectedMovementForAction.activos; track act.id) {
+                        <div class="bg-white/80 p-2.5 rounded-lg border border-indigo-100/30 flex flex-col gap-0.5">
+                          <p class="font-bold text-slate-800 text-[11px] flex items-center justify-between">
+                            <span>💻 Placa: {{ act.placa }}</span>
+                            <span class="text-[10px] text-slate-500 font-medium">{{ act.marca }} {{ act.modelo }}</span>
+                          </p>
+                          <p class="text-[10px] text-slate-500 font-mono">S/N: {{ act.serial || 'N/A' }}</p>
+                          @if (act.simCards && act.simCards.length > 0) {
+                            <p class="text-[10px] text-purple-600 font-bold flex items-center gap-1 mt-0.5">
+                              <span>📱 SIM Cards:</span>
+                              <span>{{ getSimCardsNumbers(act.simCards) }}</span>
+                            </p>
+                          }
+                        </div>
+                      }
                     }
                   </div>
                 </div>
@@ -616,10 +876,52 @@ interface PickItem {
         </div>
       }
     </div>
+    <!-- Magic Link Modal -->
+    @if (magicLinkUrl()) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+          <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-indigo-50/50">
+            <h3 class="text-lg font-black text-indigo-900 flex items-center gap-2">
+              <span>✨</span> Enlace Mágico
+            </h3>
+            <button (click)="magicLinkUrl.set(null)" class="text-slate-400 hover:text-slate-600 transition-colors p-2 bg-white rounded-full shadow-sm hover:shadow">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+          <div class="p-6 space-y-4">
+            <p class="text-sm text-slate-600 font-medium">
+              Envía este enlace por WhatsApp al responsable en destino. No necesitará usuario ni contraseña para recibir los equipos.
+            </p>
+            <div class="relative">
+              <textarea readonly 
+                     [value]="magicLinkUrl()"
+                     class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:outline-none resize-none h-24 shadow-inner"
+                     #linkInput></textarea>
+            </div>
+            <p class="text-xs text-indigo-600 font-bold bg-indigo-50 p-3 rounded-lg border border-indigo-100 flex items-start gap-2">
+              <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              Selecciona todo el texto de arriba y cópialo (Ctrl+C o pulsación larga en móviles).
+            </p>
+          </div>
+          <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+            <button (click)="magicLinkUrl.set(null)" 
+                    class="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all text-sm">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
   `,
   styles: []
 })
 export class MovementsPageComponent implements OnInit {
+  getSimCardsNumbers(simCards: any[]): string {
+    if (!simCards || simCards.length === 0) return '';
+    return simCards.map((s: any) => s.numero).join(' - ');
+  }
+
   locations = signal<Location[]>([]);
   responsables = signal<Responsable[]>([]);
   movements = signal<Movement[]>([]);
@@ -627,6 +929,11 @@ export class MovementsPageComponent implements OnInit {
   loading = signal(false);
   showSuccess = signal(false);
   isLoadingPlaca = signal(false);
+  
+  // Nuevas señales para Tabs y Búsqueda de Movimientos
+  activeTab = signal<'PENDING' | 'HISTORY'>('PENDING');
+  searchMovementQuery = signal('');
+
   // 👇 Guarda los correos de los destinatarios elegidos
   selectedEmails = signal<string[]>([]);
 
@@ -648,6 +955,41 @@ export class MovementsPageComponent implements OnInit {
   }
 
   movementTypes = Object.entries(MOVEMENT_TYPE_LABELS);
+  filteredMovementTypes = computed(() => {
+    return this.movementTypes.filter(([key]) => key !== 'SIM_TRASLADO');
+  });
+  operationMode = signal<'ACTIVO' | 'SIM'>('ACTIVO');
+
+  setOperationMode(mode: 'ACTIVO' | 'SIM') {
+    this.operationMode.set(mode);
+    if (mode === 'SIM') {
+      this.movementType = 'SIM_TRASLADO';
+      this.clearSelection();
+      this.clearOriginSelection();
+    } else {
+      this.movementType = '';
+      this.clearSimTransferSelection();
+      this.originId.set('');
+      this.clearOriginSelection();
+    }
+  }
+
+  getSimCardBrandClasses(carrier?: string): string {
+    if (!carrier) return 'bg-white border-slate-200 text-slate-700';
+    switch (carrier.toLowerCase()) {
+      case 'claro':
+        return 'bg-red-50/50 border-red-200 text-red-900 shadow-red-50/20';
+      case 'movistar':
+        return 'bg-emerald-50/50 border-emerald-200 text-emerald-900 shadow-emerald-50/20';
+      case 'tigo':
+        return 'bg-blue-50/50 border-blue-200 text-blue-900 shadow-blue-50/20';
+      case 'wom':
+        return 'bg-purple-50/50 border-purple-200 text-purple-900 shadow-purple-50/20';
+      default:
+        return 'bg-slate-50 border-slate-200 text-slate-900';
+    }
+  }
+
   movementType = '';
   originId = signal('');
   destinationId = '';
@@ -655,6 +997,35 @@ export class MovementsPageComponent implements OnInit {
   searchQuery = signal('');
   notes = '';
   selectedActivo = signal<Activo | null>(null);
+
+  // 👇 Control del buscador predictivo para Ubicación Origen (modo SIM)
+  originSearchQuery = signal('');
+  showOriginDropdown = signal(false);
+  selectedOrigin = signal<Location | null>(null);
+
+  filteredOrigins = computed(() => {
+    const term = this.originSearchQuery().toLowerCase().trim();
+    const todos = this.locations().filter(loc => loc.estado === 'ACTIVO');
+    if (!term) return todos;
+    return todos.filter(loc =>
+      loc.nombre.toLowerCase().includes(term) ||
+      loc.code.toLowerCase().includes(term)
+    );
+  });
+
+  selectOrigin(loc: Location) {
+    this.selectedOrigin.set(loc);
+    this.originId.set(loc.id);
+    this.originSearchQuery.set(loc.nombre);
+    this.showOriginDropdown.set(false);
+  }
+
+  clearOriginSelection() {
+    this.selectedOrigin.set(null);
+    this.originId.set('');
+    this.originSearchQuery.set('');
+    this.showOriginDropdown.set(false);
+  }
 
   // 👇 Control del buscador predictivo para Ubicación Destino
   destinationSearchQuery = signal('');
@@ -690,6 +1061,97 @@ export class MovementsPageComponent implements OnInit {
     return assigned.length > 0 ? assigned : all;
   });
 
+  // Filtro principal para los Movimientos (Tabs + Búsqueda)
+  filteredMovements = computed(() => {
+    const tab = this.activeTab();
+    const query = this.searchMovementQuery().toLowerCase().trim();
+    const allMovs = this.movements();
+
+    // Filtro por Tab
+    let filtered = allMovs.filter(m => {
+      if (tab === 'PENDING') {
+        return m.status === 'PENDING' || m.status === 'EN_TRANSIT';
+      } else {
+        return m.status === 'RECEIVED' || m.status === 'CANCELLED';
+      }
+    });
+
+    // Filtro por Búsqueda
+    if (query) {
+      filtered = filtered.filter(m => {
+        const idMatch = m.id.toLowerCase().includes(query);
+        const typeMatch = (MOVEMENT_TYPE_LABELS[m.type] || m.type).toLowerCase().includes(query);
+        const originMatch = m.originLocation?.nombre?.toLowerCase().includes(query);
+        const destMatch = m.destinationLocation?.nombre?.toLowerCase().includes(query);
+        const respMatch = m.responsible?.nombre?.toLowerCase().includes(query);
+        const receiverMatch = m.receiver?.nombre?.toLowerCase().includes(query) || m.physicalReceiverName?.toLowerCase().includes(query);
+        const activeMatch = m.activos?.some((a: any) => 
+          a.placa?.toLowerCase().includes(query) || 
+          (a.serial && a.serial.toLowerCase().includes(query))
+        );
+
+        return idMatch || typeMatch || originMatch || destMatch || respMatch || receiverMatch || activeMatch;
+      });
+    }
+
+    return filtered;
+  });
+
+  // 👇 Campos para Traslado de SIM Card (SIM_TRASLADO)
+  selectedSimForTransfer = signal<SimCard | null>(null);
+  simTransferSearchQuery = signal('');
+  showSimTransferDropdown = signal(false);
+
+  filteredSimsForTransfer = computed(() => {
+    const term = this.simTransferSearchQuery().toLowerCase().trim();
+    const activeMovementSimIds = new Set<string>();
+    this.movements().forEach(m => {
+      if (m.status === 'PENDING' || m.status === 'EN_TRANSIT') {
+        m.simCardIds?.forEach(id => activeMovementSimIds.add(id));
+      }
+    });
+
+    const available = this.simCards().filter(s =>
+      s.estado === 'BODEGA' && !activeMovementSimIds.has(s.id)
+    );
+    if (!term) return available;
+    return available.filter(s =>
+      s.numero.toLowerCase().includes(term) ||
+      (s.iccid && s.iccid.toLowerCase().includes(term)) ||
+      (s.operador && s.operador.toLowerCase().includes(term))
+    );
+  });
+
+  selectSimForTransfer(sim: SimCard) {
+    this.selectedSimForTransfer.set(sim);
+    this.simTransferSearchQuery.set(`${sim.numero} | ICCID: ${sim.iccid} | ${sim.operador}`);
+    this.showSimTransferDropdown.set(false);
+    
+    if (sim.locationId) {
+      this.originId.set(sim.locationId);
+      this.originSearchQuery.set(sim.location?.nombre || 'Bodega');
+      const foundLoc = this.locations().find(l => l.id === sim.locationId);
+      if (foundLoc) {
+        this.selectedOrigin.set(foundLoc);
+      } else {
+        this.selectedOrigin.set({ id: sim.locationId, nombre: sim.location?.nombre || 'Bodega', code: '', estado: 'ACTIVO' } as any);
+      }
+    } else {
+      this.clearOriginSelection();
+    }
+  }
+
+  clearSimTransferSelection() {
+    this.selectedSimForTransfer.set(null);
+    this.simTransferSearchQuery.set('');
+    this.clearOriginSelection();
+  }
+
+  onOriginChange(value: string) {
+    this.originId.set(value);
+    this.clearSimTransferSelection();
+  }
+
   // SIM Card form states
   simCards = signal<SimCard[]>([]);
   simSearchQuery = '';
@@ -710,7 +1172,10 @@ export class MovementsPageComponent implements OnInit {
 
   filteredBodegaSims = computed(() => {
     const term = this.simSearchQuery.toLowerCase().trim();
-    const available = this.simCards().filter(s => s.estado === 'BODEGA');
+    const activeOriginId = this.originId();
+    const available = this.simCards().filter(s =>
+      s.estado === 'BODEGA' && (!activeOriginId || s.locationId === activeOriginId)
+    );
     if (!term) return available;
     return available.filter(s =>
       s.numero.toLowerCase().includes(term) ||
@@ -766,10 +1231,11 @@ export class MovementsPageComponent implements OnInit {
 
   // Modal State
   selectedMovementForAction: Movement | null = null;
-  actionType: 'dispatch' | 'receive' | 'route' | null = null;
-  modalEvidenceUrl = '';
+  actionType: 'dispatch' | 'receive' | 'route' | null = null; // Modal Data
   modalReceiverId = '';
+  modalEvidenceUrl = '';
   modalDestinationId = '';
+  magicLinkUrl = signal<string | null>(null);
 
   constructor(
     private getAllLocations: GetAllLocationsUseCase,
@@ -845,7 +1311,14 @@ export class MovementsPageComponent implements OnInit {
   }
 
   saveMovement() {
-    if (!this.movementType || !this.destinationId || !this.responsibleId || !this.selectedActivo()) {
+    // Para operaciones locales de SIM, el destino es la misma sede del activo (origen)
+    const isLocalSIM = ['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(this.movementType);
+    if (isLocalSIM && this.selectedActivo()) {
+      this.destinationId = this.originId();
+    }
+
+    const needsActivo = this.movementType !== 'SIM_TRASLADO';
+    if (!this.movementType || !this.originId() || !this.destinationId || !this.responsibleId || (needsActivo && !this.selectedActivo()) || (!needsActivo && !this.selectedSimForTransfer())) {
       alert('Completa los campos obligatorios');
       return;
     }
@@ -903,7 +1376,8 @@ export class MovementsPageComponent implements OnInit {
       originLocationId: this.originId(),
       destinationLocationId: this.destinationId,
       responsibleId: this.responsibleId,
-      activoIds: [this.selectedActivo()!.id],
+      activoIds: this.movementType === 'SIM_TRASLADO' ? [] : [this.selectedActivo()!.id],
+      simCardIds: this.movementType === 'SIM_TRASLADO' ? [this.selectedSimForTransfer()!.id] : [],
       notes: this.notes,
       recipients: this.selectedEmails() // 👈 Enviamos los destinatarios elegidos
     };
@@ -915,12 +1389,12 @@ export class MovementsPageComponent implements OnInit {
           this.simCardRepo.assign(this.selectedSimForAssign.id, this.selectedActivo()!.placa).subscribe(() => this.finishSave());
         } else if (this.movementType === 'SIM_CAMBIO' && this.selectedSimToReplace && this.selectedSimForAssign) {
           // Desvincular SIM vieja
-          this.simCardRepo.update(this.selectedSimToReplace.id, { estado: 'BODEGA', activoId: '' }).subscribe(() => {
+          this.simCardRepo.update(this.selectedSimToReplace.id, { estado: 'BODEGA', activoId: '', locationId: this.removedSimLocationId }).subscribe(() => {
             // Vincular SIM nueva
             this.simCardRepo.assign(this.selectedSimForAssign!.id, this.selectedActivo()!.placa).subscribe(() => this.finishSave());
           });
         } else if (this.movementType === 'SIM_RETIRO' && this.selectedSimToRemove) {
-          this.simCardRepo.update(this.selectedSimToRemove.id, { estado: this.removedSimNewState, activoId: '' }).subscribe(() => this.finishSave());
+          this.simCardRepo.update(this.selectedSimToRemove.id, { estado: this.removedSimNewState, activoId: '', locationId: this.removedSimLocationId }).subscribe(() => this.finishSave());
         } else if (this.movementType === 'SIM_RETIRO_TOTAL') {
           const sims = this.selectedActivo()?.simCards || [];
           if (sims.length === 0) {
@@ -929,7 +1403,8 @@ export class MovementsPageComponent implements OnInit {
             let processed = 0;
             sims.forEach((sim, idx) => {
               const newState = this.simStates[idx];
-              this.simCardRepo.update(sim.id, { estado: newState, activoId: '' }).subscribe(() => {
+              const destLocId = this.simDestinations[idx];
+              this.simCardRepo.update(sim.id, { estado: newState, activoId: '', locationId: destLocId }).subscribe(() => {
                 processed++;
                 if (processed === sims.length) {
                   this.finishSave();
@@ -959,7 +1434,10 @@ export class MovementsPageComponent implements OnInit {
     this.selectedSimToRemove = null;
     this.simDestinations = ['', ''];
     this.simStates = ['BODEGA', 'BODEGA'];
+    this.selectedSimForTransfer.set(null);
+    this.simTransferSearchQuery.set('');
     this.clearDestinationSelection(); // Limpieza de sede destino
+    this.setOperationMode('ACTIVO'); // Vuelve a activos por defecto
     this.fetchData(); // Recarga todo (incluyendo SIM cards actualizadas y activos)
     setTimeout(() => this.showSuccess.set(false), 5000);
   }
@@ -975,7 +1453,6 @@ export class MovementsPageComponent implements OnInit {
     this.modalReceiverId = '';
     this.modalEvidenceUrl = '';
     this.modalDestinationId = movement.destinationLocationId || '';
-
   }
   openRouteModal(movement: Movement) {
     this.selectedMovementForAction = movement;
@@ -986,6 +1463,7 @@ export class MovementsPageComponent implements OnInit {
     this.actionType = null;
     this.showRejectionForm.set(false);
     this.rejectionReason.set('');
+    this.magicLinkUrl.set(null);
   }
   confirmAction() {
     if (!this.selectedMovementForAction) return;
@@ -1040,4 +1518,12 @@ export class MovementsPageComponent implements OnInit {
     return allLocs.filter(loc => selectedResp.locationIds.includes(loc.id));
   }
 
+  copyMagicLink(movement: any) {
+    if (!movement.magicLinkToken) {
+      alert('Este movimiento no tiene un enlace mágico.');
+      return;
+    }
+    const link = `${window.location.origin}/public/receive/${movement.magicLinkToken}`;
+    this.magicLinkUrl.set(link);
+  }
 }

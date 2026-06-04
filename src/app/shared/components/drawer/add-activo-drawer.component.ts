@@ -99,10 +99,10 @@ import { UpdateActivoUseCase } from '../../../features/inventory/application/use
           <label class="block text-sm font-medium text-slate-700">Ubicación Actual</label>
           <select 
             [(ngModel)]="locationId" 
-            [disabled]="!!(activo && activo.estado !== 'BODEGA')" 
+            [disabled]="!!(activo && activo.estado !== 'DISPONIBLE')" 
             class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg disabled:bg-slate-100 disabled:text-slate-500">
             
-            @if (activo && activo.estado !== 'BODEGA') {
+            @if (activo && activo.estado !== 'DISPONIBLE') {
               <option [value]="locationId">{{ locationMap()[locationId]?.nombre || 'Cargando...' }}</option>
             } @else {
               <option value="" disabled>Seleccionar bodega</option>
@@ -112,7 +112,7 @@ import { UpdateActivoUseCase } from '../../../features/inventory/application/use
             }
           </select>
           
-          @if (activo && activo.estado !== 'BODEGA') {
+          @if (activo && activo.estado !== 'DISPONIBLE') {
             <p class="text-[10px] text-amber-600 font-medium mt-1">
               ⚠️ Para cambiar la ubicación de un equipo en operación, use el módulo de Movimientos.
             </p>

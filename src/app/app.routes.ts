@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { LayoutComponent } from './shared/components/layout/layout.component';
+import { authGuard } from './core/auth/guards/auth-guard';
 
 export const routes: Routes = [
   {
@@ -10,6 +11,7 @@ export const routes: Routes = [
   {
     path: '',
     component: LayoutComponent,
+    canActivate: [authGuard],
     children: [
       {
         path: '',
@@ -47,6 +49,11 @@ export const routes: Routes = [
           import('./features/dashboard/presentation/pages/reports/reports.component').then(m => m.ReportsPageComponent)
       },
     ]
+  },
+  {
+    path: 'public/receive/:token',
+    loadComponent: () =>
+      import('./features/movements/presentation/pages/magic-link/magic-link-receive.component').then(m => m.MagicLinkReceiveComponent)
   },
   { path: '**', redirectTo: 'login' }
 ];

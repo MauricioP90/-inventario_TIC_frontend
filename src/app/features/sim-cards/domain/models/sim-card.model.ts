@@ -6,6 +6,9 @@ export interface SimCard {
   estado: 'BODEGA' | 'ASIGNADA' | 'BAJA'; // Sincronizado con EstadoSIM
   responsableId?: string;
   activoId?: string;
+  locationId?: string;
+  activo?: { id: string; placa: string; serial?: string; marca?: string } | null;
+  location?: { id: string; nombre: string } | null;
 }
 
 export type CreateSimCardDto = Omit<SimCard, 'id'>;

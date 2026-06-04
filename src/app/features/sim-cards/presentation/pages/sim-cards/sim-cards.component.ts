@@ -18,29 +18,38 @@ import { AddSimDrawerComponent } from '../../../../../shared/components/drawer/a
           <p class="text-sm text-slate-500 mt-1">Gestión de líneas telefónicas y tarjetas SIM</p>
         </div>
         <button
-          (click)="showDrawer.set(true)"
+          (click)="abrirNuevo()"
           class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-100">
           <span class="text-xl leading-none">+</span> Añadir Nueva SIM
         </button>
       </div>
 
-<!-- Filter Bar -->
+      <!-- Filter Bar -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
         <div class="md:col-span-2 relative">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           <!-- Conectamos el buscador -->
-          <input type="text" [(ngModel)]="searchTerm" placeholder="Buscar por ICCID, número o equipo" 
+          <input type="text" 
+                 [ngModel]="searchTerm()" 
+                 (ngModelChange)="searchTerm.set($event)"
+                 placeholder="Buscar por ICCID, número o placa" 
                  class="w-full pl-10 pr-4 h-10 bg-slate-50 border border-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500/20 outline-none text-sm transition-all">
         </div>
         <!-- Filtro de Estado -->
-        <select [(ngModel)]="statusFilter" class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
+        <select 
+          [ngModel]="statusFilter()" 
+          (ngModelChange)="statusFilter.set($event)"
+          class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
           <option value="">Todos los estados</option>
           <option value="BODEGA">Disponible (Bodega)</option>
           <option value="ASIGNADA">Asignada</option>
           <option value="BAJA">Inactiva (Baja)</option>
         </select>
         <!-- Filtro de Operador -->
-        <select [(ngModel)]="carrierFilter" class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
+        <select 
+          [ngModel]="carrierFilter()" 
+          (ngModelChange)="carrierFilter.set($event)"
+          class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
           <option value="">Todos los operadores</option>
           <option value="CLARO">Claro</option>
           <option value="MOVISTAR">Movistar</option>
@@ -63,8 +72,10 @@ import { AddSimDrawerComponent } from '../../../../../shared/components/drawer/a
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Número</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">ICCID</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Operador</th>
+                <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Ubicación</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Estado</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Equipo Asignado</th>
+                <th class="text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -75,13 +86,23 @@ import { AddSimDrawerComponent } from '../../../../../shared/components/drawer/a
                   <td class="px-6 py-4">
                     <span [class]="carrierClass(sim.operador)">{{ sim.operador }}</span>
                   </td>
+                  <td class="px-6 py-4 text-slate-500 font-medium">
+                    {{ sim.location?.nombre || '—' }}
+                  </td>
                   <td class="px-6 py-4">
                     <span [class]="statusClass(sim.estado)">{{ statusLabel(sim.estado) }}</span>
                   </td>
-                  <td class="px-6 py-4 font-bold text-indigo-900/40">{{ sim.activoId ?? '—' }}</td>
+                  <td class="px-6 py-4 font-bold text-indigo-900/60">{{ sim.activo?.placa ?? '—' }}</td>
+                  <td class="px-6 py-4 text-right">
+                    <button 
+                      (click)="editSim(sim)"
+                      class="text-indigo-600 hover:text-indigo-900 font-medium transition-all">
+                      Editar
+                    </button>
+                  </td>
                 </tr>
               } @empty {
-                <tr><td colspan="5" class="px-6 py-12 text-center text-slate-400 text-sm">Sin SIM cards registradas</td></tr>
+                <tr><td colspan="7" class="px-6 py-12 text-center text-slate-400 text-sm">Sin SIM cards registradas</td></tr>
               }
             </tbody>
           </table>
@@ -95,7 +116,8 @@ import { AddSimDrawerComponent } from '../../../../../shared/components/drawer/a
     <!-- Drawer para agregar SIM -->
     <app-add-sim-drawer
       [open]="showDrawer()"
-      (openChange)="showDrawer.set($event)"
+      [simCard]="selectedSim()"
+      (openChange)="handleDrawerOpenChange($event)"
       (saved)="ngOnInit()"
     />
   `,
@@ -105,6 +127,7 @@ export class SimCardsPageComponent implements OnInit {
   simCards = signal<SimCard[]>([]);
   loading = signal(false);
   showDrawer = signal(false);
+  selectedSim = signal<SimCard | null>(null);
   searchTerm = signal('');
   statusFilter = signal('');
   carrierFilter = signal('');
@@ -116,10 +139,11 @@ export class SimCardsPageComponent implements OnInit {
     const status = this.statusFilter();
     const carrier = this.carrierFilter().toUpperCase();
     return list.filter(sim => {
-      // 1. Filtro por texto (ICCID, Número o ID de Equipo)
+      // 1. Filtro por texto (ICCID, Número o Placa del Equipo Asignado)
       const matchesSearch = !search ||
         sim.iccid.toLowerCase().includes(search) ||
         sim.numero.toLowerCase().includes(search) ||
+        (sim.activo?.placa && sim.activo.placa.toLowerCase().includes(search)) ||
         (sim.activoId && sim.activoId.toLowerCase().includes(search));
       // 2. Filtro por Estado
       const matchesStatus = !status || sim.estado === status;
@@ -140,6 +164,23 @@ export class SimCardsPageComponent implements OnInit {
       },
       error: () => this.loading.set(false)
     });
+  }
+
+  editSim(sim: SimCard) {
+    this.selectedSim.set(sim);
+    this.showDrawer.set(true);
+  }
+
+  handleDrawerOpenChange(isOpen: boolean) {
+    this.showDrawer.set(isOpen);
+    if (!isOpen) {
+      this.selectedSim.set(null);
+    }
+  }
+
+  abrirNuevo() {
+    this.selectedSim.set(null);
+    this.showDrawer.set(true);
   }
 
   carrierClass(carrier: string): string {

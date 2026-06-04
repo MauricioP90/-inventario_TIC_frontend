@@ -2,7 +2,7 @@ import { Location } from "../../../locations/domain/models/location.model";
 import { Responsable } from "../../../responsables/domain/models/responsable.model";
 
 export enum EstadoActivo {
-  BODEGA = 'BODEGA',
+  DISPONIBLE = 'DISPONIBLE',
   OPERACION = 'OPERACION',
   MANTENIMIENTO = 'MANTENIMIENTO',
   BAJA = 'BAJA',
