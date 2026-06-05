@@ -12,7 +12,7 @@ import { ReceiveMovementUseCase } from '../../../application/use-cases/receive-m
 import { RejectMovementUseCase } from '../../../application/use-cases/reject-movement.use-case';
 import { Movement, MovementStatus, MOVEMENT_TYPE_LABELS } from '../../../domain/models/movement.model';
 import { MovementItemComponent } from '../../components/movement-item/movement-item.component';
-import { GetOneActivoUseCase } from '../../../application/use-cases/get-one-activo.use-case';
+import { GetOneActivoUseCase } from '../../../../inventory/application/use-cases/get-one-activo.use-case';
 import { GetAllActivosUseCase } from '../../../../inventory/application/use-cases/get-all-activos.use-case';
 import { Activo } from '../../../../inventory/domain/models/activo.model';
 import { GetAllSimCardsUseCase } from '../../../../sim-cards/application/use-cases/get-all-sim-cards.use-case';

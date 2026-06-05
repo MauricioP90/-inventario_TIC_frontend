@@ -1,21 +1,7 @@
 import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { forkJoin } from 'rxjs';
-import { GetAllActivosUseCase } from '../../../inventory/application/use-cases/get-all-activos.use-case';
-import { GetActivoMetadataUseCase } from '../../../inventory/application/use-cases/get-activo-metadata.use-case';
-import { GetAllLocationsUseCase } from '../../../locations/application/use-cases/get-all-locations.use-case';
-import { GetAllResponsablesUseCase } from '../../../responsables/application/use-cases/get-all-responsables.use-case';
-import { Activo, EstadoActivo } from '../../../inventory/domain/models/activo.model';
-
-export interface DashboardMetrics {
-  totalCount: number;
-  disponibleCount: number;
-  asignadoCount: number;
-  mantenimientoCount: number;
-  bajaCount: number;
-  typeStacked: Record<string, { disponible: number; asignado: number }>;
-  typeBaja: Record<string, number>;
-}
+import { GetDashboardMetricsUseCase } from '../../application/use-cases/get-dashboard-metrics.use-case';
+import { DashboardMetrics } from '../../domain/models/dashboard.model';
 
 @Component({
   selector: 'app-dashboard-page',
@@ -274,76 +260,19 @@ export class DashboardComponent implements OnInit {
   });
 
   constructor(
-    private getAllActivosUC: GetAllActivosUseCase,
-    private getMetadataUC: GetActivoMetadataUseCase,
-    private getLocationsUC: GetAllLocationsUseCase,
-    private getResponsablesUC: GetAllResponsablesUseCase
+    private getDashboardMetricsUC: GetDashboardMetricsUseCase
   ) {}
 
   ngOnInit(): void {
     this.loading.set(true);
-
-    forkJoin({
-      activos: this.getAllActivosUC.execute(),
-      metadata: this.getMetadataUC.execute(),
-      locations: this.getLocationsUC.execute(),
-      responsables: this.getResponsablesUC.execute()
-    }).subscribe({
-      next: ({ activos, metadata, locations, responsables }) => {
-        // Mapeadores rápidos de IDs a Etiquetas
-        const statusMap = new Map<string, string>();
-        metadata.statuses.forEach(s => statusMap.set(s.id, s.label));
-
-        const typeMap = new Map<string, string>();
-        metadata.types.forEach(t => typeMap.set(t.id, t.label));
-
-        let totalCount = activos.length;
-        let disponibleCount = 0;
-        let asignadoCount = 0;
-        let mantenimientoCount = 0;
-        let bajaCount = 0;
-
-        // Estructuras de datos para barras
-        const typeStacked: Record<string, { disponible: number; asignado: number }> = {};
-        const typeBaja: Record<string, number> = {};
-
-        activos.forEach((activo: Activo) => {
-          const typeLabel = typeMap.get(activo.tipoActivoId) || activo.tipoActivoId || 'Sin tipo';
-
-          if (activo.estado === EstadoActivo.DISPONIBLE) {
-            disponibleCount++;
-            if (!typeStacked[typeLabel]) typeStacked[typeLabel] = { disponible: 0, asignado: 0 };
-            typeStacked[typeLabel].disponible++;
-          } else if (activo.estado === EstadoActivo.OPERACION) {
-            asignadoCount++;
-            if (!typeStacked[typeLabel]) typeStacked[typeLabel] = { disponible: 0, asignado: 0 };
-            typeStacked[typeLabel].asignado++;
-          } else if (activo.estado === EstadoActivo.MANTENIMIENTO) {
-            mantenimientoCount++;
-            // Mantenimiento se agrupa bajo asignado para el gráfico apilado de 2 colores
-            if (!typeStacked[typeLabel]) typeStacked[typeLabel] = { disponible: 0, asignado: 0 };
-            typeStacked[typeLabel].asignado++;
-          } else if (activo.estado === EstadoActivo.BAJA) {
-            bajaCount++;
-            typeBaja[typeLabel] = (typeBaja[typeLabel] ?? 0) + 1;
-          }
-        });
-
-        this.metrics.set({
-          totalCount,
-          disponibleCount,
-          asignadoCount,
-          mantenimientoCount,
-          bajaCount,
-          typeStacked,
-          typeBaja
-        });
-
+    this.getDashboardMetricsUC.execute().subscribe({
+      next: (data) => {
+        this.metrics.set(data);
         this.loading.set(false);
       },
       error: (err) => {
         console.error('Error calculando métricas de inventario:', err);
-        this.error.set('No se pudieron calcular las métricas. Verifica que el backend esté activo.');
+        this.error.set('No se pudieron obtener las métricas. Verifica que el backend esté activo.');
         this.loading.set(false);
       }
     });
