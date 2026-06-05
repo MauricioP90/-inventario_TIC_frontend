@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Location } from '../../../domain/models/location.model';
 import { GetAllLocationsUseCase } from '../../../application/use-cases/get-all-locations.use-case';
+import { ReverseGeocodeUseCase } from '../../../application/use-cases/reverse-geocode.use-case';
 import { AddLocationDrawerComponent } from '../../../../../shared/components/drawer/location-drawer/add-location-drawer.component';
 
 @Component({
@@ -191,6 +192,7 @@ export class LocationsListComponent implements OnInit {
 
   constructor(
     private getAllLocations: GetAllLocationsUseCase,
+    private reverseGeocodeUseCase: ReverseGeocodeUseCase,
     private sanitizer: DomSanitizer
   ) { }
 
@@ -237,24 +239,20 @@ export class LocationsListComponent implements OnInit {
       [locationId]: { address: '', loading: true }
     }));
 
-    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es`)
-      .then(res => {
-        if (!res.ok) throw new Error('Error al consultar servidor de mapas');
-        return res.json();
-      })
-      .then(data => {
-        const addressName = data.display_name || 'Dirección no encontrada';
+    this.reverseGeocodeUseCase.execute(lat, lon).subscribe({
+      next: (addressName) => {
         this.resolvedAddresses.update(prev => ({
           ...prev,
           [locationId]: { address: addressName, loading: false }
         }));
-      })
-      .catch(err => {
+      },
+      error: (err) => {
         this.resolvedAddresses.update(prev => ({
           ...prev,
           [locationId]: { address: '', loading: false, error: err.message || 'Error al geolocalizar' }
         }));
-      });
+      }
+    });
   }
 
   getSafeMapUrl(lat: number, lon: number): SafeResourceUrl {

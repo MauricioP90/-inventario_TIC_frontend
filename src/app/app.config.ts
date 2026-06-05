@@ -20,6 +20,8 @@ import { ActivoRepository } from './features/inventory/domain/repositories/activ
 import { HttpActivoRepository } from './features/inventory/infrastructure/adapters/http-activo.repository';
 import { LocationRepository } from './features/locations/domain/repositories/location.repository';
 import { HttpLocationRepository } from './features/locations/infrastructure/adapters/http-location.repository';
+import { GeocodingRepository } from './features/locations/domain/repositories/geocoding.repository';
+import { NominatimGeocodingRepository } from './features/locations/infrastructure/adapters/nominatim-geocoding.repository';
 
 // Condición para incluir el token en las peticiones al backend
 const urlCondition = createInterceptorCondition<IncludeBearerTokenCondition>({
@@ -52,5 +54,6 @@ export const appConfig: ApplicationConfig = {
     { provide: SimCardRepository, useClass: HttpSimCardRepository },
     { provide: MovementRepository, useClass: HttpMovementRepository },
     { provide: ResponsableRepository, useClass: HttpResponsableRepository },
+    { provide: GeocodingRepository, useClass: NominatimGeocodingRepository }
   ],
 };
