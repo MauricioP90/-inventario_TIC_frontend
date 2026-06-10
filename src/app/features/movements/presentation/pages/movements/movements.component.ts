@@ -49,9 +49,19 @@ interface PickItem {
 
         <div class="p-6 space-y-6">
           @if (showSuccess()) {
-            <div class="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
               <span class="text-emerald-500">✅</span>
-              <p class="text-sm font-bold text-amber-900">Movimiento registrado correctamente</p>
+              <p class="text-sm font-bold text-emerald-900">Movimiento registrado correctamente</p>
+            </div>
+          }
+
+          @if (showError()) {
+            <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+              <span class="text-red-500">❌</span>
+              <div>
+                <p class="text-sm font-bold text-red-900">Error al registrar el movimiento</p>
+                <p class="text-xs text-red-700 mt-0.5">{{ showError() }}</p>
+              </div>
             </div>
           }
 
@@ -59,7 +69,7 @@ interface PickItem {
           <div class="space-y-1.5">
             <label class="text-xs font-bold text-slate-500 flex items-center gap-1 uppercase tracking-wider">
               <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Usuario Responsable
+              Usuario Responsable *
             </label>
             <select [(ngModel)]="responsibleId"
                     class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm appearance-none">
@@ -84,21 +94,6 @@ interface PickItem {
               [class]="operationMode() === 'SIM' ? 'flex-1 flex items-center justify-center gap-2 py-3 bg-white text-indigo-700 font-bold rounded-lg shadow-sm border border-slate-200/50 transition-all text-xs uppercase tracking-wider' : 'flex-1 flex items-center justify-center gap-2 py-3 text-slate-500 hover:text-slate-700 font-medium transition-all text-xs uppercase tracking-wider'">
               <span>📱</span> Traslado SIM en Bodega
             </button>
-          </div>
-
-          <!-- Row 1: Responsable -->
-          <div class="space-y-1.5">
-            <label class="text-xs font-bold text-slate-500 flex items-center gap-1 uppercase tracking-wider">
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Usuario Responsable *
-            </label>
-            <select [(ngModel)]="responsibleId"
-                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm appearance-none">
-              <option value="">Seleccione el responsable...</option>
-              @for (resp of filteredResponsiblesForDestination(); track resp.id) {
-                <option [value]="resp.id">{{ resp.nombre }} ({{ resp.role.nombre }})</option>
-              }
-            </select>
           </div>
 
           @if (operationMode() === 'ACTIVO') {
@@ -928,6 +923,7 @@ export class MovementsPageComponent implements OnInit {
   activos = signal<Activo[]>([]);
   loading = signal(false);
   showSuccess = signal(false);
+  showError = signal<string | null>(null);
   isLoadingPlaca = signal(false);
   
   // Nuevas señales para Tabs y Búsqueda de Movimientos
@@ -956,7 +952,48 @@ export class MovementsPageComponent implements OnInit {
 
   movementTypes = Object.entries(MOVEMENT_TYPE_LABELS);
   filteredMovementTypes = computed(() => {
-    return this.movementTypes.filter(([key]) => key !== 'SIM_TRASLADO');
+    const activo = this.selectedActivo();
+    const mode = this.operationMode();
+
+    if (mode === 'SIM') {
+      return this.movementTypes.filter(([key]) => key === 'SIM_TRASLADO');
+    }
+
+    // Excluimos movimientos internos o automáticos que no se registran manualmente de esta forma
+    let types = this.movementTypes.filter(([key]) => 
+      !['SIM_TRASLADO', 'REINGRESO_SOPORTE', 'RETORNO_POR_RECHAZO'].includes(key)
+    );
+
+    if (activo) {
+      if (activo.estado === 'MANTENIMIENTO') {
+        const loc = this.locations().find(l => l.id === activo.locationId);
+        const originType = loc?.tipo;
+        if (originType === 'PROVEEDOR') {
+          // Si está en Proveedor y en mantenimiento, solo puede retornar de proveedor
+          types = types.filter(([key]) => key === 'RETORNO_PROVEEDOR');
+        } else if (originType === 'BODEGA') {
+          // Si está en Bodega y en mantenimiento, puede enviarse al proveedor o trasladarse a otra Bodega
+          types = types.filter(([key]) => ['ENVIO_GARANTIA', 'TRASLADO_REGIONAL'].includes(key));
+        } else {
+          types = [];
+        }
+      } else {
+        // Si no está en mantenimiento:
+        // - No se permite Retorno de Proveedor
+        // - Envío a Proveedor solo se permite si el activo está físicamente en una Bodega
+        const loc = this.locations().find(l => l.id === activo.locationId);
+        const originType = loc?.tipo;
+        if (originType === 'BODEGA') {
+          types = types.filter(([key]) => key !== 'RETORNO_PROVEEDOR');
+        } else {
+          types = types.filter(([key]) => key !== 'RETORNO_PROVEEDOR' && key !== 'ENVIO_GARANTIA');
+        }
+      }
+    } else {
+      types = types.filter(([key]) => !['RETORNO_PROVEEDOR', 'ENVIO_GARANTIA'].includes(key));
+    }
+
+    return types;
   });
   operationMode = signal<'ACTIVO' | 'SIM'>('ACTIVO');
 
@@ -1018,6 +1055,10 @@ export class MovementsPageComponent implements OnInit {
     this.originId.set(loc.id);
     this.originSearchQuery.set(loc.nombre);
     this.showOriginDropdown.set(false);
+    
+    if (this.selectedDestination()?.id === loc.id) {
+      this.clearDestinationSelection();
+    }
   }
 
   clearOriginSelection() {
@@ -1034,10 +1075,36 @@ export class MovementsPageComponent implements OnInit {
   showRejectionForm = signal(false);
   rejectionReason = signal('');
 
-  // Filtra las sedes activas según el término ingresado
+  // Filtra las sedes activas según el término ingresado y aplica reglas de negocio
   filteredDestinations = computed(() => {
     const term = this.destinationSearchQuery().toLowerCase().trim();
-    const todos = this.locations().filter(loc => loc.estado === 'ACTIVO');
+    const origin = this.originId();
+    const isMaintenance = this.operationMode() === 'ACTIVO' && this.selectedActivo()?.estado === 'MANTENIMIENTO';
+
+    // 1. Filtrar las sedes activas
+    let todos = this.locations().filter(loc => loc.estado === 'ACTIVO');
+
+    // 2. Regla: No poder enviar a la misma oficina (excluir origen)
+    if (origin) {
+      todos = todos.filter(loc => loc.id !== origin);
+    }
+
+    // 3. Regla: Restricciones específicas por tipo de movimiento
+    if (this.movementType === 'ENVIO_GARANTIA') {
+      todos = todos.filter(loc => loc.tipo === 'PROVEEDOR');
+    } else if (this.movementType === 'RETORNO_PROVEEDOR') {
+      todos = todos.filter(loc => loc.tipo === 'BODEGA');
+    } else if (this.movementType === 'TRASLADO_REGIONAL' && isMaintenance) {
+      todos = todos.filter(loc => loc.tipo === 'BODEGA');
+    } else if (isMaintenance) {
+      const originType = this.locations().find(loc => loc.id === origin)?.tipo;
+      if (originType === 'PROVEEDOR') {
+        todos = todos.filter(loc => loc.tipo === 'BODEGA');
+      } else {
+        todos = todos.filter(loc => loc.tipo === 'BODEGA' || loc.tipo === 'PROVEEDOR');
+      }
+    }
+
     if (!term) return todos;
     return todos.filter(loc =>
       loc.nombre.toLowerCase().includes(term) ||
@@ -1135,6 +1202,10 @@ export class MovementsPageComponent implements OnInit {
         this.selectedOrigin.set(foundLoc);
       } else {
         this.selectedOrigin.set({ id: sim.locationId, nombre: sim.location?.nombre || 'Bodega', code: '', estado: 'ACTIVO' } as any);
+      }
+      
+      if (this.selectedDestination()?.id === sim.locationId) {
+        this.clearDestinationSelection();
       }
     } else {
       this.clearOriginSelection();
@@ -1307,10 +1378,40 @@ export class MovementsPageComponent implements OnInit {
   selectActivo(activo: Activo) {
     this.selectedActivo.set(activo);
     this.searchQuery.set(activo.placa);
-    this.originId.set(activo.locationId || (activo as any).location?.id || '');
+    const newOriginId = activo.locationId || (activo as any).location?.id || '';
+    this.originId.set(newOriginId);
+
+    // Si el tipo de movimiento seleccionado actualmente no está permitido para el nuevo activo, se limpia
+    const allowedKeys = this.filteredMovementTypes().map(([key]) => key);
+    if (this.movementType && !allowedKeys.includes(this.movementType)) {
+      this.movementType = '';
+    }
+
+    const dest = this.selectedDestination();
+    if (dest) {
+      const isMaintenance = activo.estado === 'MANTENIMIENTO';
+      const isSameAsOrigin = dest.id === newOriginId;
+      const originType = this.locations().find(loc => loc.id === newOriginId)?.tipo;
+      let isInvalidForMaintenance = false;
+      if (this.movementType === 'ENVIO_GARANTIA') {
+        isInvalidForMaintenance = dest.tipo !== 'PROVEEDOR';
+      } else if (this.movementType === 'RETORNO_PROVEEDOR') {
+        isInvalidForMaintenance = dest.tipo !== 'BODEGA';
+      } else if (this.movementType === 'TRASLADO_REGIONAL' && isMaintenance) {
+        isInvalidForMaintenance = dest.tipo !== 'BODEGA';
+      } else if (isMaintenance) {
+        isInvalidForMaintenance = (dest.tipo !== 'BODEGA' && dest.tipo !== 'PROVEEDOR') ||
+                                  (dest.tipo === 'PROVEEDOR' && originType === 'PROVEEDOR');
+      }
+      
+      if (isSameAsOrigin || isInvalidForMaintenance) {
+        this.clearDestinationSelection();
+      }
+    }
   }
 
   saveMovement() {
+    this.showError.set(null);
     // Para operaciones locales de SIM, el destino es la misma sede del activo (origen)
     const isLocalSIM = ['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(this.movementType);
     if (isLocalSIM && this.selectedActivo()) {
@@ -1417,13 +1518,15 @@ export class MovementsPageComponent implements OnInit {
         }
       },
       error: (err) => {
-        alert(err.message || 'Error al registrar el movimiento');
+        const msg = err.error?.message || err.message || 'Error al registrar el movimiento';
+        this.showError.set(msg);
       }
     });
   }
 
   finishSave() {
     this.showSuccess.set(true);
+    this.showError.set(null);
     this.searchQuery.set('');
     this.selectedActivo.set(null);
     this.notes = '';
@@ -1473,13 +1576,13 @@ export class MovementsPageComponent implements OnInit {
       if (!this.modalEvidenceUrl) return alert('Ingresa soporte');
       this.dispatchMovement.execute(id, this.modalEvidenceUrl).subscribe({
         next: () => { this.loadMovements(); this.closeModal(); },
-        error: (err) => alert(err.message)
+        error: (err) => alert(err.error?.message || err.message || 'Error al procesar el despacho/recepción')
       });
     } else if (this.actionType === 'receive') {
       if (!this.modalReceiverId || !this.modalEvidenceUrl) return alert('Completa datos');
       this.receiveMovement.execute(id, this.modalReceiverId, this.modalEvidenceUrl, this.modalDestinationId).subscribe({
         next: () => { this.loadMovements(); this.closeModal(); },
-        error: (err) => alert(err.message)
+        error: (err) => alert(err.error?.message || err.message || 'Error al procesar el despacho/recepción')
       });
     }
   }
@@ -1494,7 +1597,7 @@ export class MovementsPageComponent implements OnInit {
         this.fetchData(); // Recarga todo (incluyendo SIM cards actualizadas y activos)
         this.closeModal();
       },
-      error: (err) => alert(err.message)
+      error: (err) => alert(err.error?.message || err.message || 'Error al rechazar el traslado')
     });
   }
 

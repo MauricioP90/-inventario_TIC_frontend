@@ -13,6 +13,7 @@ export enum MovementType {
   SUPPORT_RETURN = 'RETORNO_SOPORTE',
   PROVIDER_WARRANTY = 'ENVIO_GARANTIA',
   SUPPORT_REENTRY = 'REINGRESO_SOPORTE',
+  PROVIDER_RETURN = 'RETORNO_PROVEEDOR',
   DISPOSAL = 'BAJA_ACTIVO',
   RETURN_BY_REJECTION = 'RETORNO_POR_RECHAZO',
   // SIM Cards
@@ -54,12 +55,13 @@ export type CreateMovementDto = Omit<Movement, 'id' | 'createdAt' | 'status' | '
 
 export const MOVEMENT_TYPE_LABELS: Record<string, string> = {
   // Activos
-  [MovementType.REGIONAL_TRANSFER]: 'Traslado a Regional',
+  [MovementType.REGIONAL_TRANSFER]: 'Traslado entre Sedes',
   [MovementType.OFFICE_ASSIGNMENT]: 'Asignación a Oficina',
   [MovementType.LOAN_OUT]: 'Salida por Préstamo',
   [MovementType.SUPPORT_RETURN]: 'Retorno para Soporte',
-  [MovementType.PROVIDER_WARRANTY]: 'Envío a Proveedor (Garantía)',
-  [MovementType.SUPPORT_REENTRY]: 'Reingreso de Soporte/Proveedor',
+  [MovementType.PROVIDER_WARRANTY]: 'Envío a Proveedor',
+  [MovementType.SUPPORT_REENTRY]: 'Reingreso de Soporte',
+  [MovementType.PROVIDER_RETURN]: 'Retorno de Proveedor',
   [MovementType.DISPOSAL]: 'Baja de Activo',
   [MovementType.RETURN_BY_REJECTION]: 'Retorno Automático (Por Rechazo)',
   // SIM Cards

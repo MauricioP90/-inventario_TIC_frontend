@@ -69,6 +69,27 @@ import { Location } from '../../../../features/locations/domain/models/location.
             </div>
 
             <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tipo de Ubicación</label>
+              <select 
+                formControlName="tipo"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white">
+                <option value="OFICINA">Oficina</option>
+                <option value="BODEGA">Bodega</option>
+                <option value="REGIONAL">Regional</option>
+                <option value="PROVEEDOR">Proveedor</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Observaciones / Detalles Adicionales</label>
+              <textarea 
+                formControlName="observaciones"
+                placeholder="Ej: Oficina 402, Piso 4, Horario: 8am - 5pm"
+                rows="3"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm resize-none"></textarea>
+            </div>
+
+            <div>
               <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Responsables Asignados</label>
               
               <!-- Input de Búsqueda -->
@@ -160,6 +181,8 @@ export class AddLocationDrawerComponent implements OnInit {
       code: ['', [Validators.required]],
       nombre: ['', [Validators.required]],
       coordenadas: [''],
+      tipo: ['OFICINA', [Validators.required]],
+      observaciones: [''],
       estado: ['ACTIVO']
     });
   }
@@ -189,7 +212,7 @@ export class AddLocationDrawerComponent implements OnInit {
       this.locationForm.patchValue(location);
       this.selectedResponsibleIds.set(location.responsibleIds || []);
     } else {
-      this.locationForm.reset({ estado: 'ACTIVO' });
+      this.locationForm.reset({ estado: 'ACTIVO', tipo: 'OFICINA', observaciones: '' });
       this.selectedResponsibleIds.set([]);
     }
     this.isOpen.set(true);
@@ -197,7 +220,7 @@ export class AddLocationDrawerComponent implements OnInit {
 
   close() {
     this.isOpen.set(false);
-    this.locationForm.reset({ estado: 'ACTIVO' });
+    this.locationForm.reset({ estado: 'ACTIVO', tipo: 'OFICINA', observaciones: '' });
     this.selectedResponsibleIds.set([]);
     this.searchResponsableTerm.set('');
   }

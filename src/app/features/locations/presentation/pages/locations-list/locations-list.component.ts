@@ -100,7 +100,7 @@ import { AddLocationDrawerComponent } from '../../../../../shared/components/dra
                     <td colspan="5" class="px-8 py-5 border-y border-slate-100">
                       @if (parseCoordinates(location.coordenadas); as coords) {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                          <!-- Col 1: Geocoding Details -->
+                          <!-- Col 1: Geocoding & Additional Details -->
                           <div class="space-y-4">
                             <div>
                               <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Dirección Física Estimada</h4>
@@ -124,6 +124,13 @@ import { AddLocationDrawerComponent } from '../../../../../shared/components/dra
                                 }
                               }
                             </div>
+
+                            @if (location.observaciones) {
+                              <div>
+                                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Observaciones / Detalles Adicionales</h4>
+                                <p class="text-xs font-semibold text-slate-700 mt-2 bg-white p-3 rounded-lg border border-slate-200 shadow-sm leading-relaxed whitespace-pre-wrap">{{ location.observaciones }}</p>
+                              </div>
+                            }
                             
                             <div class="space-y-1.5 text-xs text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
                               <p><strong>Latitud:</strong> {{ coords.lat }}</p>
@@ -145,6 +152,12 @@ import { AddLocationDrawerComponent } from '../../../../../shared/components/dra
                           </div>
                         </div>
                       } @else {
+                        @if (location.observaciones) {
+                          <div class="mb-4">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Observaciones / Detalles Adicionales</h4>
+                            <p class="text-xs font-semibold text-slate-700 mt-2 bg-white p-3 rounded-lg border border-slate-200 shadow-sm leading-relaxed whitespace-pre-wrap">{{ location.observaciones }}</p>
+                          </div>
+                        }
                         <div class="text-center py-6 text-slate-400 text-xs">
                           📍 No hay coordenadas válidas registradas para esta ubicación. Edite la ubicación e ingréselas en formato "Latitud, Longitud" (ej. 4.6538,-74.1164).
                         </div>
