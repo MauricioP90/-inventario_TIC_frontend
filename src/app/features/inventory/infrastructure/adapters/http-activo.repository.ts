@@ -38,4 +38,8 @@ export class HttpActivoRepository implements ActivoRepository {
   delete(placa: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${placa}`);
   }
+
+  createTipoActivo(nombre: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/types`, { nombre, estado: 'ACTIVO' });
+  }
 }

@@ -11,6 +11,8 @@ import { Location } from '../../../features/locations/domain/models/location.mod
 import { GetAllLocationsUseCase } from '../../../features/locations/application/use-cases/get-all-locations.use-case';
 import { environment } from '../../../../environments/environment';
 import { UpdateActivoUseCase } from '../../../features/inventory/application/use-cases/update-activo.use-case';
+import { CreateTipoActivoUseCase } from '../../../features/inventory/application/use-cases/create-tipo-activo.use-case';
+import Keycloak from 'keycloak-js';
 
 @Component({
   selector: 'app-add-activo-drawer',
@@ -44,16 +46,19 @@ import { UpdateActivoUseCase } from '../../../features/inventory/application/use
         </button>
       </div>
 
-      <!-- Form -->
-      <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-
-        @if (toast()) {
+      <!-- Toast Alerts (Fixed position) -->
+      @if (toast()) {
+        <div class="px-6 py-3 shrink-0">
           <div [class]="toast()!.type === 'error'
-            ? 'bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 leading-relaxed'
-            : 'bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-lg px-4 py-3 leading-relaxed'">
+            ? 'bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 leading-relaxed shadow-sm'
+            : 'bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-lg px-4 py-3 leading-relaxed shadow-sm'">
             {{ toast()!.message }}
           </div>
-        }
+        </div>
+      }
+
+      <!-- Form -->
+      <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
         <!-- Tipo de Dispositivo -->
         <div class="space-y-1.5">
@@ -64,6 +69,34 @@ import { UpdateActivoUseCase } from '../../../features/inventory/application/use
               <option [value]="type.id">{{ type.label }}</option>
             }
           </select>
+
+          @if (isAdmin()) {
+            @if (showNewTipoForm()) {
+              <div class="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-lg p-2 mt-1.5">
+                <input type="text" [(ngModel)]="newTipoNombreValue" placeholder="Escribe el nombre del nuevo tipo (Ej: Monitor)"
+                  class="flex-1 px-2.5 py-1.5 text-xs border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white" />
+                <button type="button" (click)="saveNewTipo()" [disabled]="savingNewTipo()"
+                  class="p-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md transition-colors flex items-center justify-center"
+                  title="Guardar nuevo tipo">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                </button>
+                <button type="button" (click)="cancelNewTipo()" [disabled]="savingNewTipo()"
+                  class="text-xs text-slate-400 hover:text-slate-600 transition-colors p-1"
+                  title="Cancelar">
+                  Cancelar
+                </button>
+              </div>
+            } @else {
+              <button type="button" (click)="addNewTipoActivo()" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 mt-1 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Nuevo tipo
+              </button>
+            }
+          }
         </div>
 
         <!-- Marca -->
@@ -120,15 +153,17 @@ import { UpdateActivoUseCase } from '../../../features/inventory/application/use
         </div>
 
         <!-- Estado -->
-        <div class="space-y-1.5">
-          <label class="block text-sm font-medium text-slate-700">Estado <span class="text-red-500">*</span></label>
-          <select [(ngModel)]="estado" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-            <option value="" disabled>Seleccionar estado</option>
-            @for (status of metadata()?.statuses; track status.id) {
-              <option [value]="status.id">{{ status.label }}</option>
-            }
-          </select>
-        </div>
+        @if (activo) {
+          <div class="space-y-1.5">
+            <label class="block text-sm font-medium text-slate-700">Estado <span class="text-red-500">*</span></label>
+            <select [(ngModel)]="estado" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+              <option value="" disabled>Seleccionar estado</option>
+              @for (status of metadata()?.statuses; track status.id) {
+                <option [value]="status.id">{{ status.label }}</option>
+              }
+            </select>
+          </div>
+        }
 
         <!-- Responsable -->
         <div class="space-y-1.5">
@@ -148,6 +183,19 @@ import { UpdateActivoUseCase } from '../../../features/inventory/application/use
           <input type="date" [(ngModel)]="fechaIngreso"
             class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         </div>
+
+        <!-- Precio Compra (Sólo visible para ADMIN) -->
+        @if (isAdmin()) {
+          <div class="space-y-1.5">
+            <label class="block text-sm font-medium text-slate-700">Precio de Compra <span class="text-slate-400 text-xs font-normal">(opcional)</span></label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+              <input type="number" [(ngModel)]="precioCompra" placeholder="Ej: 2500000"
+                [disabled]="!!activo"
+                class="w-full pl-7 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" />
+            </div>
+          </div>
+        }
 
         <!-- Factura / Soporte -->
         <div class="space-y-1.5">
@@ -170,6 +218,109 @@ import { UpdateActivoUseCase } from '../../../features/inventory/application/use
             <input type="file" class="hidden" accept=".pdf,.jpg,.png,.jpeg" (change)="onFileChange($event)" />
           </label>
         </div>
+
+        <!-- Datos de Entrada a Mantenimiento (Dynamic form section) -->
+        @if (activo?.estado !== 'MANTENIMIENTO' && estado === 'MANTENIMIENTO') {
+          <div class="border-t border-slate-200 pt-4 space-y-4">
+            <h4 class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Apertura de Mantenimiento</h4>
+            
+            <div class="space-y-1.5">
+              <label class="block text-sm font-medium text-slate-700">Modalidad <span class="text-red-500">*</span></label>
+              <select [(ngModel)]="maintModalidad" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                <option value="INTERNO">Interno (Bodega / Taller)</option>
+                <option value="EXTERNO">Externo (Proveedor Directo)</option>
+              </select>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="block text-sm font-medium text-slate-700">Tipo de Mantenimiento <span class="text-red-500">*</span></label>
+              <select [(ngModel)]="maintTipo" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                <option value="PREVENTIVO">Preventivo</option>
+                <option value="CORRECTIVO">Correctivo</option>
+              </select>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="block text-sm font-medium text-slate-700">Costo Estimado <span class="text-slate-400 text-xs font-normal">(opcional)</span></label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                <input type="number" [(ngModel)]="maintCostoEstimado" placeholder="Ej: 150000"
+                  class="w-full pl-7 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" />
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="block text-sm font-medium text-slate-700">Técnico Responsable / Proveedor <span class="text-slate-400 text-xs font-normal">(opcional)</span></label>
+              <input type="text" [(ngModel)]="maintTecnicoResponsable" placeholder="Ej: Juan Pérez o Service Center"
+                class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" />
+            </div>
+          </div>
+        }
+
+        <!-- Historial de Mantenimientos -->
+        @if (activo) {
+          <div class="border-t border-slate-200 pt-5 space-y-4">
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Historial de Mantenimientos</h4>
+            
+            @if (maintHistory().length === 0) {
+              <p class="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-lg p-3 text-center">
+                Este activo no registra mantenimientos anteriores.
+              </p>
+            } @else {
+              <div class="space-y-3 max-h-60 overflow-y-auto pr-1">
+                @for (hist of maintHistory(); track hist.id) {
+                  <div class="bg-slate-50/50 border border-slate-150 rounded-xl p-3 text-xs space-y-2 hover:bg-slate-50 transition-colors">
+                    <div class="flex items-center justify-between">
+                      <span class="font-bold text-slate-700 font-mono">#{{ hist.id.substring(0, 8) }}</span>
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-white" 
+                        [class]="hist.estado === 'CERRADO' ? 'text-emerald-600 border-emerald-100 bg-emerald-50' : 'text-amber-600 border-amber-100 bg-amber-50'">
+                        {{ hist.estado }}
+                      </span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-y-1 gap-x-2 text-[11px] text-slate-500">
+                      <div><span class="font-medium text-slate-400">Tipo:</span> {{ hist.tipoMantenimiento }}</div>
+                      <div><span class="font-medium text-slate-400">Modalidad:</span> {{ hist.modalidad }}</div>
+                      @if (hist.tecnicoResponsable || hist.proveedorServicio) {
+                        <div class="col-span-2">
+                          <span class="font-medium text-slate-400">Resp/Téc:</span> {{ hist.tecnicoResponsable || hist.proveedorServicio }}
+                        </div>
+                      }
+                      @if (hist.fechaApertura) {
+                        <div class="col-span-2 text-[10px] text-slate-400">
+                          Abierto el: {{ hist.fechaApertura | date:'dd/MM/yyyy HH:mm' }}
+                        </div>
+                      }
+                    </div>
+
+                    @if (hist.diagnostico) {
+                      <div class="bg-white border border-slate-100 rounded-lg p-2 mt-1">
+                        <span class="font-bold text-slate-400 text-[10px] block uppercase">Diagnóstico</span>
+                        <p class="text-slate-600 italic text-[11px] leading-relaxed mt-0.5">{{ hist.diagnostico }}</p>
+                      </div>
+                    }
+
+                    @if (hist.accionesRealizadas) {
+                      <div class="bg-white border border-slate-100 rounded-lg p-2 mt-1">
+                        <span class="font-bold text-slate-400 text-[10px] block uppercase">Acciones Realizadas</span>
+                        <p class="text-slate-600 text-[11px] leading-relaxed mt-0.5">{{ hist.accionesRealizadas }}</p>
+                      </div>
+                    }
+
+                    @if (hist.resultadoFinal) {
+                      <div class="flex items-center justify-between text-[11px] font-semibold pt-1 border-t border-slate-100 mt-2">
+                        <span class="text-slate-400">Resultado Final:</span>
+                        <span [class]="hist.resultadoFinal === 'REPARADO' ? 'text-emerald-600' : 'text-rose-600'">
+                          {{ hist.resultadoFinal }}
+                        </span>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
       </div>
 
       <!-- Footer -->
@@ -194,19 +345,41 @@ export class AddActivoDrawerComponent implements OnInit {
   private getResponsablesUC = inject(GetAllResponsablesUseCase);
   private getMetadataUC = inject(GetActivoMetadataUseCase);
   private getLocationsUC = inject(GetAllLocationsUseCase);
+  private createTipoActivoUC = inject(CreateTipoActivoUseCase);
   private http = inject(HttpClient);
+  private keycloak = inject(Keycloak);
+
+  isAdmin = computed(() => this.keycloak.hasRealmRole('admin') || this.keycloak.hasRealmRole('ADMIN'));
+
+  // Maintenance fields for auto-creating a report
+  maintModalidad = 'INTERNO';
+  maintTipo = 'PREVENTIVO';
+  maintCostoEstimado?: number;
+  maintTecnicoResponsable = '';
+
+  // Maintenance history
+  maintHistory = signal<any[]>([]);
 
   @Input() open = false;
   @Input() set activo(val: Activo | null) {
     this._activo = val;
     if (val) {
       this.populateForm(val);
+      this.loadMaintHistory(val.id);
     } else {
       this.resetForm();
+      this.maintHistory.set([]);
     }
   }
   get activo() { return this._activo; }
   private _activo: Activo | null = null;
+
+  loadMaintHistory(activoId: string) {
+    this.http.get<any[]>(`${environment.apiUrl}/maintenance/history?activoId=${activoId}`).subscribe({
+      next: (history) => this.maintHistory.set(history || []),
+      error: (err) => console.error("Error loading maintenance history", err)
+    });
+  }
 
   @Output() openChange = new EventEmitter<boolean>();
   @Output() saved = new EventEmitter<void>();
@@ -223,6 +396,10 @@ export class AddActivoDrawerComponent implements OnInit {
   uploadingFile = signal(false);
   facturaUrl = signal<string | null>(null);
 
+  showNewTipoForm = signal(false);
+  newTipoNombreValue = '';
+  savingNewTipo = signal(false);
+
   tipo = '';
   marca = '';
   modelo = '';
@@ -232,6 +409,7 @@ export class AddActivoDrawerComponent implements OnInit {
   locationId = '';
   responsibleId = '';
   fechaIngreso = '';
+  precioCompra: number | null = null;
   fileName = '';
   toast = signal<{ type: 'success' | 'error', message: string } | null>(null);
 
@@ -254,6 +432,7 @@ export class AddActivoDrawerComponent implements OnInit {
     this.estado = a.estado;
     this.locationId = a.locationId;
     this.responsibleId = a.responsibleId;
+    this.precioCompra = a.precioCompra ?? null;
     if (a.fechaIngreso) {
       const d = new Date(a.fechaIngreso);
       this.fechaIngreso = d.toISOString().split('T')[0];
@@ -264,6 +443,12 @@ export class AddActivoDrawerComponent implements OnInit {
 
   close() {
     this.openChange.emit(false);
+    this.toast.set(null);
+    this.showNewTipoForm.set(false);
+    this.newTipoNombreValue = '';
+    if (!this.activo) {
+      this.resetForm();
+    }
   }
 
   onFileChange(event: Event) {
@@ -314,7 +499,14 @@ export class AddActivoDrawerComponent implements OnInit {
       locationId: this.locationId,
       responsibleId: this.responsibleId,
       fechaIngreso: this.fechaIngreso,
-      facturaUrl: this.facturaUrl() ?? undefined
+      facturaUrl: this.facturaUrl() ?? undefined,
+      precioCompra: this.precioCompra ?? undefined,
+      ...(this.estado === 'MANTENIMIENTO' && {
+        maintenanceModalidad: this.maintModalidad,
+        maintenanceTipo: this.maintTipo,
+        maintenanceCostoEstimado: this.maintCostoEstimado,
+        maintenanceTecnicoResponsable: this.maintTecnicoResponsable
+      })
     };
     const request$ = this.activo 
       ? this.updateActivoUseCase.execute(this.activo.placa, payload) 
@@ -338,17 +530,61 @@ export class AddActivoDrawerComponent implements OnInit {
     });
   }
 
+  addNewTipoActivo() {
+    this.showNewTipoForm.set(true);
+    this.newTipoNombreValue = '';
+  }
+
+  cancelNewTipo() {
+    this.showNewTipoForm.set(false);
+    this.newTipoNombreValue = '';
+  }
+
+  saveNewTipo() {
+    const cleanNombre = this.newTipoNombreValue.trim();
+    if (!cleanNombre) return;
+    if (cleanNombre.length < 3) {
+      this.toast.set({ type: 'error', message: 'El nombre del tipo debe tener al menos 3 caracteres.' });
+      return;
+    }
+
+    this.savingNewTipo.set(true);
+    this.createTipoActivoUC.execute(cleanNombre).subscribe({
+      next: (res) => {
+        this.getMetadataUC.execute().subscribe(meta => {
+          this.metadata.set(meta);
+          this.tipo = res.id;
+          this.savingNewTipo.set(false);
+          this.showNewTipoForm.set(false);
+          this.newTipoNombreValue = '';
+        });
+      },
+      error: (err) => {
+        this.savingNewTipo.set(false);
+        const msg = err.error?.message || 'Error al crear el tipo de activo.';
+        this.toast.set({ type: 'error', message: msg });
+      }
+    });
+  }
+
   private resetForm() {
     this.tipo = '';
     this.marca = '';
     this.modelo = '';
     this.serial = '';
     this.placa = '';
-    this.estado = '';
+    this.estado = 'DISPONIBLE';
     this.locationId = '';
     this.responsibleId = '';
     this.fechaIngreso = '';
+    this.precioCompra = null;
     this.fileName = '';
     this.facturaUrl.set(null);
+    this.toast.set(null);
+    this.maintModalidad = 'INTERNO';
+    this.maintTipo = 'PREVENTIVO';
+    this.maintCostoEstimado = undefined;
+    this.maintTecnicoResponsable = '';
+    this.maintHistory.set([]);
   }
 }

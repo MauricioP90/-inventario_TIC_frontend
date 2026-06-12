@@ -31,6 +31,7 @@ export interface Activo {
   location?: Location;
   responsible?: Responsable;
   simCards?: any[];
+  precioCompra?: number;
 }
 
 export type CreateActivoDto = Omit<Activo, 'id' | 'tipoActivo' | 'location' | 'responsible'>;

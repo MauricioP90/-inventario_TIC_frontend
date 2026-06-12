@@ -8,4 +8,5 @@ export abstract class ActivoRepository {
   abstract update(placa: string, activo: UpdateActivoDto): Observable<Activo>;
   abstract delete(placa: string): Observable<void>;
   abstract getMetadata(): Observable<ActivoMetadata>;
+  abstract createTipoActivo(nombre: string): Observable<any>;
 }

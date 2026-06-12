@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Activo } from '../../../domain/models/activo.model';
@@ -8,6 +8,7 @@ import { GetAllLocationsUseCase } from '../../../../locations/application/use-ca
 import { AddActivoDrawerComponent } from '../../../../../shared/components/drawer/add-activo-drawer.component';
 import { ActivoMetadata } from '../../../domain/models/activo.model';
 import { Location } from '../../../../locations/domain/models/location.model'; // <-- Importamos para el tipado
+import Keycloak from 'keycloak-js';
 
 @Component({
   selector: 'app-inventory-page',
@@ -18,13 +19,13 @@ import { Location } from '../../../../locations/domain/models/location.model'; /
       <!-- Header -->
       <div class="flex items-center justify-between">
         <div>
-          <h2 class="text-2xl font-bold text-slate-800">Inventario de Equipos</h2>
+          <h2 class="text-2xl font-bold text-slate-800">Inventario de Activos</h2>
           <p class="text-sm text-slate-500 mt-1">Gestión integral de hardware y dispositivos</p>
         </div>
         <button
           (click)="abrirNuevo()"
           class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-100">
-          <span class="text-xl leading-none">+</span> Añadir Nuevo Producto
+          <span class="text-xl leading-none">+</span> Añadir Nuevo Activo
         </button>
       </div>
 
@@ -78,6 +79,9 @@ import { Location } from '../../../../locations/domain/models/location.model'; /
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Serial</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Ubicación</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Estado</th>
+                @if (isAdmin()) {
+                  <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Precio Compra</th>
+                }
                 <th class="text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Acciones</th>
               </tr>
             </thead>
@@ -103,6 +107,11 @@ import { Location } from '../../../../locations/domain/models/location.model'; /
                       {{ getStatusLabel(activo.estado) }}
                     </span>
                   </td>
+                  @if (isAdmin()) {
+                    <td class="px-6 py-4 font-medium text-indigo-600">
+                      {{ activo.precioCompra ? '$ ' + (activo.precioCompra | number:'1.2-2') : '—' }}
+                    </td>
+                  }
                   <td class="px-6 py-4 text-right">
                     @if (activo.estado !== 'BAJA') {
                       <button 
@@ -118,7 +127,7 @@ import { Location } from '../../../../locations/domain/models/location.model'; /
                   </td>
                 </tr>
               } @empty {
-                <tr><td colspan="6" class="px-6 py-12 text-center text-slate-400 text-sm">Sin activos registrados</td></tr>
+                <tr><td [attr.colspan]="isAdmin() ? 9 : 8" class="px-6 py-12 text-center text-slate-400 text-sm">Sin activos registrados</td></tr>
               }
             </tbody>
           </table>
@@ -140,6 +149,9 @@ import { Location } from '../../../../locations/domain/models/location.model'; /
   styles: []
 })
 export class InventoryPageComponent implements OnInit {
+  private keycloak = inject(Keycloak);
+  isAdmin = computed(() => this.keycloak.hasRealmRole('admin') || this.keycloak.hasRealmRole('ADMIN'));
+
   activos = signal<Activo[]>([]);
   locations = signal<Location[]>([]);
   loading = signal(false);

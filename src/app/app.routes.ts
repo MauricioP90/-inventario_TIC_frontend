@@ -48,6 +48,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/dashboard/presentation/pages/reports/reports.component').then(m => m.ReportsPageComponent)
       },
+      {
+        path: 'maintenance',
+        loadComponent: () =>
+          import('./features/maintenance/presentation/pages/maintenance/maintenance-list.component').then(m => m.MaintenanceListComponent)
+      },
     ]
   },
   {

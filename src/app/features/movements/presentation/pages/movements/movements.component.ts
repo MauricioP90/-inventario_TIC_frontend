@@ -92,7 +92,7 @@ interface PickItem {
               type="button"
               (click)="setOperationMode('SIM')"
               [class]="operationMode() === 'SIM' ? 'flex-1 flex items-center justify-center gap-2 py-3 bg-white text-indigo-700 font-bold rounded-lg shadow-sm border border-slate-200/50 transition-all text-xs uppercase tracking-wider' : 'flex-1 flex items-center justify-center gap-2 py-3 text-slate-500 hover:text-slate-700 font-medium transition-all text-xs uppercase tracking-wider'">
-              <span>📱</span> Traslado SIM en Bodega
+              <span>📱</span> Traslado de SIM Disponible
             </button>
           </div>
 
@@ -246,7 +246,7 @@ interface PickItem {
             
             <!-- Buscador de SIM (Siempre habilitado) -->
             <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Buscar SIM Card en Bodega *</label>
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Buscar SIM Card Disponible *</label>
               <div class="relative group">
                 <input type="text" 
                        [ngModel]="simTransferSearchQuery()" 
@@ -429,7 +429,7 @@ interface PickItem {
               <!-- FORM: Asignación de SIMCARD -->
               @if (movementType === 'SIM_ASIGNACION' && (selectedActivo()?.simCards?.length || 0) < 2) {
                 <div class="space-y-2">
-                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Seleccionar SIM en Bodega para Asignar *</label>
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Seleccionar SIM Card Disponible *</label>
                   <div class="relative">
                     <input type="text"
                            [(ngModel)]="simSearchQuery"
@@ -476,7 +476,7 @@ interface PickItem {
 
                   <!-- Nueva SIM -->
                   <div class="space-y-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Seleccionar SIM en Bodega para Asignar *</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Seleccionar SIM Card Disponible *</label>
                     <div class="relative">
                       <input type="text"
                              [(ngModel)]="simSearchQuery"
