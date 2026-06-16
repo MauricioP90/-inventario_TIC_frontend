@@ -19,7 +19,8 @@ export enum EstadoFicha {
 
 export enum ResultadoFinal {
   REPARADO = 'REPARADO',
-  IRREPARABLE = 'IRREPARABLE'
+  IRREPARABLE = 'IRREPARABLE',
+  SIN_FALLAS = 'SIN_FALLAS'
 }
 
 export const ESTADO_FICHA_LABELS: Record<EstadoFicha, string> = {

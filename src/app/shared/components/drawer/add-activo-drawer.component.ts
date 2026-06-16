@@ -181,7 +181,8 @@ import Keycloak from 'keycloak-js';
         <div class="space-y-1.5">
           <label class="block text-sm font-medium text-slate-700">Fecha de Ingreso <span class="text-red-500">*</span></label>
           <input type="date" [(ngModel)]="fechaIngreso"
-            class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            [disabled]="!!activo"
+            class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" />
         </div>
 
         <!-- Precio Compra (Sólo visible para ADMIN) -->

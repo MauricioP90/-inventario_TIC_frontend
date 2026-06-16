@@ -64,6 +64,14 @@ import { MovementTypePipe } from '../../../../../shared/pipes/movement-type.pipe
         </div>
       </div>
 
+      <!-- Notes / Rejection Reason -->
+      @if (movement.notes) {
+        <div class="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100/50">
+          <p class="text-[9px] text-slate-400 uppercase font-bold mb-0.5">Notas / Observaciones</p>
+          <p class="text-xs text-slate-600 italic leading-relaxed">{{ movement.notes }}</p>
+        </div>
+      }
+
       <!-- Acciones -->
       <div class="flex gap-2">
         @if (movement.status === 'PENDING') {

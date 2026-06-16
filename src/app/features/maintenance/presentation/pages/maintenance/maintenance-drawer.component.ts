@@ -165,11 +165,17 @@ import Keycloak from 'keycloak-js';
                     </div>
                   </div>
 
-                  <!-- Botón diagnóstico -->
-                  <button (click)="iniciarReparacion()" [disabled]="saving()"
-                    class="w-full mt-2 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors">
-                    Iniciar Reparación Interna
-                  </button>
+                  <!-- Botones de Acción -->
+                  <div class="grid grid-cols-2 gap-2 pt-2">
+                    <button (click)="iniciarReparacion()" [disabled]="saving()"
+                      class="py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors">
+                      Iniciar Reparación
+                    </button>
+                    <button (click)="descartarSinFallas()" [disabled]="saving()"
+                      class="py-2 bg-slate-600 hover:bg-slate-700 text-white font-bold text-xs rounded-lg transition-colors">
+                      Descartar / Sin Fallas
+                    </button>
+                  </div>
                 </div>
               }
 
@@ -212,6 +218,7 @@ import Keycloak from 'keycloak-js';
                       <label class="block text-xs font-semibold text-slate-600">Resultado Final</label>
                       <select [(ngModel)]="resultadoFinal" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-none bg-white">
                         <option value="REPARADO">Reparado</option>
+                        <option value="SIN_FALLAS">Sin Fallas (Operativo)</option>
                         <option value="IRREPARABLE">Irreparable</option>
                       </select>
                     </div>
@@ -322,6 +329,7 @@ import Keycloak from 'keycloak-js';
                       <label class="block text-xs font-semibold text-slate-600">Resultado Técnico</label>
                       <select [(ngModel)]="resultadoFinal" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-none bg-white">
                         <option value="REPARADO">Reparado</option>
+                        <option value="SIN_FALLAS">Sin Fallas (Operativo)</option>
                         <option value="IRREPARABLE">Irreparable</option>
                       </select>
                     </div>
@@ -625,6 +633,32 @@ export class MaintenanceDrawerComponent implements OnInit {
       error: (err: any) => {
         this.saving.set(false);
         this.toast.set({ type: 'error', message: err.error?.message || 'Error al iniciar la reparación.' });
+      }
+    });
+  }
+
+  descartarSinFallas() {
+    this.toast.set(null);
+    if (!this.diagnostico) {
+      this.toast.set({ type: 'error', message: 'Por favor, ingrese un diagnóstico o motivo de descarte.' });
+      return;
+    }
+    this.saving.set(true);
+    this.usecases.update(this.report!.id, {
+      accion: 'cerrar',
+      accionesRealizadas: `Descartado en diagnóstico inicial. Motivo: ${this.diagnostico}`,
+      costoFinal: 0,
+      resultadoFinal: ResultadoFinal.SIN_FALLAS
+    }).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.toast.set({ type: 'success', message: 'Mantenimiento descartado y cerrado exitosamente.' });
+        this.saved.emit();
+        setTimeout(() => this.close(), 1500);
+      },
+      error: (err: any) => {
+        this.saving.set(false);
+        this.toast.set({ type: 'error', message: err.error?.message || 'Error al descartar la ficha.' });
       }
     });
   }

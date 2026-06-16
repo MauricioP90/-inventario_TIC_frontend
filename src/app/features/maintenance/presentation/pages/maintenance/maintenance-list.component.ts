@@ -104,72 +104,178 @@ import Keycloak from 'keycloak-js';
         </div>
       }
       @if (!loading()) {
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50/50 border-b border-slate-200">
-              <tr>
-                <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Ficha</th>
-                <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Equipo (Placa)</th>
-                <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Modalidad</th>
-                <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Responsable / Técnico</th>
-                <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Estado / Resultado</th>
-                <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Tiempo Transcurrido</th>
-                <th class="text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Acciones</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              @for (rep of filteredReports(); track rep.id) {
-                <tr class="hover:bg-slate-50/50 transition-colors">
-                  <td class="px-6 py-4 font-mono text-xs text-slate-400 font-bold">#{{ rep.id.substring(0, 8) }}</td>
-                  <td class="px-6 py-4">
-                    <div class="font-bold text-slate-700">{{ getActivoPlaca(rep.activoId) }}</div>
-                    <div class="text-[11px] text-slate-400 font-medium">
-                      {{ getActivoDetails(rep.activoId) }}
-                    </div>
-                  </td>
-                  <td class="px-6 py-4">
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-600 border-slate-200">
-                      {{ rep.modalidad }}
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 font-medium text-slate-600">
-                    {{ rep.tecnicoResponsable || rep.proveedorServicio || 'Sin asignar' }}
-                  </td>
-                  <td class="px-6 py-4">
-                    @if (activeTab() === 'activos') {
+        @if (activeTab() === 'activos') {
+          <!-- Active reports (Normal Table view) -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50/50 border-b border-slate-200">
+                <tr>
+                  <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Ficha</th>
+                  <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Equipo (Placa)</th>
+                  <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Modalidad</th>
+                  <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Responsable / Técnico</th>
+                  <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Estado</th>
+                  <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Tiempo Transcurrido</th>
+                  <th class="text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @for (rep of filteredReports(); track rep.id) {
+                  <tr class="hover:bg-slate-50/50 transition-colors">
+                    <td class="px-6 py-4 font-mono text-xs text-slate-400 font-bold">#{{ rep.id.substring(0, 8) }}</td>
+                    <td class="px-6 py-4">
+                      <div class="font-bold text-slate-700">{{ getActivoPlaca(rep.activoId) }}</div>
+                      <div class="text-[11px] text-slate-400 font-medium">
+                        {{ getActivoDetails(rep.activoId) }}
+                      </div>
+                    </td>
+                    <td class="px-6 py-4">
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-600 border-slate-200">
+                        {{ rep.modalidad }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 font-medium text-slate-600">
+                      {{ rep.tecnicoResponsable || rep.proveedorServicio || 'Sin asignar' }}
+                    </td>
+                    <td class="px-6 py-4">
                       <span class="text-[10px] font-bold px-2.5 py-1 rounded-lg text-white" [style.background-color]="estadoColor(rep.estado)">
                         {{ getEstadoLabel(rep.estado) }}
                       </span>
-                    } @else {
-                      <span class="text-[10px] font-bold px-2.5 py-1 rounded-lg"
-                        [class]="rep.resultadoFinal === 'REPARADO'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                          : 'bg-red-50 text-red-700 border border-red-100'">
-                        {{ rep.resultadoFinal }}
+                    </td>
+                    <td class="px-6 py-4 text-xs font-semibold text-slate-500">
+                      {{ calcularSla(rep) }}
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                      <button
+                        (click)="verDetalle(rep)"
+                        class="text-indigo-600 hover:text-indigo-900 font-bold text-xs transition-all">
+                        {{ puedeEditar() ? 'Gestionar' : 'Ver Ficha' }}
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="7" class="px-6 py-12 text-center text-slate-400 text-sm">
+                      No hay registros de mantenimientos activos
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <!-- Collapsible Accordion view by Device for History -->
+          <div class="space-y-4">
+            @for (group of groupedHistory(); track group.activoId) {
+              <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <!-- Header (Device summary card) -->
+                <div 
+                  (click)="toggleDevice(group.activoId)"
+                  class="flex flex-col sm:flex-row sm:items-center justify-between p-5 cursor-pointer hover:bg-slate-50/50 transition-colors select-none gap-4">
+                  <div class="flex items-start gap-3">
+                    <!-- Icon placeholder / beautiful badge -->
+                    <div class="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+                      <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="font-bold text-slate-800 text-base">{{ group.activoDetails }}</span>
+                        <span class="text-xs font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded border">{{ group.activoPlaca }}</span>
+                      </div>
+                      <div class="text-xs text-slate-400 font-medium mt-0.5">Serial: {{ group.activoSerial }}</div>
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-center gap-6 self-end sm:self-center">
+                    <div class="text-right">
+                      <span class="text-xs font-medium text-slate-400 block">Total Mantenimientos</span>
+                      <span class="font-bold text-slate-700 text-sm bg-indigo-50 border border-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full inline-block mt-0.5">
+                        {{ group.totalMantenimientos }} {{ group.totalMantenimientos === 1 ? 'reparación' : 'reparaciones' }}
                       </span>
-                    }
-                  </td>
-                  <td class="px-6 py-4 text-xs font-semibold text-slate-500">
-                    {{ calcularSla(rep) }}
-                  </td>
-                  <td class="px-6 py-4 text-right">
-                    <button
-                      (click)="verDetalle(rep)"
-                      class="text-indigo-600 hover:text-indigo-900 font-bold text-xs transition-all">
-                      {{ puedeEditar() && activeTab() === 'activos' ? 'Gestionar' : 'Ver Ficha' }}
-                    </button>
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="7" class="px-6 py-12 text-center text-slate-400 text-sm">
-                    No hay registros de mantenimientos
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+                    </div>
+                    <div class="text-right border-l border-slate-100 pl-6">
+                      <span class="text-xs font-medium text-slate-400 block">Costo Acumulado</span>
+                      <span class="font-bold text-slate-800 text-base mt-0.5 block">
+                        {{ group.totalCosto | currency:'COP':'symbol-narrow':'1.0-0' }}
+                      </span>
+                    </div>
+                    <!-- Chevron icon -->
+                    <div class="text-slate-400 transition-transform duration-200" [class.rotate-180]="isDeviceExpanded(group.activoId)">
+                      <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Expanded list of sheets -->
+                @if (isDeviceExpanded(group.activoId)) {
+                  <div class="border-t border-slate-100 bg-slate-50/30 px-5 py-4 overflow-x-auto">
+                    <table class="w-full text-sm min-w-[600px]">
+                      <thead>
+                        <tr class="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                          <th class="text-left pb-3">Ficha</th>
+                          <th class="text-left pb-3">Fecha</th>
+                          <th class="text-left pb-3">Tipo</th>
+                          <th class="text-left pb-3">Modalidad</th>
+                          <th class="text-left pb-3">Técnico / Proveedor</th>
+                          <th class="text-left pb-3">Resultado</th>
+                          <th class="text-right pb-3">Costo</th>
+                          <th class="text-right pb-3">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-slate-100/50">
+                        @for (rep of group.reports; track rep.id) {
+                          <tr class="hover:bg-slate-50/70 transition-colors">
+                            <td class="py-3 font-mono text-xs text-slate-400 font-bold">#{{ rep.id.substring(0, 8) }}</td>
+                            <td class="py-3 text-xs text-slate-500">
+                              {{ rep.fechaApertura | date:'dd/MM/yyyy' }}
+                            </td>
+                            <td class="py-3 text-xs text-slate-600 font-medium">
+                              {{ rep.tipoMantenimiento }}
+                            </td>
+                            <td class="py-3">
+                              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-white text-slate-500">
+                                {{ rep.modalidad }}
+                              </span>
+                            </td>
+                            <td class="py-3 text-xs text-slate-600">
+                              {{ rep.tecnicoResponsable || rep.proveedorServicio || '—' }}
+                            </td>
+                            <td class="py-3">
+                              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-white"
+                                [class]="rep.resultadoFinal === 'REPARADO'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                  : 'bg-red-50 text-red-700 border-red-100'">
+                                {{ rep.resultadoFinal }}
+                              </span>
+                            </td>
+                            <td class="py-3 text-right text-xs font-semibold text-slate-700">
+                              {{ (rep.costoFinal || rep.costoEstimado || 0) | currency:'COP':'symbol-narrow':'1.0-0' }}
+                            </td>
+                            <td class="py-3 text-right">
+                              <button
+                                (click)="verDetalle(rep)"
+                                class="text-indigo-600 hover:text-indigo-900 font-bold text-xs transition-all">
+                                Ver Ficha
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+            } @empty {
+              <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center text-slate-400 text-sm">
+                No hay registros en el historial de mantenimientos
+              </div>
+            }
+          </div>
+        }
       }
     </div>
 
@@ -194,6 +300,23 @@ export class MaintenanceListComponent implements OnInit {
   reports = signal<MaintenanceReport[]>([]);
   activos = signal<Activo[]>([]);
 
+  // Expansion control
+  expandedDevices = signal<Set<string>>(new Set());
+
+  toggleDevice(activoId: string) {
+    const next = new Set(this.expandedDevices());
+    if (next.has(activoId)) {
+      next.delete(activoId);
+    } else {
+      next.add(activoId);
+    }
+    this.expandedDevices.set(next);
+  }
+
+  isDeviceExpanded(activoId: string): boolean {
+    return this.expandedDevices().has(activoId);
+  }
+
   // Search & Filters
   searchTerm = signal('');
   modalityFilter = signal('');
@@ -209,6 +332,69 @@ export class MaintenanceListComponent implements OnInit {
 
   // Count active tickets
   activeCount = computed(() => this.reports().filter(r => r.estado !== EstadoFicha.CERRADO).length);
+
+  // Grouped history by device
+  groupedHistory = computed(() => {
+    if (this.activeTab() !== 'historial') return [];
+    
+    const list = this.reports();
+    const search = this.searchTerm().toLowerCase().trim();
+    const modality = this.modalityFilter();
+    const status = this.statusFilter();
+
+    const filtered = list.filter(rep => {
+      // 1. Tab validation (only closed reports in history)
+      const isTabClosed = rep.estado === EstadoFicha.CERRADO;
+      if (!isTabClosed) return false;
+
+      // 2. Modality filter
+      if (modality && rep.modalidad !== modality) return false;
+
+      // 3. Status or Result filter (in history, statusFilter maps to resultadoFinal)
+      if (status && rep.resultadoFinal !== status) return false;
+
+      // 4. Search Filter (Plate, Tech, Provider, ID, details)
+      if (search) {
+        const plate = this.getActivoPlaca(rep.activoId).toLowerCase();
+        const tech = (rep.tecnicoResponsable || '').toLowerCase();
+        const provider = (rep.proveedorServicio || '').toLowerCase();
+        const details = this.getActivoDetails(rep.activoId).toLowerCase();
+        const matches = plate.includes(search) || tech.includes(search) || provider.includes(search) || details.includes(search) || rep.id.toLowerCase().includes(search);
+        if (!matches) return false;
+      }
+
+      return true;
+    });
+
+    // Group by activoId
+    const groups: { [activoId: string]: MaintenanceReport[] } = {};
+    for (const rep of filtered) {
+      if (!groups[rep.activoId]) {
+        groups[rep.activoId] = [];
+      }
+      groups[rep.activoId].push(rep);
+    }
+
+    return Object.entries(groups).map(([activoId, reps]) => {
+      const act = this.activos().find(a => a.id === activoId);
+      const totalCost = reps.reduce((sum, r) => sum + (r.costoFinal || r.costoEstimado || 0), 0);
+      const sortedReps = [...reps].sort((a, b) => {
+        const da = a.fechaApertura ? new Date(a.fechaApertura).getTime() : 0;
+        const db = b.fechaApertura ? new Date(b.fechaApertura).getTime() : 0;
+        return db - da;
+      });
+
+      return {
+        activoId,
+        activoPlaca: act ? act.placa : '—',
+        activoDetails: act ? `${act.marca} ${act.modelo}` : 'Detalles no disponibles',
+        activoSerial: act ? act.serial : '—',
+        totalMantenimientos: reps.length,
+        totalCosto: totalCost,
+        reports: sortedReps
+      };
+    });
+  });
 
   // Filtered List
   filteredReports = computed(() => {

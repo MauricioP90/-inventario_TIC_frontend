@@ -30,7 +30,7 @@ import Keycloak from 'keycloak-js';
       </div>
 
       <!-- Filter Bar -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3 bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
         <div class="md:col-span-2 relative">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           <input type="text" 
@@ -57,6 +57,16 @@ import Keycloak from 'keycloak-js';
           <option value="">Todas las ubicaciones</option>
           @for (loc of locations(); track loc.id) {
             <option [value]="loc.id">{{ loc.nombre }}</option>
+          }
+        </select>
+
+        <select 
+          [ngModel]="selectedStatus()" 
+          (ngModelChange)="selectedStatus.set($event)"
+          class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
+          <option value="">Todos los estados</option>
+          @for (st of metadata()?.statuses; track st.id) {
+            <option [value]="st.id">{{ getStatusLabel(st.id) }}</option>
           }
         </select>
       </div>
@@ -180,6 +190,7 @@ export class InventoryPageComponent implements OnInit {
   searchTerm = signal('');
   selectedType = signal('');
   selectedLocation = signal('');
+  selectedStatus = signal('');
 
   // Lógica de filtrado reactivo
   filteredActivos = computed(() => {
@@ -187,6 +198,7 @@ export class InventoryPageComponent implements OnInit {
     const search = this.searchTerm().toLowerCase();
     const type = this.selectedType();
     const loc = this.selectedLocation();
+    const status = this.selectedStatus();
 
     if (search) {
       list = list.filter(a =>
@@ -203,6 +215,10 @@ export class InventoryPageComponent implements OnInit {
 
     if (loc) {
       list = list.filter(a => a.locationId === loc);
+    }
+
+    if (status) {
+      list = list.filter(a => a.estado === status);
     }
 
     return list;

@@ -795,6 +795,49 @@ interface PickItem {
                 </div>
               } @else {
                 <div class="space-y-5">
+                  <!-- Resumen del Traslado a Recibir/Despachar -->
+                  <div class="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2 text-xs">
+                    <div class="flex justify-between">
+                      <span class="text-slate-500 font-medium">Tipo:</span>
+                      <span class="font-bold text-slate-800">{{ getMovementTypeLabel(selectedMovementForAction.type) }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-slate-500 font-medium">Origen:</span>
+                      <span class="font-bold text-slate-800">{{ selectedMovementForAction.originLocation?.nombre || 'N/A' }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-slate-500 font-medium">Destino:</span>
+                      <span class="font-bold text-slate-800">{{ selectedMovementForAction.destinationLocation?.nombre || 'N/A' }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-slate-500 font-medium">Responsable:</span>
+                      <span class="font-bold text-slate-800">{{ selectedMovementForAction.responsible?.nombre || 'N/A' }}</span>
+                    </div>
+                    @if (selectedMovementForAction.notes) {
+                      <div class="pt-1.5 border-t border-slate-200/60 mt-1">
+                        <span class="text-slate-500 font-medium block mb-0.5">Notas / Motivo de Rechazo:</span>
+                        <span class="font-semibold text-rose-600 block leading-normal bg-rose-50/50 p-2 rounded-lg border border-rose-100/50">{{ selectedMovementForAction.notes }}</span>
+                      </div>
+                    }
+                    <div class="pt-1.5 border-t border-slate-200/60 mt-1">
+                      <span class="text-slate-500 font-medium block mb-1">Equipos en traslado:</span>
+                      <div class="space-y-1">
+                        @for (act of selectedMovementForAction.activos; track act.id) {
+                          <div class="flex justify-between items-center bg-white px-2.5 py-1 rounded border border-slate-100 font-mono text-[10px]">
+                            <span class="text-slate-800 font-bold">{{ act.placa }}</span>
+                            <span class="text-slate-500">{{ act.marca }} (S/N: {{ act.serial || 'N/A' }})</span>
+                          </div>
+                        }
+                        @for (sim of selectedMovementForAction.simCards; track sim.id) {
+                          <div class="flex justify-between items-center bg-white px-2.5 py-1 rounded border border-slate-100 font-mono text-[10px]">
+                            <span class="text-purple-800 font-bold">{{ sim.numero }}</span>
+                            <span class="text-slate-500">{{ sim.operador }}</span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  </div>
+
                   @if (actionType === 'receive') {
                     <div class="space-y-1.5">
                       <label class="text-xs font-bold text-slate-500 uppercase">Responsable que recibe (ID):</label>
@@ -915,6 +958,10 @@ export class MovementsPageComponent implements OnInit {
   getSimCardsNumbers(simCards: any[]): string {
     if (!simCards || simCards.length === 0) return '';
     return simCards.map((s: any) => s.numero).join(' - ');
+  }
+
+  getMovementTypeLabel(type: string): string {
+    return MOVEMENT_TYPE_LABELS[type] || type;
   }
 
   locations = signal<Location[]>([]);
