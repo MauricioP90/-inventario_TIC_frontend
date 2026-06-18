@@ -18,6 +18,7 @@ import { Activo } from '../../../../inventory/domain/models/activo.model';
 import { GetAllSimCardsUseCase } from '../../../../sim-cards/application/use-cases/get-all-sim-cards.use-case';
 import { SimCardRepository } from '../../../../sim-cards/domain/repositories/sim-card.repository';
 import { SimCard } from '../../../../sim-cards/domain/models/sim-card.model';
+import * as QRCode from 'qrcode';
 
 interface PickItem {
   id: string;
@@ -707,8 +708,8 @@ interface PickItem {
       <!-- Modals -->
       @if (selectedMovementForAction) {
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+          <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
               <h3 class="font-bold text-slate-800 text-lg flex items-center gap-3">
                 @if (actionType === 'dispatch') { 🚛 Despachar Traslado }
                 @if (actionType === 'receive') { ✅ Recibir Traslado }
@@ -719,7 +720,7 @@ interface PickItem {
               </button>
             </div>
             
-            <div class="p-8 space-y-6">
+            <div class="p-6 space-y-5 flex-1 overflow-y-auto">
               @if (actionType === 'route') {
                 <div class="flex items-center justify-between mb-10 relative px-4">
                   <div class="absolute top-1/2 left-0 w-full h-1.5 bg-slate-100 -z-10 -translate-y-1/2 rounded-full"></div>
@@ -867,7 +868,7 @@ interface PickItem {
                   </div>
                   
                   <button (click)="confirmAction()"
-                          class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-xl shadow-indigo-100 transition-all mt-4 flex items-center justify-center gap-2">
+                          class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-xl shadow-indigo-100 transition-all mt-4 flex items-center justify-center gap-2 cursor-pointer">
                     {{ actionType === 'dispatch' ? 'Confirmar Despacho' : 'Confirmar Recepción' }}
                   </button>
 
@@ -917,33 +918,83 @@ interface PickItem {
     <!-- Magic Link Modal -->
     @if (magicLinkUrl()) {
       <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-          <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-indigo-50/50">
-            <h3 class="text-lg font-black text-indigo-900 flex items-center gap-2">
-              <span>✨</span> Enlace Mágico
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+          <!-- Header -->
+          <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50/50">
+            <h3 class="text-base font-black text-indigo-900 flex items-center gap-2">
+              <span>✨</span> Autenticación única
             </h3>
-            <button (click)="magicLinkUrl.set(null)" class="text-slate-400 hover:text-slate-600 transition-colors p-2 bg-white rounded-full shadow-sm hover:shadow">
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            <button (click)="closeMagicLinkModal()" class="text-slate-400 hover:text-slate-600 transition-colors p-2 bg-white rounded-full shadow-sm hover:shadow">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
-          <div class="p-6 space-y-4">
-            <p class="text-sm text-slate-600 font-medium">
-              Envía este enlace por WhatsApp al responsable en destino. No necesitará usuario ni contraseña para recibir los equipos.
-            </p>
-            <div class="relative">
-              <textarea readonly 
-                     [value]="magicLinkUrl()"
-                     class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:outline-none resize-none h-24 shadow-inner"
-                     #linkInput></textarea>
-            </div>
-            <p class="text-xs text-indigo-600 font-bold bg-indigo-50 p-3 rounded-lg border border-indigo-100 flex items-start gap-2">
-              <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              Selecciona todo el texto de arriba y cópialo (Ctrl+C o pulsación larga en móviles).
-            </p>
+
+          <!-- Tabs Selector -->
+          <div class="px-6 pt-3 flex border-b border-slate-100 bg-slate-50/50">
+            <button (click)="magicLinkTab.set('link')" 
+                    [class]="'flex-1 pb-3 text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 ' + 
+                             (magicLinkTab() === 'link' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-500')">
+              <span>🔗</span> Enviar Enlace
+            </button>
+            <button (click)="magicLinkTab.set('qr')" 
+                    [class]="'flex-1 pb-3 text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 ' + 
+                             (magicLinkTab() === 'qr' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-500')">
+              <span>📱</span> Código QR
+            </button>
           </div>
+
+          <!-- Body -->
+          <div class="p-6">
+            @if (magicLinkTab() === 'link') {
+              <div class="space-y-4 animate-in fade-in-50 duration-150">
+                <p class="text-[11px] text-slate-500 font-medium leading-relaxed">
+                  Copia este enlace de un solo uso y envíalo al responsable en destino para que confirme la recepción sin contraseñas.
+                </p>
+                <div class="relative">
+                  <textarea readonly 
+                         [value]="magicLinkUrl()"
+                         class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-xs focus:outline-none resize-none h-16 shadow-inner font-mono select-all"
+                         #linkInput></textarea>
+                </div>
+                <p class="text-[10px] text-indigo-600 font-semibold bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100 flex items-start gap-2">
+                  <svg class="w-3.5 h-3.5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  El enlace se desactivará inmediatamente tras completar la firma.
+                </p>
+              </div>
+            }
+
+            @if (magicLinkTab() === 'qr') {
+              <div class="flex flex-col items-center justify-center space-y-3 animate-in fade-in-50 duration-150">
+                <p class="text-[11px] text-slate-500 font-medium text-center leading-relaxed">
+                  Muestra este código QR al responsable para que lo escanee desde su dispositivo móvil y firme la recepción en el sitio.
+                </p>
+                @if (qrCodeDataUrl()) {
+                  <div class="p-2.5 bg-white rounded-2xl border border-slate-200/60 shadow-md flex items-center justify-center">
+                    <img [src]="qrCodeDataUrl()" alt="Código QR" class="w-36 h-36" />
+                  </div>
+                }
+                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Escaneo local offline</span>
+              </div>
+            }
+          </div>
+
+          <!-- Footer Actions -->
           <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-            <button (click)="magicLinkUrl.set(null)" 
-                    class="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all text-sm">
+            @if (magicLinkTab() === 'link') {
+              <button (click)="copyToClipboard()"
+                      class="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all text-xs shadow-md shadow-indigo-100 flex items-center justify-center gap-1.5 cursor-pointer">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                Copiar Enlace
+              </button>
+            } @else {
+              <button (click)="downloadQrCode()"
+                      class="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all text-xs shadow-md shadow-indigo-100 flex items-center justify-center gap-1.5 cursor-pointer">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                Descargar QR
+              </button>
+            }
+            <button (click)="closeMagicLinkModal()" 
+                    class="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all text-xs cursor-pointer">
               Cerrar
             </button>
           </div>
@@ -972,7 +1023,7 @@ export class MovementsPageComponent implements OnInit {
   showSuccess = signal(false);
   showError = signal<string | null>(null);
   isLoadingPlaca = signal(false);
-  
+
   // Nuevas señales para Tabs y Búsqueda de Movimientos
   activeTab = signal<'PENDING' | 'HISTORY'>('PENDING');
   searchMovementQuery = signal('');
@@ -1007,7 +1058,7 @@ export class MovementsPageComponent implements OnInit {
     }
 
     // Excluimos movimientos internos o automáticos que no se registran manualmente de esta forma
-    let types = this.movementTypes.filter(([key]) => 
+    let types = this.movementTypes.filter(([key]) =>
       !['SIM_TRASLADO', 'REINGRESO_SOPORTE', 'RETORNO_POR_RECHAZO'].includes(key)
     );
 
@@ -1102,7 +1153,7 @@ export class MovementsPageComponent implements OnInit {
     this.originId.set(loc.id);
     this.originSearchQuery.set(loc.nombre);
     this.showOriginDropdown.set(false);
-    
+
     if (this.selectedDestination()?.id === loc.id) {
       this.clearDestinationSelection();
     }
@@ -1199,8 +1250,8 @@ export class MovementsPageComponent implements OnInit {
         const destMatch = m.destinationLocation?.nombre?.toLowerCase().includes(query);
         const respMatch = m.responsible?.nombre?.toLowerCase().includes(query);
         const receiverMatch = m.receiver?.nombre?.toLowerCase().includes(query) || m.physicalReceiverName?.toLowerCase().includes(query);
-        const activeMatch = m.activos?.some((a: any) => 
-          a.placa?.toLowerCase().includes(query) || 
+        const activeMatch = m.activos?.some((a: any) =>
+          a.placa?.toLowerCase().includes(query) ||
           (a.serial && a.serial.toLowerCase().includes(query))
         );
 
@@ -1240,7 +1291,7 @@ export class MovementsPageComponent implements OnInit {
     this.selectedSimForTransfer.set(sim);
     this.simTransferSearchQuery.set(`${sim.numero} | ICCID: ${sim.iccid} | ${sim.operador}`);
     this.showSimTransferDropdown.set(false);
-    
+
     if (sim.locationId) {
       this.originId.set(sim.locationId);
       this.originSearchQuery.set(sim.location?.nombre || 'Bodega');
@@ -1250,7 +1301,7 @@ export class MovementsPageComponent implements OnInit {
       } else {
         this.selectedOrigin.set({ id: sim.locationId, nombre: sim.location?.nombre || 'Bodega', code: '', estado: 'ACTIVO' } as any);
       }
-      
+
       if (this.selectedDestination()?.id === sim.locationId) {
         this.clearDestinationSelection();
       }
@@ -1354,6 +1405,8 @@ export class MovementsPageComponent implements OnInit {
   modalEvidenceUrl = '';
   modalDestinationId = '';
   magicLinkUrl = signal<string | null>(null);
+  qrCodeDataUrl = signal<string | null>(null);
+  magicLinkTab = signal<'link' | 'qr'>('link');
 
   constructor(
     private getAllLocations: GetAllLocationsUseCase,
@@ -1448,9 +1501,9 @@ export class MovementsPageComponent implements OnInit {
         isInvalidForMaintenance = dest.tipo !== 'BODEGA';
       } else if (isMaintenance) {
         isInvalidForMaintenance = (dest.tipo !== 'BODEGA' && dest.tipo !== 'PROVEEDOR') ||
-                                  (dest.tipo === 'PROVEEDOR' && originType === 'PROVEEDOR');
+          (dest.tipo === 'PROVEEDOR' && originType === 'PROVEEDOR');
       }
-      
+
       if (isSameAsOrigin || isInvalidForMaintenance) {
         this.clearDestinationSelection();
       }
@@ -1614,6 +1667,7 @@ export class MovementsPageComponent implements OnInit {
     this.showRejectionForm.set(false);
     this.rejectionReason.set('');
     this.magicLinkUrl.set(null);
+    this.qrCodeDataUrl.set(null);
   }
   confirmAction() {
     if (!this.selectedMovementForAction) return;
@@ -1670,10 +1724,50 @@ export class MovementsPageComponent implements OnInit {
 
   copyMagicLink(movement: any) {
     if (!movement.magicLinkToken) {
-      alert('Este movimiento no tiene un enlace mágico.');
+      alert('Este movimiento no tiene un enlace de autenticación única.');
       return;
     }
+    this.selectedMovementForAction = movement;
     const link = `${window.location.origin}/public/receive/${movement.magicLinkToken}`;
     this.magicLinkUrl.set(link);
+    this.magicLinkTab.set('link');
+
+    // Generar código QR a partir del enlace
+    QRCode.toDataURL(link, { margin: 2, scale: 6 })
+      .then(url => {
+        this.qrCodeDataUrl.set(url);
+      })
+      .catch(err => {
+        console.error('Error al generar QR:', err);
+        this.qrCodeDataUrl.set(null);
+      });
+  }
+
+  closeMagicLinkModal() {
+    this.magicLinkUrl.set(null);
+    this.qrCodeDataUrl.set(null);
+    this.selectedMovementForAction = null;
+  }
+
+  copyToClipboard() {
+    const link = this.magicLinkUrl();
+    if (link) {
+      navigator.clipboard.writeText(link).then(() => {
+        alert('Enlace copiado al portapapeles.');
+      }).catch(err => {
+        console.error('Error al copiar:', err);
+      });
+    }
+  }
+
+  downloadQrCode() {
+    const dataUrl = this.qrCodeDataUrl();
+    if (!dataUrl) return;
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `QR-Autenticacion-Unica.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 }

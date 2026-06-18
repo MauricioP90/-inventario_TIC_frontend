@@ -86,12 +86,23 @@ import Keycloak from 'keycloak-js';
               </select>
             </div>
 
-            <!-- Tecnico Responsable -->
-            <div class="space-y-1.5">
-              <label class="block text-sm font-medium text-slate-700">Técnico Responsable</label>
-              <input type="text" [(ngModel)]="tecnicoResponsable" placeholder="Ej: Ing. Carlos Pérez"
-                class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder:text-slate-400" />
-            </div>
+            <!-- Tecnico Responsable (Interno) -->
+            @if (modalidad === 'INTERNO') {
+              <div class="space-y-1.5">
+                <label class="block text-sm font-medium text-slate-700">Técnico Responsable <span class="text-red-500">*</span></label>
+                <input type="text" [(ngModel)]="tecnicoResponsable" placeholder="Ej: Ing. Carlos Pérez"
+                  class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder:text-slate-400" />
+              </div>
+            }
+
+            <!-- Proveedor de Servicio (Externo) -->
+            @if (modalidad === 'EXTERNO') {
+              <div class="space-y-1.5">
+                <label class="block text-sm font-medium text-slate-700">Proveedor de Servicio <span class="text-red-500">*</span></label>
+                <input type="text" [(ngModel)]="proveedorServicio" placeholder="Ej: Soporte Asus"
+                  class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder:text-slate-400" />
+              </div>
+            }
 
             <!-- Costo Estimado -->
             <div class="space-y-1.5">
@@ -541,7 +552,7 @@ export class MaintenanceDrawerComponent implements OnInit {
   }
 
   checkCostoViabilidad(costo: number | undefined) {
-    if (!costo || !this.activoAsociado || !this.activoAsociado.precioCompra) {
+    if (costo === undefined || costo === null || !this.activoAsociado || !this.activoAsociado.precioCompra) {
       this.requiereAutorizacionPorCosto = false;
       return;
     }
@@ -552,8 +563,8 @@ export class MaintenanceDrawerComponent implements OnInit {
 
   mostrarAlertaViabilidad(): boolean {
     if (!this.activoAsociado || !this.activoAsociado.precioCompra) return false;
-    const costo = this.costoFinal || this.costoEstimado;
-    if (!costo) return false;
+    const costo = (this.costoFinal !== undefined && this.costoFinal !== null) ? this.costoFinal : this.costoEstimado;
+    if (costo === undefined || costo === null) return false;
     return (costo > this.activoAsociado.precioCompra * 0.40);
   }
 
@@ -589,12 +600,24 @@ export class MaintenanceDrawerComponent implements OnInit {
       this.toast.set({ type: 'error', message: 'No cuenta con el rol requerido (Tecnico/Admin) para abrir una ficha de mantenimiento.' });
       return;
     }
+
+    // Validaciones de obligatoriedad
+    if (this.modalidad === ModalidadMantenimiento.INTERNO && !this.tecnicoResponsable.trim()) {
+      this.toast.set({ type: 'error', message: 'El Técnico Responsable es obligatorio para mantenimientos internos.' });
+      return;
+    }
+    if (this.modalidad === ModalidadMantenimiento.EXTERNO && !this.proveedorServicio.trim()) {
+      this.toast.set({ type: 'error', message: 'El Proveedor de Servicio es obligatorio para mantenimientos externos.' });
+      return;
+    }
+
     this.saving.set(true);
     this.usecases.create({
       activoId: this.activoId,
       modalidad: this.modalidad,
       tipoMantenimiento: this.tipoMantenimiento,
-      tecnicoResponsable: this.tecnicoResponsable || undefined,
+      tecnicoResponsable: this.modalidad === ModalidadMantenimiento.INTERNO ? this.tecnicoResponsable.trim() : undefined,
+      proveedorServicio: this.modalidad === ModalidadMantenimiento.EXTERNO ? this.proveedorServicio.trim() : undefined,
       costoEstimado: this.costoEstimado
     }).subscribe({
       next: () => {
@@ -615,6 +638,10 @@ export class MaintenanceDrawerComponent implements OnInit {
     this.toast.set(null);
     if (!this.diagnostico) {
       this.toast.set({ type: 'error', message: 'El diagnóstico inicial es requerido.' });
+      return;
+    }
+    if (this.report?.modalidad === 'INTERNO' && !this.tecnicoResponsable.trim()) {
+      this.toast.set({ type: 'error', message: 'El Técnico Responsable es obligatorio para iniciar mantenimiento interno.' });
       return;
     }
     this.saving.set(true);
@@ -665,8 +692,8 @@ export class MaintenanceDrawerComponent implements OnInit {
 
   cerrarMantenimiento() {
     this.toast.set(null);
-    if (!this.accionesRealizadas || !this.costoFinal) {
-      this.toast.set({ type: 'error', message: 'Las acciones realizadas y el costo final son obligatorios.' });
+    if (!this.accionesRealizadas || this.costoFinal === undefined || this.costoFinal === null || this.costoFinal < 0) {
+      this.toast.set({ type: 'error', message: 'Las acciones realizadas son obligatorias y el costo final debe ser mayor o igual a 0.' });
       return;
     }
     this.saving.set(true);
@@ -763,8 +790,8 @@ export class MaintenanceDrawerComponent implements OnInit {
 
   registrarRetornoProveedor() {
     this.toast.set(null);
-    if (!this.accionesRealizadas || !this.costoFinal) {
-      this.toast.set({ type: 'error', message: 'Debe especificar el costo final y los detalles del proveedor.' });
+    if (!this.accionesRealizadas || this.costoFinal === undefined || this.costoFinal === null || this.costoFinal < 0) {
+      this.toast.set({ type: 'error', message: 'Debe especificar las acciones realizadas y un costo final mayor o igual a 0.' });
       return;
     }
     this.saving.set(true);

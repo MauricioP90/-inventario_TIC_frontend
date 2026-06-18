@@ -86,7 +86,7 @@ import { MovementTypePipe } from '../../../../../shared/pipes/movement-type.pipe
             Recibir
           </button>
           @if (movement.magicLinkToken) {
-            <button (click)="onCopyMagicLink.emit(movement)" title="Copiar Enlace Mágico para recepción externa"
+            <button (click)="onCopyMagicLink.emit(movement)" title="Copiar Enlace de autenticación única para recepción externa"
                     class="px-3 py-2 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center border border-indigo-200">
               🔗
             </button>

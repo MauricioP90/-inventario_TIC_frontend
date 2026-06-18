@@ -76,6 +76,7 @@ export type CreateMaintenanceReportDto = {
   movimientoOrigenId?: string;
   costoEstimado?: number;
   tecnicoResponsable?: string;
+  proveedorServicio?: string;
 };
 
 export type UpdateMaintenanceReportDto = {

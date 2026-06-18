@@ -217,10 +217,9 @@ import Keycloak from 'keycloak-js';
                       <thead>
                         <tr class="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
                           <th class="text-left pb-3">Ficha</th>
-                          <th class="text-left pb-3">Fecha</th>
+                          <th class="text-left pb-3">Fecha / Asignado</th>
                           <th class="text-left pb-3">Tipo</th>
                           <th class="text-left pb-3">Modalidad</th>
-                          <th class="text-left pb-3">Técnico / Proveedor</th>
                           <th class="text-left pb-3">Resultado</th>
                           <th class="text-right pb-3">Costo</th>
                           <th class="text-right pb-3">Acciones</th>
@@ -230,8 +229,11 @@ import Keycloak from 'keycloak-js';
                         @for (rep of group.reports; track rep.id) {
                           <tr class="hover:bg-slate-50/70 transition-colors">
                             <td class="py-3 font-mono text-xs text-slate-400 font-bold">#{{ rep.id.substring(0, 8) }}</td>
-                            <td class="py-3 text-xs text-slate-500">
-                              {{ rep.fechaApertura | date:'dd/MM/yyyy' }}
+                            <td class="py-3">
+                              <div class="text-xs text-slate-500 font-medium">{{ rep.fechaApertura | date:'dd/MM/yyyy' }}</div>
+                              <div class="text-[10px] text-slate-400 font-medium mt-0.5">
+                                {{ rep.tecnicoResponsable || rep.proveedorServicio || 'Sin asignar' }}
+                              </div>
                             </td>
                             <td class="py-3 text-xs text-slate-600 font-medium">
                               {{ rep.tipoMantenimiento }}
@@ -240,9 +242,6 @@ import Keycloak from 'keycloak-js';
                               <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-white text-slate-500">
                                 {{ rep.modalidad }}
                               </span>
-                            </td>
-                            <td class="py-3 text-xs text-slate-600">
-                              {{ rep.tecnicoResponsable || rep.proveedorServicio || '—' }}
                             </td>
                             <td class="py-3">
                               <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-white"
@@ -253,7 +252,7 @@ import Keycloak from 'keycloak-js';
                               </span>
                             </td>
                             <td class="py-3 text-right text-xs font-semibold text-slate-700">
-                              {{ (rep.costoFinal || rep.costoEstimado || 0) | currency:'COP':'symbol-narrow':'1.0-0' }}
+                              {{ ((rep.costoFinal !== undefined && rep.costoFinal !== null) ? rep.costoFinal : (rep.costoEstimado || 0)) | currency:'COP':'symbol-narrow':'1.0-0' }}
                             </td>
                             <td class="py-3 text-right">
                               <button
@@ -377,7 +376,7 @@ export class MaintenanceListComponent implements OnInit {
 
     return Object.entries(groups).map(([activoId, reps]) => {
       const act = this.activos().find(a => a.id === activoId);
-      const totalCost = reps.reduce((sum, r) => sum + (r.costoFinal || r.costoEstimado || 0), 0);
+      const totalCost = reps.reduce((sum, r) => sum + ((r.costoFinal !== undefined && r.costoFinal !== null) ? r.costoFinal : (r.costoEstimado || 0)), 0);
       const sortedReps = [...reps].sort((a, b) => {
         const da = a.fechaApertura ? new Date(a.fechaApertura).getTime() : 0;
         const db = b.fechaApertura ? new Date(b.fechaApertura).getTime() : 0;
