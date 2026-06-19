@@ -159,7 +159,9 @@ import Keycloak from 'keycloak-js';
             <select [(ngModel)]="estado" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
               <option value="" disabled>Seleccionar estado</option>
               @for (status of metadata()?.statuses; track status.id) {
-                <option [value]="status.id">{{ status.label }}</option>
+                @if (status.id !== 'BAJA') {
+                  <option [value]="status.id">{{ status.label }}</option>
+                }
               }
             </select>
           </div>

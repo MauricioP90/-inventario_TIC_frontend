@@ -109,8 +109,8 @@ export class MovementItemComponent {
   @Output() onCopyMagicLink = new EventEmitter<Movement>();
 
   get typeBadgeClass(): string {
-    if (this.movement.type === MovementType.RETURN_BY_REJECTION) {
-      return 'text-rose-600 bg-rose-50 border border-rose-100';
+    if (this.movement.type === MovementType.RETURN_BY_REJECTION || this.movement.type === MovementType.DISPOSAL) {
+      return 'text-rose-600 bg-rose-50 border border-rose-100 font-bold';
     }
     return 'text-indigo-500 bg-indigo-50 border border-indigo-50';
   }

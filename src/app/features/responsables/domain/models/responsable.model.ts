@@ -1,4 +1,5 @@
 import { Role } from './role.model';
+import { Area } from './area.model';
 
 export interface Responsable {
   id: string;
@@ -6,6 +7,7 @@ export interface Responsable {
   email: string;
   telefono: string;
   role: Role;
+  area?: Area | null;
   estado: 'ACTIVO' | 'INACTIVO';
   locationIds: string[];
   // Campos visuales opcionales (mapeados desde el adapter)

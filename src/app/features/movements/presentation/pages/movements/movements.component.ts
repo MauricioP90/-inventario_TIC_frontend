@@ -800,7 +800,10 @@ interface PickItem {
                   <div class="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2 text-xs">
                     <div class="flex justify-between">
                       <span class="text-slate-500 font-medium">Tipo:</span>
-                      <span class="font-bold text-slate-800">{{ getMovementTypeLabel(selectedMovementForAction.type) }}</span>
+                      <span class="font-bold text-slate-800"
+                            [class.text-rose-600]="selectedMovementForAction.type === 'BAJA_ACTIVO'">
+                        {{ getMovementTypeLabel(selectedMovementForAction.type) }}
+                      </span>
                     </div>
                     <div class="flex justify-between">
                       <span class="text-slate-500 font-medium">Origen:</span>
@@ -1071,7 +1074,7 @@ export class MovementsPageComponent implements OnInit {
           types = types.filter(([key]) => key === 'RETORNO_PROVEEDOR');
         } else if (originType === 'BODEGA') {
           // Si está en Bodega y en mantenimiento, puede enviarse al proveedor o trasladarse a otra Bodega
-          types = types.filter(([key]) => ['ENVIO_GARANTIA', 'TRASLADO_REGIONAL'].includes(key));
+          types = types.filter(([key]) => ['ENVIO_PROVEEDOR', 'TRASLADO_REGIONAL'].includes(key));
         } else {
           types = [];
         }
@@ -1084,11 +1087,11 @@ export class MovementsPageComponent implements OnInit {
         if (originType === 'BODEGA') {
           types = types.filter(([key]) => key !== 'RETORNO_PROVEEDOR');
         } else {
-          types = types.filter(([key]) => key !== 'RETORNO_PROVEEDOR' && key !== 'ENVIO_GARANTIA');
+          types = types.filter(([key]) => key !== 'RETORNO_PROVEEDOR' && key !== 'ENVIO_PROVEEDOR');
         }
       }
     } else {
-      types = types.filter(([key]) => !['RETORNO_PROVEEDOR', 'ENVIO_GARANTIA'].includes(key));
+      types = types.filter(([key]) => !['RETORNO_PROVEEDOR', 'ENVIO_PROVEEDOR'].includes(key));
     }
 
     return types;
@@ -1188,7 +1191,7 @@ export class MovementsPageComponent implements OnInit {
     }
 
     // 3. Regla: Restricciones específicas por tipo de movimiento
-    if (this.movementType === 'ENVIO_GARANTIA') {
+    if (this.movementType === 'ENVIO_PROVEEDOR') {
       todos = todos.filter(loc => loc.tipo === 'PROVEEDOR');
     } else if (this.movementType === 'RETORNO_PROVEEDOR') {
       todos = todos.filter(loc => loc.tipo === 'BODEGA');
@@ -1493,7 +1496,7 @@ export class MovementsPageComponent implements OnInit {
       const isSameAsOrigin = dest.id === newOriginId;
       const originType = this.locations().find(loc => loc.id === newOriginId)?.tipo;
       let isInvalidForMaintenance = false;
-      if (this.movementType === 'ENVIO_GARANTIA') {
+      if (this.movementType === 'ENVIO_PROVEEDOR') {
         isInvalidForMaintenance = dest.tipo !== 'PROVEEDOR';
       } else if (this.movementType === 'RETORNO_PROVEEDOR') {
         isInvalidForMaintenance = dest.tipo !== 'BODEGA';

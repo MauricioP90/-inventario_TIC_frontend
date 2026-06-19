@@ -191,7 +191,9 @@ import Keycloak from 'keycloak-js';
                     </span>
                   </td>
                   <!-- Tipo -->
-                  <td class="px-6 py-4 font-semibold text-slate-700">
+                  <td class="px-6 py-4 font-semibold"
+                      [class.text-rose-600]="m.type === 'BAJA_ACTIVO'"
+                      [class.text-slate-700]="m.type !== 'BAJA_ACTIVO'">
                     {{ getMovementTypeLabel(m.type) }}
                   </td>
                   <!-- Items -->

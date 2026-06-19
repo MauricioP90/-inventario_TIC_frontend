@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Responsable, CreateResponsableDto, UpdateResponsableDto } from '../../domain/models/responsable.model';
 import { Role } from '../../domain/models/role.model';
+import { Area } from '../../domain/models/area.model';
 import { ResponsableRepository } from '../../domain/repositories/responsable.repository';
 import { environment } from '../../../../../environments/environment';
 
@@ -18,6 +19,10 @@ export class HttpResponsableRepository implements ResponsableRepository {
 
   getRoles(): Observable<Role[]> {
     return this.http.get<Role[]>(`${this.apiUrl}/roles`);
+  }
+
+  getAreas(): Observable<Area[]> {
+    return this.http.get<Area[]>(`${environment.apiUrl}/areas`);
   }
   getById(id: string): Observable<Responsable> {
     return this.http.get<Responsable>(`${this.apiUrl}/${id}`);

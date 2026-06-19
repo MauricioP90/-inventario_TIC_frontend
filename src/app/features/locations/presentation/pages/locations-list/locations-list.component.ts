@@ -70,7 +70,16 @@ import { AddLocationDrawerComponent } from '../../../../../shared/components/dra
               @for (location of filteredLocations(); track location.id) {
                 <tr class="hover:bg-slate-50/50 transition-colors">
                   <td class="px-6 py-4 font-bold text-slate-700">{{ location.code }}</td>
-                  <td class="px-6 py-4 font-medium text-slate-600">{{ location.nombre }}</td>
+                  <td class="px-6 py-4">
+                    <span class="font-medium text-slate-600 block">{{ location.nombre }}</span>
+                    @if (location.areas && location.areas.length > 0) {
+                      <div class="flex flex-wrap gap-1 mt-1">
+                        @for (area of location.areas; track area.id) {
+                          <span class="text-[9px] font-bold bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">{{ area.nombre }}</span>
+                        }
+                      </div>
+                    }
+                  </td>
                   <td class="px-6 py-4 text-slate-500 font-mono text-[11px] cursor-pointer hover:text-indigo-600 transition-colors" (click)="toggleExpand(location)">
                     <div class="flex items-center gap-1.5">
                       <span>{{ location.coordenadas || 'N/A' }}</span>

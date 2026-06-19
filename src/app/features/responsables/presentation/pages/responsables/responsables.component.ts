@@ -137,7 +137,7 @@ import { GetAllActivosUseCase } from '../../../../inventory/application/use-case
             <thead class="bg-slate-50/50 border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
               <tr>
                 <th class="text-left px-6 py-4">Responsable</th>
-                <th class="text-left px-6 py-4">Rol</th>
+                <th class="text-left px-6 py-4">Rol / Área</th>
                 <th class="text-left px-6 py-4">Sedes Asignadas</th>
                 <th class="text-center px-6 py-4">Estadísticas</th>
                 <th class="text-center px-6 py-4">Estado</th>
@@ -159,7 +159,12 @@ import { GetAllActivosUseCase } from '../../../../inventory/application/use-case
                     </div>
                   </td>
                   <td class="px-6 py-4">
-                    <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-600">{{ resp.role.nombre }}</span>
+                    <div class="flex flex-col gap-1 items-start">
+                      <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-600">{{ resp.role.nombre }}</span>
+                      @if (resp.area) {
+                        <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-100">{{ resp.area.nombre }}</span>
+                      }
+                    </div>
                   </td>
                   <td class="px-6 py-4">
                     <div class="flex flex-wrap gap-1">

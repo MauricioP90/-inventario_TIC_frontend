@@ -6,6 +6,8 @@ import { GetAllResponsablesUseCase } from '../../../../features/responsables/app
 import { Responsable } from '../../../../features/responsables/domain/models/responsable.model';
 import { UpdateLocationUseCase } from '../../../../features/locations/application/use-cases/update-location.use-case';
 import { Location } from '../../../../features/locations/domain/models/location.model';
+import { Area } from '../../../../features/responsables/domain/models/area.model';
+import { GetAllAreasUseCase } from '../../../../features/responsables/application/use-cases/get-all-areas.use-case';
 
 @Component({
   selector: 'app-add-location-drawer',
@@ -123,6 +125,40 @@ import { Location } from '../../../../features/locations/domain/models/location.
               </div>
             </div>
 
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Áreas Asignadas</label>
+              
+              <!-- Input de Búsqueda -->
+              <div class="relative mb-2">
+                <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">🔍</span>
+                <input 
+                  type="text" 
+                  [value]="searchAreaTerm()"
+                  (input)="searchAreaTerm.set($any($event.target).value)"
+                  placeholder="Buscar área por nombre o código..."
+                  class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-xs transition-all">
+              </div>
+
+              <!-- Lista con Checkboxes -->
+              <div class="space-y-2 max-h-48 overflow-y-auto p-3 border border-slate-100 rounded-xl bg-slate-50/30">
+                @for (area of filteredAreas(); track area.id) {
+                  <label class="flex items-center gap-3 p-2 hover:bg-white rounded-lg transition-colors cursor-pointer group">
+                    <input 
+                      type="checkbox" 
+                      [checked]="isAreaSelected(area.id)"
+                      (change)="toggleArea(area.id)"
+                      class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                    <div class="flex flex-col">
+                      <span class="text-sm font-medium text-slate-700 group-hover:text-indigo-600 transition-colors">{{ area.nombre }}</span>
+                      <span class="text-[10px] text-slate-400">{{ area.code }}</span>
+                    </div>
+                  </label>
+                } @empty {
+                  <p class="text-[11px] text-slate-400 text-center py-4">No se encontraron áreas</p>
+                }
+              </div>
+            </div>
+
             <div class="pt-4 border-t border-slate-50 flex gap-3">
               <button 
                 type="button" 
@@ -151,6 +187,9 @@ export class AddLocationDrawerComponent implements OnInit {
   selectedLocation = signal<Location | null>(null);
   selectedResponsibleIds = signal<string[]>([]);
   searchResponsableTerm = signal('');
+  areas = signal<Area[]>([]);
+  selectedAreaIds = signal<string[]>([]);
+  searchAreaTerm = signal('');
 
   filteredResponsables = computed(() => {
     const term = this.searchResponsableTerm().toLowerCase().trim();
@@ -165,7 +204,18 @@ export class AddLocationDrawerComponent implements OnInit {
     return all.filter(resp => selectedIds.includes(resp.id));
   });
 
-
+  filteredAreas = computed(() => {
+    const term = this.searchAreaTerm().toLowerCase().trim();
+    const all = this.areas();
+    const selectedIds = this.selectedAreaIds();
+    if (term) {
+      return all.filter(area =>
+        area.nombre.toLowerCase().includes(term) ||
+        area.code.toLowerCase().includes(term)
+      );
+    }
+    return all.filter(area => selectedIds.includes(area.id));
+  });
 
   @Output() onSave = new EventEmitter<void>();
 
@@ -175,7 +225,8 @@ export class AddLocationDrawerComponent implements OnInit {
     private fb: FormBuilder,
     private createLocation: CreateLocationUseCase,
     private getAllResponsables: GetAllResponsablesUseCase,
-    private updateLocation: UpdateLocationUseCase
+    private updateLocation: UpdateLocationUseCase,
+    private getAllAreas: GetAllAreasUseCase
   ) {
     this.locationForm = this.fb.group({
       code: ['', [Validators.required]],
@@ -189,6 +240,7 @@ export class AddLocationDrawerComponent implements OnInit {
 
   ngOnInit() {
     this.getAllResponsables.execute().subscribe((data) => this.responsables.set(data));
+    this.getAllAreas.execute().subscribe((data) => this.areas.set(data));
   }
 
   isResponsableSelected(id: string): boolean {
@@ -204,16 +256,32 @@ export class AddLocationDrawerComponent implements OnInit {
     }
   }
 
+  isAreaSelected(id: string): boolean {
+    return this.selectedAreaIds().includes(id);
+  }
+
+  toggleArea(id: string) {
+    const current = this.selectedAreaIds();
+    if (current.includes(id)) {
+      this.selectedAreaIds.set(current.filter(item => item !== id));
+    } else {
+      this.selectedAreaIds.set([...current, id]);
+    }
+  }
+
   open(location?: Location) {
     this.selectedLocation.set(location || null);
     this.searchResponsableTerm.set('');
+    this.searchAreaTerm.set('');
 
     if (location) {
       this.locationForm.patchValue(location);
       this.selectedResponsibleIds.set(location.responsibleIds || []);
+      this.selectedAreaIds.set(location.areas?.map(a => a.id) || []);
     } else {
       this.locationForm.reset({ estado: 'ACTIVO', tipo: 'OFICINA', observaciones: '' });
       this.selectedResponsibleIds.set([]);
+      this.selectedAreaIds.set([]);
     }
     this.isOpen.set(true);
   }
@@ -222,7 +290,9 @@ export class AddLocationDrawerComponent implements OnInit {
     this.isOpen.set(false);
     this.locationForm.reset({ estado: 'ACTIVO', tipo: 'OFICINA', observaciones: '' });
     this.selectedResponsibleIds.set([]);
+    this.selectedAreaIds.set([]);
     this.searchResponsableTerm.set('');
+    this.searchAreaTerm.set('');
   }
 
   save() {
@@ -232,7 +302,8 @@ export class AddLocationDrawerComponent implements OnInit {
 
       const payload = {
         ...this.locationForm.value,
-        responsibleIds: this.selectedResponsibleIds()
+        responsibleIds: this.selectedResponsibleIds(),
+        areaIds: this.selectedAreaIds()
       };
 
       const request$ = currentLoc

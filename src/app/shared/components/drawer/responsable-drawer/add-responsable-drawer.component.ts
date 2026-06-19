@@ -9,6 +9,8 @@ import { GetAllLocationsUseCase } from '../../../../features/locations/applicati
 import { InactiveResponsableUseCase } from '../../../../features/responsables/application/use-cases/inactive-responsable.use-case';
 import { Role } from '../../../../features/responsables/domain/models/role.model';
 import { GetAllRolesUseCase } from '../../../../features/responsables/application/use-cases/get-all-roles.use-case';
+import { Area } from '../../../../features/responsables/domain/models/area.model';
+import { GetAllAreasUseCase } from '../../../../features/responsables/application/use-cases/get-all-areas.use-case';
 
 
 
@@ -83,6 +85,19 @@ import { GetAllRolesUseCase } from '../../../../features/responsables/applicatio
                   }
                 </select>
               </div>
+            </div>
+
+            <!-- Área / Departamento -->
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Área / Departamento</label>
+              <select 
+                formControlName="area"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white">
+                <option [value]="null">-- Seleccionar Área --</option>
+                @for (area of areas(); track area.id) {
+                  <option [value]="area.id">{{ area.nombre }}</option>
+                }
+              </select>
             </div>
 
             <!-- Offices Multi-select -->
@@ -176,6 +191,7 @@ export class AddResponsableDrawerComponent implements OnInit {
   saving = signal(false);
   locations = signal<Location[]>([]);
   roles = signal<Role[]>([]);
+  areas = signal<Area[]>([]);
   selectedResponsable = signal<Responsable | null>(null);
   selectedLocationIds = signal<string[]>([]);
   showWarning = signal(false);
@@ -208,13 +224,15 @@ export class AddResponsableDrawerComponent implements OnInit {
     private updateResponsable: UpdateResponsableUseCase,
     private getAllLocations: GetAllLocationsUseCase,
     private inactiveResponsable: InactiveResponsableUseCase,
-    private getAllRoles: GetAllRolesUseCase
+    private getAllRoles: GetAllRolesUseCase,
+    private getAllAreas: GetAllAreasUseCase
   ) {
     this.responsibleForm = this.fb.group({
       nombre: ['', [Validators.required]],
       email: ['', [Validators.required, Validators.email]],
       telefono: ['', [Validators.required]],
       roleId: [null, [Validators.required]],
+      area: [null],
       estado: ['ACTIVO']
     });
   }
@@ -222,6 +240,7 @@ export class AddResponsableDrawerComponent implements OnInit {
   ngOnInit() {
     this.fetchLocations();
     this.getAllRoles.execute().subscribe(res => this.roles.set(res));
+    this.getAllAreas.execute().subscribe(res => this.areas.set(res));
   }
 
   fetchLocations() {
@@ -255,10 +274,10 @@ export class AddResponsableDrawerComponent implements OnInit {
     this.showWarning.set(false);
 
     if (responsable) {
-      this.responsibleForm.patchValue({ ...responsable, roleId: responsable.role?.id });
+      this.responsibleForm.patchValue({ ...responsable, roleId: responsable.role?.id, area: responsable.area?.id });
       this.selectedLocationIds.set(responsable.locationIds || []);
     } else {
-      this.responsibleForm.reset({ roleId: null, estado: 'ACTIVO' });
+      this.responsibleForm.reset({ roleId: null, area: null, estado: 'ACTIVO' });
       this.selectedLocationIds.set([]);
       this.searchLocationTerm.set('');
     }
@@ -267,7 +286,7 @@ export class AddResponsableDrawerComponent implements OnInit {
 
   close() {
     this.isOpen.set(false);
-    this.responsibleForm.reset({ roleId: null, estado: 'ACTIVO' });
+    this.responsibleForm.reset({ roleId: null, area: null, estado: 'ACTIVO' });
     this.selectedLocationIds.set([]);
     this.searchLocationTerm.set('');
   }
