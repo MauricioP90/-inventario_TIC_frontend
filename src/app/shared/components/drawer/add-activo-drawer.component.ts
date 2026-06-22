@@ -13,6 +13,8 @@ import { environment } from '../../../../environments/environment';
 import { UpdateActivoUseCase } from '../../../features/inventory/application/use-cases/update-activo.use-case';
 import { CreateTipoActivoUseCase } from '../../../features/inventory/application/use-cases/create-tipo-activo.use-case';
 import Keycloak from 'keycloak-js';
+import { Area } from '../../../features/responsables/domain/models/area.model';
+import { GetAllAreasUseCase } from '../../../features/responsables/application/use-cases/get-all-areas.use-case';
 
 @Component({
   selector: 'app-add-activo-drawer',
@@ -132,6 +134,7 @@ import Keycloak from 'keycloak-js';
           <label class="block text-sm font-medium text-slate-700">Ubicación Actual</label>
           <select 
             [(ngModel)]="locationId" 
+            (change)="onLocationChange()"
             [disabled]="!!(activo && activo.estado !== 'DISPONIBLE')" 
             class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg disabled:bg-slate-100 disabled:text-slate-500">
             
@@ -177,6 +180,23 @@ import Keycloak from 'keycloak-js';
             }
           </select>
           <p class="text-xs text-slate-400">El responsable debe tener permisos asignados en la bodega seleccionada.</p>
+        </div>
+
+        <!-- Área -->
+        <div class="space-y-1.5">
+          <label class="block text-sm font-medium text-slate-700">Área <span class="text-red-500">*</span></label>
+          @if (getAvailableAreas().length > 0) {
+            <select [(ngModel)]="areaId" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+              <option value="" disabled>Seleccionar área</option>
+              @for (area of getAvailableAreas(); track area.id) {
+                <option [value]="area.id">{{ area.nombre }}</option>
+              }
+            </select>
+          } @else {
+            <select [disabled]="true" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg bg-slate-100 text-slate-500">
+              <option value="8b8b9c8c-1e2a-43cf-8a27-024848bb0000">NO APLICA</option>
+            </select>
+          }
         </div>
 
         <!-- Fecha Ingreso -->
@@ -351,6 +371,7 @@ export class AddActivoDrawerComponent implements OnInit {
   private createTipoActivoUC = inject(CreateTipoActivoUseCase);
   private http = inject(HttpClient);
   private keycloak = inject(Keycloak);
+  private getAllAreasUC = inject(GetAllAreasUseCase);
 
   isAdmin = computed(() => this.keycloak.hasRealmRole('admin') || this.keycloak.hasRealmRole('ADMIN'));
 
@@ -389,6 +410,7 @@ export class AddActivoDrawerComponent implements OnInit {
 
   responsibles = signal<Responsable[]>([]);
   locations = signal<Location[]>([]);
+  areas = signal<Area[]>([]);
   metadata = signal<ActivoMetadata | null>(null);
 
   locationMap = computed(() => {
@@ -411,6 +433,7 @@ export class AddActivoDrawerComponent implements OnInit {
   estado = '';
   locationId = '';
   responsibleId = '';
+  areaId = '';
   fechaIngreso = '';
   precioCompra: number | null = null;
   fileName = '';
@@ -424,6 +447,24 @@ export class AddActivoDrawerComponent implements OnInit {
     this.getResponsablesUC.execute().subscribe(resps => this.responsibles.set(resps));
     this.getMetadataUC.execute().subscribe(meta => this.metadata.set(meta));
     this.getLocationsUC.execute().subscribe(locs => this.locations.set(locs));
+    this.getAllAreasUC.execute().subscribe(areas => this.areas.set(areas));
+  }
+
+  getAvailableAreas(): Area[] {
+    const loc = this.locations().find(l => l.id === this.locationId);
+    return loc?.areas || [];
+  }
+
+  onLocationChange() {
+    const available = this.getAvailableAreas();
+    if (available.length > 0) {
+      const isValid = available.some(a => a.id === this.areaId);
+      if (!isValid) {
+        this.areaId = available[0].id;
+      }
+    } else {
+      this.areaId = '8b8b9c8c-1e2a-43cf-8a27-024848bb0000'; // NO APLICA
+    }
   }
 
   private populateForm(a: Activo) {
@@ -435,6 +476,7 @@ export class AddActivoDrawerComponent implements OnInit {
     this.estado = a.estado;
     this.locationId = a.locationId;
     this.responsibleId = a.responsibleId;
+    this.areaId = a.areaId || '8b8b9c8c-1e2a-43cf-8a27-024848bb0000';
     this.precioCompra = a.precioCompra ?? null;
     if (a.fechaIngreso) {
       const d = new Date(a.fechaIngreso);
@@ -487,7 +529,11 @@ export class AddActivoDrawerComponent implements OnInit {
 
   handleSave() {
     this.toast.set(null);
-    if (!this.tipo || !this.marca || !this.modelo || !this.serial || !this.placa || !this.estado || !this.locationId || !this.responsibleId || !this.fechaIngreso) {
+    if (this.getAvailableAreas().length === 0) {
+      this.areaId = '8b8b9c8c-1e2a-43cf-8a27-024848bb0000';
+    }
+
+    if (!this.tipo || !this.marca || !this.modelo || !this.serial || !this.placa || !this.estado || !this.locationId || !this.responsibleId || !this.areaId || !this.fechaIngreso) {
       this.toast.set({ type: 'error', message: 'Por favor completa todos los campos obligatorios.' });
       return;
     }
@@ -501,6 +547,7 @@ export class AddActivoDrawerComponent implements OnInit {
       estado: this.estado as any,
       locationId: this.locationId,
       responsibleId: this.responsibleId,
+      areaId: this.areaId,
       fechaIngreso: this.fechaIngreso,
       facturaUrl: this.facturaUrl() ?? undefined,
       precioCompra: this.precioCompra ?? undefined,
@@ -511,8 +558,9 @@ export class AddActivoDrawerComponent implements OnInit {
         maintenanceTecnicoResponsable: this.maintTecnicoResponsable
       })
     };
-    const request$ = this.activo 
-      ? this.updateActivoUseCase.execute(this.activo.placa, payload) 
+    const current = this.activo;
+    const request$ = current 
+      ? this.updateActivoUseCase.execute(current.placa, payload) 
       : this.createActivoUseCase.execute(payload);
     request$.subscribe({
       next: () => {
@@ -525,7 +573,7 @@ export class AddActivoDrawerComponent implements OnInit {
           this.saved.emit();
         }, 1500);
       },
-      error: (err) => {
+      error: (err: any) => {
         this.saving.set(false);
         const msg = err.error?.message || 'Error inesperado.';
         this.toast.set({ type: 'error', message: msg });
@@ -579,6 +627,7 @@ export class AddActivoDrawerComponent implements OnInit {
     this.estado = 'DISPONIBLE';
     this.locationId = '';
     this.responsibleId = '';
+    this.areaId = '';
     this.fechaIngreso = '';
     this.precioCompra = null;
     this.fileName = '';

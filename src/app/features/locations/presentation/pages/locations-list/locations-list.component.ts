@@ -69,26 +69,21 @@ import { AddLocationDrawerComponent } from '../../../../../shared/components/dra
             <tbody class="divide-y divide-slate-100">
               @for (location of filteredLocations(); track location.id) {
                 <tr class="hover:bg-slate-50/50 transition-colors">
-                  <td class="px-6 py-4 font-bold text-slate-700">{{ location.code }}</td>
-                  <td class="px-6 py-4">
-                    <span class="font-medium text-slate-600 block">{{ location.nombre }}</span>
-                    @if (location.areas && location.areas.length > 0) {
-                      <div class="flex flex-wrap gap-1 mt-1">
-                        @for (area of location.areas; track area.id) {
-                          <span class="text-[9px] font-bold bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">{{ area.nombre }}</span>
-                        }
-                      </div>
-                    }
-                  </td>
-                  <td class="px-6 py-4 text-slate-500 font-mono text-[11px] cursor-pointer hover:text-indigo-600 transition-colors" (click)="toggleExpand(location)">
+                  <td class="px-6 py-4 font-bold text-slate-700 cursor-pointer hover:text-indigo-600 transition-colors" (click)="toggleExpand(location)">
                     <div class="flex items-center gap-1.5">
-                      <span>{{ location.coordenadas || 'N/A' }}</span>
-                      @if (location.coordenadas) {
-                        <span class="text-[10px] text-slate-400">
+                      <span>{{ location.code }}</span>
+                      @if (location.coordenadas || location.observaciones || (location.areas && location.areas.length > 0)) {
+                        <span class="text-[10px] text-slate-400 font-normal">
                           {{ expandedLocationId() === location.id ? '▲' : '▼' }}
                         </span>
                       }
                     </div>
+                  </td>
+                  <td class="px-6 py-4">
+                    <span class="font-medium text-slate-600 block">{{ location.nombre }}</span>
+                  </td>
+                  <td class="px-6 py-4 text-slate-500 font-mono text-[11px] select-all">
+                    {{ location.coordenadas || 'N/A' }}
                   </td>
                   <td class="px-6 py-4">
                     <span [class]="statusClass(location.estado)">{{ location.estado }}</span>
@@ -141,6 +136,20 @@ import { AddLocationDrawerComponent } from '../../../../../shared/components/dra
                               </div>
                             }
                             
+                            @if (location.areas && location.areas.length > 0) {
+                              <div>
+                                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Áreas Asociadas ({{ location.areas.length }})</h4>
+                                <div class="grid grid-cols-2 gap-x-6 gap-y-2 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                  @for (area of location.areas; track area.id) {
+                                    <div class="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                                      <span class="text-indigo-500 text-sm leading-none">•</span>
+                                      <span class="truncate" [title]="area.nombre">{{ area.nombre }}</span>
+                                    </div>
+                                  }
+                                </div>
+                              </div>
+                            }
+                            
                             <div class="space-y-1.5 text-xs text-slate-500 bg-white p-3 rounded-lg border border-slate-100">
                               <p><strong>Latitud:</strong> {{ coords.lat }}</p>
                               <p><strong>Longitud:</strong> {{ coords.lon }}</p>
@@ -161,14 +170,31 @@ import { AddLocationDrawerComponent } from '../../../../../shared/components/dra
                           </div>
                         </div>
                       } @else {
-                        @if (location.observaciones) {
-                          <div class="mb-4">
-                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Observaciones / Detalles Adicionales</h4>
-                            <p class="text-xs font-semibold text-slate-700 mt-2 bg-white p-3 rounded-lg border border-slate-200 shadow-sm leading-relaxed whitespace-pre-wrap">{{ location.observaciones }}</p>
+                        <div class="space-y-4">
+                          @if (location.observaciones) {
+                            <div>
+                              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Observaciones / Detalles Adicionales</h4>
+                              <p class="text-xs font-semibold text-slate-700 mt-2 bg-white p-3 rounded-lg border border-slate-200 shadow-sm leading-relaxed whitespace-pre-wrap">{{ location.observaciones }}</p>
+                            </div>
+                          }
+                          
+                          @if (location.areas && location.areas.length > 0) {
+                            <div>
+                              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Áreas Asociadas ({{ location.areas.length }})</h4>
+                              <div class="grid grid-cols-2 gap-x-6 gap-y-2 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                @for (area of location.areas; track area.id) {
+                                  <div class="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                                    <span class="text-indigo-500 text-sm leading-none">•</span>
+                                    <span class="truncate" [title]="area.nombre">{{ area.nombre }}</span>
+                                  </div>
+                                }
+                              </div>
+                            </div>
+                          }
+                          
+                          <div class="text-center py-6 text-slate-400 text-xs bg-white p-4 rounded-xl border border-slate-100">
+                            📍 No hay coordenadas válidas registradas para esta ubicación. Edite la ubicación e ingréselas en formato "Latitud, Longitud" (ej. 4.6538,-74.1164).
                           </div>
-                        }
-                        <div class="text-center py-6 text-slate-400 text-xs">
-                          📍 No hay coordenadas válidas registradas para esta ubicación. Edite la ubicación e ingréselas en formato "Latitud, Longitud" (ej. 4.6538,-74.1164).
                         </div>
                       }
                     </td>

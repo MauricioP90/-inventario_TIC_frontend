@@ -18,6 +18,7 @@ import { Activo } from '../../../../inventory/domain/models/activo.model';
 import { GetAllSimCardsUseCase } from '../../../../sim-cards/application/use-cases/get-all-sim-cards.use-case';
 import { SimCardRepository } from '../../../../sim-cards/domain/repositories/sim-card.repository';
 import { SimCard } from '../../../../sim-cards/domain/models/sim-card.model';
+import { Area } from '../../../../responsables/domain/models/area.model';
 import * as QRCode from 'qrcode';
 
 interface PickItem {
@@ -163,12 +164,15 @@ interface PickItem {
                     </p>
                   </div>
                 </div>
-                <div class="text-right">
+                <div class="text-right flex flex-col items-end gap-1">
                   <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-200/50 bg-indigo-50/50 text-indigo-600">
                     {{ selectedActivo()?.location?.nombre || 'Sede N/A' }}
                   </span>
+                  <span class="text-[10px] font-medium text-slate-500">
+                    Área: {{ selectedActivo()?.area?.nombre || 'NO APLICA' }}
+                  </span>
                   @if (selectedActivo()?.simCards?.length) {
-                    <p class="text-[10px] text-purple-600 font-bold mt-1.5 flex items-center justify-end gap-1">
+                    <p class="text-[10px] text-purple-600 font-bold mt-0.5 flex items-center justify-end gap-1">
                       <span>📱 SIMs:</span>
                       <span class="font-mono">{{ getSimCardsNumbers(selectedActivo()?.simCards || []) }}</span>
                     </p>
@@ -240,6 +244,28 @@ interface PickItem {
                   </div>
                 }
               </div>
+
+              <!-- Área Destino -->
+              @if (selectedDestination()) {
+                <div class="space-y-1.5 mt-4">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Área Destino *</label>
+                  @if (getAvailableDestinationAreas().length > 0) {
+                    <select [ngModel]="destinationAreaId()"
+                            (ngModelChange)="onDestinationAreaChange($event)"
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none appearance-none text-sm transition-all bg-white font-medium text-slate-700">
+                      <option value="">Todas las áreas / Seleccione...</option>
+                      @for (area of getAvailableDestinationAreas(); track area.id) {
+                        <option [value]="area.id">{{ area.nombre }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <select [disabled]="true"
+                            class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm font-medium">
+                      <option value="8b8b9c8c-1e2a-43cf-8a27-024848bb0000">NO APLICA</option>
+                    </select>
+                  }
+                </div>
+              }
             }
 
           } @else {
@@ -384,6 +410,28 @@ interface PickItem {
                   </div>
                 }
               </div>
+
+              <!-- Área Destino -->
+              @if (selectedDestination()) {
+                <div class="space-y-1.5 mt-4">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Área Destino *</label>
+                  @if (getAvailableDestinationAreas().length > 0) {
+                    <select [ngModel]="destinationAreaId()"
+                            (ngModelChange)="onDestinationAreaChange($event)"
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none appearance-none text-sm transition-all bg-white font-medium text-slate-700">
+                      <option value="">Todas las áreas / Seleccione...</option>
+                      @for (area of getAvailableDestinationAreas(); track area.id) {
+                        <option [value]="area.id">{{ area.nombre }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <select [disabled]="true"
+                            class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm font-medium">
+                      <option value="8b8b9c8c-1e2a-43cf-8a27-024848bb0000">NO APLICA</option>
+                    </select>
+                  }
+                </div>
+              }
             </div>
           }
 
@@ -1030,6 +1078,17 @@ export class MovementsPageComponent implements OnInit {
   // Nuevas señales para Tabs y Búsqueda de Movimientos
   activeTab = signal<'PENDING' | 'HISTORY'>('PENDING');
   searchMovementQuery = signal('');
+  destinationAreaId = signal<string>('');
+
+  getAvailableDestinationAreas(): Area[] {
+    const dest = this.selectedDestination();
+    return dest?.areas || [];
+  }
+
+  onDestinationAreaChange(areaId: string) {
+    this.destinationAreaId.set(areaId);
+    this.responsibleId = '';
+  }
 
   // 👇 Guarda los correos de los destinatarios elegidos
   selectedEmails = signal<string[]>([]);
@@ -1185,10 +1244,10 @@ export class MovementsPageComponent implements OnInit {
     // 1. Filtrar las sedes activas
     let todos = this.locations().filter(loc => loc.estado === 'ACTIVO');
 
-    // 2. Regla: No poder enviar a la misma oficina (excluir origen)
-    if (origin) {
-      todos = todos.filter(loc => loc.id !== origin);
-    }
+    // 2. Regla: Permitir enviar a la misma oficina para traslados internos entre áreas/responsables.
+    // if (origin) {
+    //   todos = todos.filter(loc => loc.id !== origin);
+    // }
 
     // 3. Regla: Restricciones específicas por tipo de movimiento
     if (this.movementType === 'ENVIO_PROVEEDOR') {
@@ -1213,7 +1272,7 @@ export class MovementsPageComponent implements OnInit {
     );
   });
 
-  // 👇 Filtra los responsables según la Sede Destino seleccionada
+  // 👇 Filtra los responsables según la Sede Destino y el Área Destino seleccionadas
   filteredResponsiblesForDestination = computed(() => {
     const dest = this.selectedDestination();
     const all = this.responsables().filter(r => r.estado === 'ACTIVO');
@@ -1223,7 +1282,13 @@ export class MovementsPageComponent implements OnInit {
     }
 
     // Filtra solo los responsables que tienen asignada la sede destino
-    const assigned = all.filter(r => r.locationIds?.includes(dest.id));
+    let assigned = all.filter(r => r.locationIds?.includes(dest.id));
+
+    // Si se ha seleccionado un área destino específica, filtrar por área
+    const areaId = this.destinationAreaId();
+    if (areaId && areaId !== '8b8b9c8c-1e2a-43cf-8a27-024848bb0000') {
+      assigned = assigned.filter(r => r.area?.id === areaId);
+    }
 
     // Si la sede no tiene a nadie asignado, retorna todos para permitir seleccionar una contingencia
     return assigned.length > 0 ? assigned : all;
@@ -1367,12 +1432,16 @@ export class MovementsPageComponent implements OnInit {
     this.destinationId = loc.id;
     this.destinationSearchQuery.set(loc.nombre);
     this.showDestinationDropdown.set(false);
+    this.destinationAreaId.set('');
+    this.responsibleId = '';
   }
   clearDestinationSelection() {
     this.selectedDestination.set(null);
     this.destinationId = '';
     this.destinationSearchQuery.set('');
     this.showDestinationDropdown.set(false);
+    this.destinationAreaId.set('');
+    this.responsibleId = '';
   }
 
   filteredActivos = computed(() => {

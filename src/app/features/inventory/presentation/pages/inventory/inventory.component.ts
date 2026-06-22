@@ -108,7 +108,10 @@ import Keycloak from 'keycloak-js';
                   <td class="px-6 py-4 font-medium text-slate-600">{{ activo.modelo }}</td>
                   <td class="px-6 py-4 text-[11px] font-mono text-slate-400 tracking-tighter">{{ activo.serial }}</td>
                   <td class="px-6 py-4 text-slate-500 font-medium">
-                    {{ locationMap()[activo.locationId]?.nombre || activo.locationId }}
+                    <div>{{ locationMap()[activo.locationId]?.nombre || activo.locationId }}</div>
+                    <div class="text-[11px] text-slate-400 font-normal mt-0.5">
+                      {{ activo.area?.nombre || 'NO APLICA' }}
+                    </div>
                   </td>
                   <td class="px-6 py-4">
                     <span 

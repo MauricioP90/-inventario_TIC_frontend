@@ -1,5 +1,6 @@
 import { Location } from "../../../locations/domain/models/location.model";
 import { Responsable } from "../../../responsables/domain/models/responsable.model";
+import { Area } from "../../../responsables/domain/models/area.model";
 
 export enum EstadoActivo {
   DISPONIBLE = 'DISPONIBLE',
@@ -27,9 +28,11 @@ export interface Activo {
   fechaIngreso: string;
   locationId: string;
   responsibleId: string;
+  areaId: string;
   facturaUrl?: string;
   location?: Location;
   responsible?: Responsable;
+  area?: Area;
   simCards?: any[];
   precioCompra?: number;
 }
