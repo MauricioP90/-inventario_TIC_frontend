@@ -6,8 +6,11 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
   selector: 'app-layout',
   standalone: true,
   imports: [RouterOutlet, SidebarComponent],
+  host: {
+    'class': 'block h-full'
+  },
   template: `
-    <div class="flex h-screen bg-slate-100 overflow-hidden">
+    <div class="flex h-full bg-slate-100 overflow-hidden">
       <app-sidebar />
       <div class="flex-1 flex flex-col min-w-0">
         <header class="h-12 flex items-center px-6 bg-white border-b border-slate-200 shrink-0 shadow-sm">

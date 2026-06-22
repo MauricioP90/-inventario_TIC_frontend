@@ -8,7 +8,7 @@ import { DashboardMetrics } from '../../domain/models/dashboard.model';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="space-y-6 p-6">
+    <div class="space-y-6">
 
       <!-- Header -->
       <div class="flex items-center justify-between">
@@ -210,9 +210,9 @@ import { DashboardMetrics } from '../../domain/models/dashboard.model';
             </div>
 
             <!-- Gráfico de barras apiladas (Stacked) -->
-            <div class="flex items-end justify-around h-64 px-4 gap-6 border-b border-slate-100 pb-2">
+            <div class="flex items-end justify-between md:justify-around h-64 px-4 gap-6 border-b border-slate-100 pb-2 overflow-x-auto min-w-0">
               <div *ngFor="let item of deviceTypeStacked()"
-                   class="flex flex-col items-center gap-2 flex-1 max-w-[120px] group">
+                   class="flex flex-col items-center gap-2 flex-1 max-w-[120px] group relative">
                 
                 <!-- Info popup al pasar el mouse -->
                 <div class="opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded-lg p-2 absolute mb-64 shadow-xl z-20 pointer-events-none">
@@ -260,7 +260,7 @@ import { DashboardMetrics } from '../../domain/models/dashboard.model';
 
             <!-- Gráfico de barras simples amarillas para mantenimiento -->
             <div *ngIf="mantenimientoDevices().length > 0; else noMantenimientos" 
-                 class="flex items-end justify-around h-64 px-4 gap-6 border-b border-slate-100 pb-2">
+                 class="flex items-end justify-between md:justify-around h-64 px-4 gap-6 border-b border-slate-100 pb-2 overflow-x-auto min-w-0">
               <div *ngFor="let item of mantenimientoDevices()"
                    class="flex flex-col items-center gap-2 flex-1 max-w-[120px] group">
                 
@@ -300,7 +300,7 @@ import { DashboardMetrics } from '../../domain/models/dashboard.model';
 
             <!-- Gráfico de barras simples rojas para bajas -->
             <div *ngIf="bajaDevices().length > 0; else noBajas" 
-                 class="flex items-end justify-around h-64 px-4 gap-6 border-b border-slate-100 pb-2">
+                 class="flex items-end justify-between md:justify-around h-64 px-4 gap-6 border-b border-slate-100 pb-2 overflow-x-auto min-w-0">
               <div *ngFor="let item of bajaDevices()"
                    class="flex flex-col items-center gap-2 flex-1 max-w-[120px] group">
                 

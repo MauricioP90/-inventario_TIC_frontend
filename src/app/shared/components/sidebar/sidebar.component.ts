@@ -13,9 +13,11 @@ interface NavItem {
   selector: 'app-sidebar',
   standalone: true,
   imports: [RouterLink, RouterLinkActive],
+  host: {
+    'class': 'h-screen shrink-0 block'
+  },
   template: `
-<!-- ... remaining template unchanged ... -->
-    <aside class="flex flex-col h-screen w-64 bg-slate-900 text-slate-100 shrink-0 shadow-lg">
+    <aside class="flex flex-col h-full w-64 bg-slate-900 text-slate-100 shrink-0 shadow-lg">
       <!-- Header -->
       <div class="flex items-center gap-3 px-6 py-5 border-b border-slate-700">
         <div class="flex items-center justify-center h-9 w-9 rounded-lg bg-indigo-600">
