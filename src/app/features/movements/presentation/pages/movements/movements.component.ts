@@ -67,20 +67,7 @@ interface PickItem {
             </div>
           }
 
-          <!-- Row 1: Responsable -->
-          <div class="space-y-1.5">
-            <label class="text-xs font-bold text-slate-500 flex items-center gap-1 uppercase tracking-wider">
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Usuario Responsable *
-            </label>
-            <select [(ngModel)]="responsibleId"
-                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm appearance-none">
-              <option value="">Seleccione el responsable...</option>
-              @for (resp of filteredResponsiblesForDestination(); track resp.id) {
-                <option [value]="resp.id">{{ resp.nombre }} ({{ resp.role.nombre }})</option>
-              }
-            </select>
-          </div>
+
 
           <!-- Pestañas de Selección de Modo (Segmented Tab Control) -->
           <div class="flex p-1 bg-slate-100 rounded-xl border border-slate-200/60 shadow-inner">
@@ -101,6 +88,19 @@ interface PickItem {
           @if (operationMode() === 'ACTIVO') {
             <!-- MODO ACTIVO: Flujo Lineal de Activos -->
             
+            <!-- Tipo de Movimiento -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tipo de Movimiento *</label>
+              <select [ngModel]="movementType"
+                      (ngModelChange)="onMovementTypeChange($event)"
+                      class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none appearance-none text-sm transition-all font-medium text-slate-700">
+                <option value="">Seleccione...</option>
+                @for (type of filteredMovementTypes(); track type[0]) {
+                  <option [value]="type[0]">{{ type[1] }}</option>
+                }
+              </select>
+            </div>
+
             <!-- Buscador de Activo -->
             <div class="space-y-1.5">
               <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Placa de Inventario *</label>          
@@ -181,39 +181,28 @@ interface PickItem {
               </div>
             }
 
-            <!-- Grid: Tipo Movimiento y Origen -->
+            <!-- Grid: Ubicaciones (Origen & Destino) -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="space-y-1.5">
-                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tipo de Movimiento *</label>
-                <select [(ngModel)]="movementType"
-                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none appearance-none text-sm transition-all">
-                  <option value="">Seleccione...</option>
-                  @for (type of filteredMovementTypes(); track type[0]) {
-                    <option [value]="type[0]">{{ type[1] }}</option>
-                  }
-                </select>
-              </div>
-
+              <!-- Ubicación Origen -->
               <div class="space-y-1.5">
                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación Origen</label>
                 <input type="text" [value]="selectedActivo()?.location?.nombre || 'Se cargará automáticamente...'" disabled
-                       class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm">
+                       class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm font-medium">
               </div>
-            </div>
 
-            <!-- Ubicación Destino (Si no es movimiento interno de SIM) -->
-            @if (movementType && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)) {
+              <!-- Ubicación Destino -->
               <div class="space-y-1.5 relative">
                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación Destino *</label>
                 <div class="relative group">
                   <input type="text" 
                          [ngModel]="destinationSearchQuery()" 
-                         (focus)="showDestinationDropdown.set(true)"
+                         (focus)="(!movementType || movementType === 'TRASLADO_AREA') ? null : showDestinationDropdown.set(true)"
                          (input)="destinationSearchQuery.set($any($event.target).value); showDestinationDropdown.set(true)"
-                         placeholder="Escriba Código o Nombre de la Sede..."
-                         class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm">
+                         [disabled]="!movementType || movementType === 'TRASLADO_AREA' || ['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)"
+                         [placeholder]="!movementType ? 'Seleccione tipo de movimiento primero...' : (['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType) ? 'No aplica (Mismo equipo)' : 'Escriba Código o Nombre de la Sede...')"
+                         class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium text-slate-700 disabled:bg-slate-100 disabled:text-slate-500">
                   
-                  @if (destinationSearchQuery() || selectedDestination()) {
+                  @if (destinationSearchQuery() && movementType && movementType !== 'TRASLADO_AREA' && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)) {
                     <button (click)="clearDestinationSelection()" 
                             class="absolute right-3 top-3 text-slate-300 hover:text-slate-500 transition-colors">
                       <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -222,7 +211,7 @@ interface PickItem {
                     </button>
                   }
 
-                  @if (showDestinationDropdown() && filteredDestinations().length > 0) {
+                  @if (showDestinationDropdown() && filteredDestinations().length > 0 && movementType && movementType !== 'TRASLADO_AREA' && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)) {
                     <div class="absolute z-20 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
                       @for (loc of filteredDestinations(); track loc.id) {
                         <div (click)="selectDestination(loc)" 
@@ -235,7 +224,7 @@ interface PickItem {
                   }
                 </div>
 
-                @if (selectedDestination() && (!selectedDestination()!.responsibleIds || selectedDestination()!.responsibleIds.length === 0)) {
+                @if (selectedDestination() && movementType !== 'TRASLADO_AREA' && (!selectedDestination()!.responsibleIds || selectedDestination()!.responsibleIds.length === 0)) {
                   <div class="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 animate-in fade-in duration-200">
                     <span class="text-amber-500 text-sm">⚠️</span>
                     <p class="text-[11px] font-bold text-amber-800 leading-normal">
@@ -244,34 +233,68 @@ interface PickItem {
                   </div>
                 }
               </div>
+            </div>
 
-              <!-- Área Destino -->
-              @if (selectedDestination()) {
-                <div class="space-y-1.5 mt-4">
-                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Área Destino *</label>
-                  @if (getAvailableDestinationAreas().length > 0) {
-                    <select [ngModel]="destinationAreaId()"
-                            (ngModelChange)="onDestinationAreaChange($event)"
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none appearance-none text-sm transition-all bg-white font-medium text-slate-700">
-                      <option value="">Todas las áreas / Seleccione...</option>
-                      @for (area of getAvailableDestinationAreas(); track area.id) {
-                        <option [value]="area.id">{{ area.nombre }}</option>
-                      }
-                    </select>
-                  } @else {
-                    <select [disabled]="true"
-                            class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm font-medium">
-                      <option value="8b8b9c8c-1e2a-43cf-8a27-024848bb0000">NO APLICA</option>
-                    </select>
-                  }
-                </div>
-              }
+            <!-- Área Destino -->
+            @if (selectedDestination() && movementType && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)) {
+              <div class="space-y-1.5 mt-4">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Área Destino *</label>
+                @if (getAvailableDestinationAreas().length > 0) {
+                  <select [ngModel]="destinationAreaId()"
+                          (ngModelChange)="onDestinationAreaChange($event)"
+                          class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none appearance-none text-sm transition-all bg-white font-medium text-slate-700">
+                    <option value="">Todas las áreas / Seleccione...</option>
+                    @for (area of getAvailableDestinationAreas(); track area.id) {
+                      <option [value]="area.id">{{ area.nombre }}</option>
+                    }
+                  </select>
+                } @else {
+                  <select [disabled]="true"
+                          class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm font-medium">
+                    <option value="8b8b9c8c-1e2a-43cf-8a27-024848bb0000">NO APLICA</option>
+                  </select>
+                }
+              </div>
             }
+
+            <!-- Responsables (Remitente Actual & Receptor Destino) (Grilla de 2 columnas) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              <!-- Responsable Remitente (Actual) -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 flex items-center gap-1.5 uppercase tracking-wider">
+                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Responsable Remitente (Actual)
+                </label>
+                <input type="text" [value]="selectedActivo()?.responsible?.nombre || 'Sin custodio asignado'" disabled
+                       class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm font-medium">
+              </div>
+
+              <!-- Responsable Receptor (Destino) -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 flex items-center gap-1.5 uppercase tracking-wider">
+                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Responsable Receptor *
+                  @if (responsibleId) {
+                    <span class="text-emerald-500 text-[10px] font-bold normal-case">✓ Seleccionado</span>
+                  }
+                </label>
+                <select [(ngModel)]="responsibleId"
+                        class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm appearance-none font-medium text-slate-700">
+                  <option value="">Seleccione el responsable receptor...</option>
+                  @for (resp of filteredResponsiblesForDestination(); track resp.id) {
+                    <option [value]="resp.id">{{ resp.nombre }} ({{ resp.role.nombre }}){{ resp.area?.nombre ? ' — ' + resp.area?.nombre : '' }}</option>
+                  }
+                </select>
+                @if (filteredResponsiblesForDestination().length === 0) {
+                  <p class="text-[10px] text-amber-600 font-medium">⚠️ No hay responsables activos en el destino/área seleccionada.</p>
+                }
+              </div>
+            </div>
 
           } @else {
             <!-- MODO SIM: Flujo Lineal Traslado SIM en Bodega -->
             
-            <!-- Buscador de SIM (Siempre habilitado) -->
+            <!-- 1. Buscador de SIM (Siempre habilitado) -->
             <div class="space-y-1.5">
               <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Buscar SIM Card Disponible *</label>
               <div class="relative group">
@@ -332,8 +355,9 @@ interface PickItem {
               </div>
             }
 
+            <!-- Grid: Ubicación Origen e Ubicación Destino SIM -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <!-- Sede Origen de la SIM (Autocomplete) -->
+              <!-- Ubicación Origen SIM (Autocomplete) -->
               <div class="space-y-1.5 relative">
                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación Origen SIM *</label>
                 <div class="relative group">
@@ -343,7 +367,7 @@ interface PickItem {
                          (input)="originSearchQuery.set($any($event.target).value); showOriginDropdown.set(true)"
                          [disabled]="!!selectedSimForTransfer()?.locationId"
                          placeholder="Escriba Código o Nombre de la Sede Origen..."
-                         class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm disabled:bg-slate-100 disabled:text-slate-500">
+                         class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium text-slate-700 disabled:bg-slate-100 disabled:text-slate-500">
                   
                   @if (originSearchQuery() && !selectedSimForTransfer()?.locationId) {
                     <button (click)="clearOriginSelection()" 
@@ -368,7 +392,7 @@ interface PickItem {
                 </div>
               </div>
 
-              <!-- Sede Destino de la SIM -->
+              <!-- Ubicación Destino SIM -->
               <div class="space-y-1.5 relative">
                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación Destino *</label>
                 <div class="relative group">
@@ -377,7 +401,7 @@ interface PickItem {
                          (focus)="showDestinationDropdown.set(true)"
                          (input)="destinationSearchQuery.set($any($event.target).value); showDestinationDropdown.set(true)"
                          placeholder="Escriba Código o Nombre de la Sede Destino..."
-                         class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm">
+                         class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium text-slate-700">
                   
                   @if (destinationSearchQuery() || selectedDestination()) {
                     <button (click)="clearDestinationSelection()" 
@@ -405,33 +429,67 @@ interface PickItem {
                   <div class="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 animate-in fade-in duration-200 font-bold">
                     <span class="text-amber-500 text-sm">⚠️</span>
                     <p class="text-[11px] text-amber-800 leading-normal font-bold">
-                      Advertencia: Esta sede no tiene responsables asignados. El traslado se registrará, pero te recomendamos asignarle uno en la sección de "Ubicaciones" para que alguien reciba el acta de entrega.
+                      Advertencia: Esta sede no tiene responsables asignados.
                     </p>
                   </div>
                 }
               </div>
+            </div>
 
-              <!-- Área Destino -->
-              @if (selectedDestination()) {
-                <div class="space-y-1.5 mt-4">
-                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Área Destino *</label>
-                  @if (getAvailableDestinationAreas().length > 0) {
-                    <select [ngModel]="destinationAreaId()"
-                            (ngModelChange)="onDestinationAreaChange($event)"
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none appearance-none text-sm transition-all bg-white font-medium text-slate-700">
-                      <option value="">Todas las áreas / Seleccione...</option>
-                      @for (area of getAvailableDestinationAreas(); track area.id) {
-                        <option [value]="area.id">{{ area.nombre }}</option>
-                      }
-                    </select>
-                  } @else {
-                    <select [disabled]="true"
-                            class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm font-medium">
-                      <option value="8b8b9c8c-1e2a-43cf-8a27-024848bb0000">NO APLICA</option>
-                    </select>
+            <!-- Área Destino SIM -->
+            @if (selectedDestination()) {
+              <div class="space-y-1.5 mt-4">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Área Destino *</label>
+                @if (getAvailableDestinationAreas().length > 0) {
+                  <select [ngModel]="destinationAreaId()"
+                          (ngModelChange)="onDestinationAreaChange($event)"
+                          class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none appearance-none text-sm transition-all bg-white font-medium text-slate-700">
+                    <option value="">Todas las áreas / Seleccione...</option>
+                    @for (area of getAvailableDestinationAreas(); track area.id) {
+                      <option [value]="area.id">{{ area.nombre }}</option>
+                    }
+                  </select>
+                } @else {
+                  <select [disabled]="true"
+                          class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm font-medium">
+                    <option value="8b8b9c8c-1e2a-43cf-8a27-024848bb0000">NO APLICA</option>
+                  </select>
+                }
+              </div>
+            }
+
+            <!-- Responsable Remitente y Responsable Receptor (en Grid) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              <!-- Responsable Remitente -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 flex items-center gap-1.5 uppercase tracking-wider">
+                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Responsable Remitente
+                </label>
+                <input type="text" value="No aplica (SIM en Bodega)" disabled
+                       class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm font-medium">
+              </div>
+
+              <!-- Responsable Receptor -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 flex items-center gap-1.5 uppercase tracking-wider">
+                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Responsable Receptor *
+                  @if (responsibleId) {
+                    <span class="text-emerald-500 text-[10px] font-bold normal-case">✓ Seleccionado</span>
                   }
-                </div>
-              }
+                </label>
+                <select [(ngModel)]="responsibleId"
+                        class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm appearance-none font-medium text-slate-700">
+                  <option value="">Seleccione el responsable receptor...</option>
+                  @for (resp of filteredResponsiblesForDestination(); track resp.id) {
+                    <option [value]="resp.id">{{ resp.nombre }} ({{ resp.role.nombre }}){{ resp.area?.nombre ? ' — ' + resp.area?.nombre : '' }}</option>
+                  }
+                </select>
+                @if (filteredResponsiblesForDestination().length === 0) {
+                  <p class="text-[10px] text-amber-600 font-medium">⚠️ No hay responsables activos en el destino seleccionado.</p>
+                }
+              </div>
             </div>
           }
 
@@ -897,7 +955,7 @@ interface PickItem {
                              class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none text-sm transition-all">
                       <option value="">Seleccione el responsable...</option>
                       @for (resp of responsables(); track resp.id) {
-                        <option [value]="resp.id">{{ resp.nombre }} ({{ resp.role.nombre || 'N/A' }})</option>
+                        <option [value]="resp.id">{{ resp.nombre }} ({{ resp.role.nombre }})</option>
                       }
                       </select>
                     </div>
@@ -1090,6 +1148,25 @@ export class MovementsPageComponent implements OnInit {
     this.responsibleId = '';
   }
 
+  onMovementTypeChange(newType: string) {
+    this.movementType = newType;
+    this.destinationAreaId.set('');
+    this.responsibleId = '';
+
+    if (newType === 'TRASLADO_AREA') {
+      const activo = this.selectedActivo();
+      if (activo && activo.location) {
+        this.selectedDestination.set(activo.location);
+        this.destinationId = activo.location.id;
+        this.destinationSearchQuery.set(activo.location.nombre);
+      } else {
+        this.clearDestinationSelection();
+      }
+    } else {
+      this.clearDestinationSelection();
+    }
+  }
+
   // 👇 Guarda los correos de los destinatarios elegidos
   selectedEmails = signal<string[]>([]);
 
@@ -1272,26 +1349,27 @@ export class MovementsPageComponent implements OnInit {
     );
   });
 
-  // 👇 Filtra los responsables según la Sede Destino y el Área Destino seleccionadas
+  // 👇 Filtra los responsables según la Sede Destino y el Área Destino seleccionadas (sin fallback)
   filteredResponsiblesForDestination = computed(() => {
     const dest = this.selectedDestination();
     const all = this.responsables().filter(r => r.estado === 'ACTIVO');
 
     if (!dest) {
-      return all;
+      return [];
     }
 
     // Filtra solo los responsables que tienen asignada la sede destino
     let assigned = all.filter(r => r.locationIds?.includes(dest.id));
 
     // Si se ha seleccionado un área destino específica, filtrar por área
+    // EXCEPCIÓN: Para TRASLADO_AREA NO filtramos por área actual del responsable,
+    // ya que el receptor es quien asumirá la custodia en el área destino (puede venir de cualquier área).
     const areaId = this.destinationAreaId();
-    if (areaId && areaId !== '8b8b9c8c-1e2a-43cf-8a27-024848bb0000') {
+    if (areaId && areaId !== '8b8b9c8c-1e2a-43cf-8a27-024848bb0000' && this.movementType !== 'TRASLADO_AREA') {
       assigned = assigned.filter(r => r.area?.id === areaId);
     }
 
-    // Si la sede no tiene a nadie asignado, retorna todos para permitir seleccionar una contingencia
-    return assigned.length > 0 ? assigned : all;
+    return assigned;
   });
 
   // Filtro principal para los Movimientos (Tabs + Búsqueda)
@@ -1455,10 +1533,11 @@ export class MovementsPageComponent implements OnInit {
       }
     });
 
-    // Excluir BAJA, RECHAZADO y activos con movimientos activos pendientes/en tránsito
+    // Excluir BAJA, RECHAZADO, EN_TRANSITO y activos con movimientos activos pendientes/en tránsito
     const todos = this.activos().filter(a =>
       a.estado !== 'BAJA' &&
       a.estado !== 'RECHAZADO' &&
+      a.estado !== 'EN_TRANSITO' &&
       !activeMovementActivoIds.has(a.id)
     );
 
@@ -1508,9 +1587,15 @@ export class MovementsPageComponent implements OnInit {
   }
 
   loadMovements() {
-    this.getAllMovements.execute().subscribe(movs => {
-      this.movements.set(movs);
-      this.loading.set(false);
+    this.getAllMovements.execute().subscribe({
+      next: (movs) => {
+        this.movements.set(movs);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Error al cargar movimientos:', err);
+        this.loading.set(false);
+      }
     });
   }
 
@@ -1559,25 +1644,32 @@ export class MovementsPageComponent implements OnInit {
       this.movementType = '';
     }
 
-    const dest = this.selectedDestination();
-    if (dest) {
-      const isMaintenance = activo.estado === 'MANTENIMIENTO';
-      const isSameAsOrigin = dest.id === newOriginId;
-      const originType = this.locations().find(loc => loc.id === newOriginId)?.tipo;
-      let isInvalidForMaintenance = false;
-      if (this.movementType === 'ENVIO_PROVEEDOR') {
-        isInvalidForMaintenance = dest.tipo !== 'PROVEEDOR';
-      } else if (this.movementType === 'RETORNO_PROVEEDOR') {
-        isInvalidForMaintenance = dest.tipo !== 'BODEGA';
-      } else if (this.movementType === 'TRASLADO_REGIONAL' && isMaintenance) {
-        isInvalidForMaintenance = dest.tipo !== 'BODEGA';
-      } else if (isMaintenance) {
-        isInvalidForMaintenance = (dest.tipo !== 'BODEGA' && dest.tipo !== 'PROVEEDOR') ||
-          (dest.tipo === 'PROVEEDOR' && originType === 'PROVEEDOR');
-      }
+    if (this.movementType === 'TRASLADO_AREA' && (activo.location || (activo as any).location)) {
+      const loc = activo.location || (activo as any).location;
+      this.selectedDestination.set(loc);
+      this.destinationId = loc.id;
+      this.destinationSearchQuery.set(loc.nombre);
+    } else {
+      const dest = this.selectedDestination();
+      if (dest) {
+        const isSameAsOrigin = dest.id === newOriginId;
+        const originType = this.locations().find(loc => loc.id === newOriginId)?.tipo;
+        const isMaintenance = activo.estado === 'MANTENIMIENTO';
+        let isInvalidForMaintenance = false;
+        if (this.movementType === 'ENVIO_PROVEEDOR') {
+          isInvalidForMaintenance = dest.tipo !== 'PROVEEDOR';
+        } else if (this.movementType === 'RETORNO_PROVEEDOR') {
+          isInvalidForMaintenance = dest.tipo !== 'BODEGA';
+        } else if (this.movementType === 'TRASLADO_REGIONAL' && isMaintenance) {
+          isInvalidForMaintenance = dest.tipo !== 'BODEGA';
+        } else if (isMaintenance) {
+          isInvalidForMaintenance = (dest.tipo !== 'BODEGA' && dest.tipo !== 'PROVEEDOR') ||
+            (dest.tipo === 'PROVEEDOR' && originType === 'PROVEEDOR');
+        }
 
-      if (isSameAsOrigin || isInvalidForMaintenance) {
-        this.clearDestinationSelection();
+        if (isSameAsOrigin || isInvalidForMaintenance) {
+          this.clearDestinationSelection();
+        }
       }
     }
   }
@@ -1588,6 +1680,18 @@ export class MovementsPageComponent implements OnInit {
     const isLocalSIM = ['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(this.movementType);
     if (isLocalSIM && this.selectedActivo()) {
       this.destinationId = this.originId();
+    }
+
+    // Para TRASLADO_AREA, el destino es la misma sede que el origen
+    const isAreaTransfer = this.movementType === 'TRASLADO_AREA';
+    if (isAreaTransfer && this.selectedActivo()) {
+      this.destinationId = this.originId();
+    }
+
+    // Validación adicional para TRASLADO_AREA: se requiere área destino
+    if (isAreaTransfer && !this.destinationAreaId()) {
+      alert('Para un traslado entre áreas, debes seleccionar el Área Destino.');
+      return;
     }
 
     const needsActivo = this.movementType !== 'SIM_TRASLADO';
@@ -1644,7 +1748,7 @@ export class MovementsPageComponent implements OnInit {
       }
     }
 
-    const dto = {
+    const dto: any = {
       type: this.movementType,
       originLocationId: this.originId(),
       destinationLocationId: this.destinationId,
@@ -1654,6 +1758,11 @@ export class MovementsPageComponent implements OnInit {
       notes: this.notes,
       recipients: this.selectedEmails() // 👈 Enviamos los destinatarios elegidos
     };
+
+    // Incluir área destino solo para TRASLADO_AREA
+    if (this.movementType === 'TRASLADO_AREA' && this.destinationAreaId()) {
+      dto.destinationAreaId = this.destinationAreaId();
+    }
 
     this.registerMovement.execute(dto).subscribe({
       next: () => {

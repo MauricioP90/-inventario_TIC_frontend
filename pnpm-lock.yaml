@@ -26,6 +26,9 @@ importers:
       '@angular/router':
         specifier: ^21.2.0
         version: 21.2.14(@angular/common@21.2.14(@angular/core@21.2.14(@angular/compiler@21.2.14)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.2.14(@angular/compiler@21.2.14)(rxjs@7.8.2))(@angular/platform-browser@21.2.14(@angular/common@21.2.14(@angular/core@21.2.14(@angular/compiler@21.2.14)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.2.14(@angular/compiler@21.2.14)(rxjs@7.8.2)))(rxjs@7.8.2)
+      antigravity:
+        specifier: ^0.0.0
+        version: 0.0.0
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -1551,6 +1554,10 @@ packages:
   ansi-styles@6.2.3:
     resolution: {integrity: sha512-4Dj6M28JB+oAH8kFkTLUo+a2jwOFkuqb3yucU0CANcRRUbxS0cP0nZYCGjcc3BNXwRIsUVmDGgzawme7zvJHvg==}
     engines: {node: '>=12'}
+
+  antigravity@0.0.0:
+    resolution: {integrity: sha512-MuJUdZl+rzMpGD7OI+V6CRl0IXQxX1oKmrK99jGXRuVVrQgAEPMA4Dz8S50FeBNOBjhQrWtRFu0RXuCVPm+87Q==}
+    hasBin: true
 
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
@@ -4344,6 +4351,8 @@ snapshots:
       color-convert: 2.0.1
 
   ansi-styles@6.2.3: {}
+
+  antigravity@0.0.0: {}
 
   assertion-error@2.0.1: {}
 

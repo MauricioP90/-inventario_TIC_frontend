@@ -17,6 +17,7 @@ export enum MovementType {
   RETURN_BY_REJECTION = 'RETORNO_POR_RECHAZO',
   INGRESO_MANTENIMIENTO = 'INGRESO_MANTENIMIENTO',
   SALIDA_MANTENIMIENTO = 'SALIDA_MANTENIMIENTO',
+  AREA_TRANSFER = 'TRASLADO_AREA',
   // SIM Cards
   SIM_ASSIGNMENT = 'SIM_ASIGNACION',
   SIM_CHANGE = 'SIM_CAMBIO',
@@ -31,6 +32,7 @@ export interface Movement {
   type: MovementType | string;
   originLocationId: string;
   destinationLocationId: string;
+  destinationAreaId?: string;
   responsibleId: string;
   receiverId?: string;
   status: MovementStatus;
@@ -56,6 +58,7 @@ export interface CreateMovementDto {
   type: MovementType | string;
   originLocationId: string;
   destinationLocationId: string;
+  destinationAreaId?: string;
   responsibleId: string;
   activoIds: string[];
   simCardIds?: string[];
@@ -75,6 +78,7 @@ export const MOVEMENT_TYPE_LABELS: Record<string, string> = {
   [MovementType.INGRESO_MANTENIMIENTO]: 'Ingreso a Mantenimiento',
   [MovementType.SALIDA_MANTENIMIENTO]: 'Salida de Mantenimiento',
   [MovementType.DISPOSAL]: 'Baja de Activo',
+  [MovementType.AREA_TRANSFER]: 'Traslado entre Áreas',
   // SIM Cards
   [MovementType.SIM_ASSIGNMENT]: 'Asignación de SIMCARD',
   [MovementType.SIM_CHANGE]: 'Cambio de SIMCARD',
