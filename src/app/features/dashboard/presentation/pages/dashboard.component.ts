@@ -97,8 +97,8 @@ import { DashboardMetrics } from '../../domain/models/dashboard.model';
           </div>
         </div>
 
-        <!-- Fila de KPIs de Alerta y Operación (5 columnas) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+        <!-- Fila de KPIs de Alerta y Operación (6 columnas) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-6">
           
           <!-- KPI 1: Tasa de Utilización -->
           <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md transition-all duration-300 border-l-4 border-l-blue-600 flex flex-col justify-between">
@@ -127,7 +127,21 @@ import { DashboardMetrics } from '../../domain/models/dashboard.model';
             </div>
           </div>
 
-          <!-- KPI 2: En Mantenimiento -->
+          <!-- KPI 2: Disponibles -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md transition-all duration-300 border-l-4 border-l-emerald-500 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Disponibles</span>
+                <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-50 text-emerald-600">En bodega</span>
+              </div>
+              <div class="mt-3">
+                <p class="text-3xl font-black text-slate-800 tracking-tight">{{ disponibleCount() }}</p>
+                <p class="text-[10px] text-slate-500 font-bold mt-1 leading-tight">Equipos listos en bodega para asignación</p>
+              </div>
+            </div>
+          </div>
+ 
+          <!-- KPI 3: En Mantenimiento -->
           <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md transition-all duration-300 border-l-4 border-l-amber-500 flex flex-col justify-between">
             <div>
               <div class="flex items-center justify-between">
@@ -140,8 +154,8 @@ import { DashboardMetrics } from '../../domain/models/dashboard.model';
               </div>
             </div>
           </div>
-
-          <!-- KPI 3: Dados de Baja -->
+ 
+          <!-- KPI 4: Dados de Baja -->
           <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md transition-all duration-300 border-l-4 border-l-slate-400 flex flex-col justify-between">
             <div>
               <div class="flex items-center justify-between">
@@ -154,8 +168,8 @@ import { DashboardMetrics } from '../../domain/models/dashboard.model';
               </div>
             </div>
           </div>
-
-          <!-- KPI 4: Rechazado / Novedad -->
+ 
+          <!-- KPI 5: Rechazado / Novedad -->
           <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md transition-all duration-300 border-l-4 border-l-red-500 flex flex-col justify-between">
             <div>
               <div class="flex items-center justify-between">
@@ -168,8 +182,8 @@ import { DashboardMetrics } from '../../domain/models/dashboard.model';
               </div>
             </div>
           </div>
-
-          <!-- KPI 5: En Tránsito -->
+ 
+          <!-- KPI 6: En Tránsito -->
           <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md transition-all duration-300 border-l-4 border-l-indigo-500 flex flex-col justify-between">
             <div>
               <div class="flex items-center justify-between">
@@ -182,7 +196,7 @@ import { DashboardMetrics } from '../../domain/models/dashboard.model';
               </div>
             </div>
           </div>
-
+ 
         </div>
 
         <!-- Sección de Gráficos -->

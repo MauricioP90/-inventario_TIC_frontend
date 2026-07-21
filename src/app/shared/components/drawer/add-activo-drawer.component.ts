@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal, inject, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CreateActivoUseCase } from '../../../features/inventory/application/use-cases/create-activo.use-case';
 import { GetAllResponsablesUseCase } from '../../../features/responsables/application/use-cases/get-all-responsables.use-case';
@@ -11,7 +12,6 @@ import { Location } from '../../../features/locations/domain/models/location.mod
 import { GetAllLocationsUseCase } from '../../../features/locations/application/use-cases/get-all-locations.use-case';
 import { environment } from '../../../../environments/environment';
 import { UpdateActivoUseCase } from '../../../features/inventory/application/use-cases/update-activo.use-case';
-import { CreateTipoActivoUseCase } from '../../../features/inventory/application/use-cases/create-tipo-activo.use-case';
 import Keycloak from 'keycloak-js';
 import { Area } from '../../../features/responsables/domain/models/area.model';
 import { GetAllAreasUseCase } from '../../../features/responsables/application/use-cases/get-all-areas.use-case';
@@ -19,7 +19,8 @@ import { GetAllAreasUseCase } from '../../../features/responsables/application/u
 @Component({
   selector: 'app-add-activo-drawer',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
+
   template: `
     <!-- Backdrop -->
     @if (open) {
@@ -73,31 +74,9 @@ import { GetAllAreasUseCase } from '../../../features/responsables/application/u
           </select>
 
           @if (isAdmin()) {
-            @if (showNewTipoForm()) {
-              <div class="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-lg p-2 mt-1.5">
-                <input type="text" [(ngModel)]="newTipoNombreValue" placeholder="Escribe el nombre del nuevo tipo (Ej: Monitor)"
-                  class="flex-1 px-2.5 py-1.5 text-xs border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white" />
-                <button type="button" (click)="saveNewTipo()" [disabled]="savingNewTipo()"
-                  class="p-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md transition-colors flex items-center justify-center"
-                  title="Guardar nuevo tipo">
-                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                </button>
-                <button type="button" (click)="cancelNewTipo()" [disabled]="savingNewTipo()"
-                  class="text-xs text-slate-400 hover:text-slate-600 transition-colors p-1"
-                  title="Cancelar">
-                  Cancelar
-                </button>
-              </div>
-            } @else {
-              <button type="button" (click)="addNewTipoActivo()" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 mt-1 transition-colors">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                Nuevo tipo
-              </button>
-            }
+            <p class="text-[11px] text-slate-400 mt-1">
+              ¿No encuentras el tipo? Adminístralo en <a routerLink="/catalogs" (click)="close()" class="text-indigo-600 hover:underline font-semibold">Catálogos</a>.
+            </p>
           }
         </div>
 
@@ -125,9 +104,11 @@ import { GetAllAreasUseCase } from '../../../features/responsables/application/u
         <!-- Placa -->
         <div class="space-y-1.5">
           <label class="block text-sm font-medium text-slate-700">Placa <span class="text-red-500">*</span></label>
-          <input type="text" [(ngModel)]="placa" placeholder="Ej: 1528-00001"
-            class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" />
+          <input type="text" [ngModel]="placa" (input)="onPlacaInput($event)" placeholder="Ej: 1528-000001" maxlength="11"
+            class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400 font-mono" />
+          <p class="text-[11px] text-slate-400">Formato requerido: <span class="font-mono">0000-000000</span> (4 números - 6 números).</p>
         </div>
+
 
         <!-- Bodega de ingreso -->
         <div class="space-y-1.5">
@@ -141,7 +122,7 @@ import { GetAllAreasUseCase } from '../../../features/responsables/application/u
             @if (activo && activo.estado !== 'DISPONIBLE') {
               <option [value]="locationId">{{ locationMap()[locationId]?.nombre || 'Cargando...' }}</option>
             } @else {
-              <option value="" disabled>Seleccionar bodega</option>
+              <option value="" disabled>Ubicación Inicial</option>
               @for (bodega of metadata()?.bodegas; track bodega.id) {
                 <option [value]="bodega.id">{{ bodega.nombre }}</option>
               }
@@ -223,23 +204,53 @@ import { GetAllAreasUseCase } from '../../../features/responsables/application/u
         <!-- Factura / Soporte -->
         <div class="space-y-1.5">
           <label class="block text-sm font-medium text-slate-700">Factura / Soporte <span class="text-slate-400 text-xs font-normal">(opcional)</span></label>
-          <label class="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-6 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-colors">
-            @if (uploadingFile()) {
-              <div class="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
-              <span class="text-sm text-slate-500">Subiendo archivo...</span>
-            } @else {
-              <svg class="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 0l-3 3m3-3l3 3M6.5 20h11A2.5 2.5 0 0020 17.5V7.914a2.5 2.5 0 00-.732-1.768l-3.414-3.414A2.5 2.5 0 0014.086 2H6.5A2.5 2.5 0 004 4.5v13A2.5 2.5 0 006.5 20z"/>
-              </svg>
-              @if (facturaUrl()) {
-                <span class="text-sm text-emerald-600 font-medium">✓ {{ fileName }}</span>
+          
+          @if (facturaUrl()) {
+            <div class="flex items-center justify-between p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl transition-all shadow-sm">
+              <div class="flex items-center gap-3 overflow-hidden">
+                <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </div>
+                <div class="truncate">
+                  <p class="text-xs font-bold text-slate-800 truncate">{{ fileName || 'Factura cargada' }}</p>
+                  <a [href]="facturaUrl()" target="_blank" class="text-[11px] text-emerald-700 hover:underline font-semibold flex items-center gap-1 mt-0.5">
+                    Ver / Descargar archivo
+                    <svg class="w-3 h-3 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+              
+              <div class="flex items-center gap-1.5 shrink-0">
+                <label class="px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 border border-indigo-200 rounded-lg cursor-pointer transition-colors bg-white shadow-2xs" title="Cambiar por otro archivo">
+                  Reemplazar
+                  <input type="file" class="hidden" accept=".pdf,.jpg,.png,.jpeg" (change)="onFileChange($event)" />
+                </label>
+                <button type="button" (click)="removeFactura()" class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors" title="Quitar archivo adjunto">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.562.621c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          } @else {
+            <label class="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-colors">
+              @if (uploadingFile()) {
+                <div class="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                <span class="text-sm text-slate-500 font-medium">Subiendo archivo...</span>
               } @else {
-                <span class="text-sm text-slate-500">{{ fileName || 'Arrastra o haz clic para subir archivo' }}</span>
+                <svg class="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 0l-3 3m3-3l3 3M6.5 20h11A2.5 2.5 0 0020 17.5V7.914a2.5 2.5 0 00-.732-1.768l-3.414-3.414A2.5 2.5 0 0014.086 2H6.5A2.5 2.5 0 004 4.5v13A2.5 2.5 0 006.5 20z"/>
+                </svg>
+                <span class="text-sm text-slate-600 font-medium">Arrastra o haz clic para subir factura/soporte</span>
+                <span class="text-xs text-slate-400">PDF, JPG, PNG (máx. 5MB)</span>
               }
-              <span class="text-xs text-slate-400">PDF, JPG, PNG (máx. 5MB)</span>
-            }
-            <input type="file" class="hidden" accept=".pdf,.jpg,.png,.jpeg" (change)="onFileChange($event)" />
-          </label>
+              <input type="file" class="hidden" accept=".pdf,.jpg,.png,.jpeg" (change)="onFileChange($event)" />
+            </label>
+          }
         </div>
 
         <!-- Datos de Entrada a Mantenimiento (Dynamic form section) -->
@@ -368,7 +379,6 @@ export class AddActivoDrawerComponent implements OnInit {
   private getResponsablesUC = inject(GetAllResponsablesUseCase);
   private getMetadataUC = inject(GetActivoMetadataUseCase);
   private getLocationsUC = inject(GetAllLocationsUseCase);
-  private createTipoActivoUC = inject(CreateTipoActivoUseCase);
   private http = inject(HttpClient);
   private keycloak = inject(Keycloak);
   private getAllAreasUC = inject(GetAllAreasUseCase);
@@ -406,7 +416,7 @@ export class AddActivoDrawerComponent implements OnInit {
   }
 
   @Output() openChange = new EventEmitter<boolean>();
-  @Output() saved = new EventEmitter<void>();
+  @Output() saved = new EventEmitter<string>();
 
   responsibles = signal<Responsable[]>([]);
   locations = signal<Location[]>([]);
@@ -420,10 +430,6 @@ export class AddActivoDrawerComponent implements OnInit {
   saving = signal(false);
   uploadingFile = signal(false);
   facturaUrl = signal<string | null>(null);
-
-  showNewTipoForm = signal(false);
-  newTipoNombreValue = '';
-  savingNewTipo = signal(false);
 
   tipo = '';
   marca = '';
@@ -489,8 +495,6 @@ export class AddActivoDrawerComponent implements OnInit {
   close() {
     this.openChange.emit(false);
     this.toast.set(null);
-    this.showNewTipoForm.set(false);
-    this.newTipoNombreValue = '';
     if (!this.activo) {
       this.resetForm();
     }
@@ -527,6 +531,11 @@ export class AddActivoDrawerComponent implements OnInit {
     reader.readAsDataURL(file);
   }
 
+  removeFactura() {
+    this.facturaUrl.set(null);
+    this.fileName = '';
+  }
+
   handleSave() {
     this.toast.set(null);
     if (this.getAvailableAreas().length === 0) {
@@ -535,6 +544,12 @@ export class AddActivoDrawerComponent implements OnInit {
 
     if (!this.tipo || !this.marca || !this.modelo || !this.serial || !this.placa || !this.estado || !this.locationId || !this.responsibleId || !this.areaId || !this.fechaIngreso) {
       this.toast.set({ type: 'error', message: 'Por favor completa todos los campos obligatorios.' });
+      return;
+    }
+
+    const placaRegex = /^\d{4}-\d{6}$/;
+    if (!placaRegex.test(this.placa)) {
+      this.toast.set({ type: 'error', message: 'La placa debe cumplir el formato 0000-000000 (4 números - 6 números).' });
       return;
     }
     this.saving.set(true);
@@ -559,18 +574,19 @@ export class AddActivoDrawerComponent implements OnInit {
       })
     };
     const current = this.activo;
-    const request$ = current 
-      ? this.updateActivoUseCase.execute(current.placa, payload) 
+    const request$ = current
+      ? this.updateActivoUseCase.execute(current.placa, payload)
       : this.createActivoUseCase.execute(payload);
     request$.subscribe({
       next: () => {
         this.saving.set(false);
         this.toast.set({ type: 'success', message: `Activo "${this.placa}" ${this.activo ? 'actualizado' : 'guardado'} exitosamente.` });
+        const savedPlaca = this.placa;
         if (!this.activo) this.resetForm();
         setTimeout(() => {
           this.toast.set(null);
           this.close();
-          this.saved.emit();
+          this.saved.emit(savedPlaca);
         }, 1500);
       },
       error: (err: any) => {
@@ -581,41 +597,11 @@ export class AddActivoDrawerComponent implements OnInit {
     });
   }
 
-  addNewTipoActivo() {
-    this.showNewTipoForm.set(true);
-    this.newTipoNombreValue = '';
-  }
-
-  cancelNewTipo() {
-    this.showNewTipoForm.set(false);
-    this.newTipoNombreValue = '';
-  }
-
-  saveNewTipo() {
-    const cleanNombre = this.newTipoNombreValue.trim();
-    if (!cleanNombre) return;
-    if (cleanNombre.length < 3) {
-      this.toast.set({ type: 'error', message: 'El nombre del tipo debe tener al menos 3 caracteres.' });
-      return;
-    }
-
-    this.savingNewTipo.set(true);
-    this.createTipoActivoUC.execute(cleanNombre).subscribe({
-      next: (res) => {
-        this.getMetadataUC.execute().subscribe(meta => {
-          this.metadata.set(meta);
-          this.tipo = res.id;
-          this.savingNewTipo.set(false);
-          this.showNewTipoForm.set(false);
-          this.newTipoNombreValue = '';
-        });
-      },
-      error: (err) => {
-        this.savingNewTipo.set(false);
-        const msg = err.error?.message || 'Error al crear el tipo de activo.';
-        this.toast.set({ type: 'error', message: msg });
-      }
-    });
+  onPlacaInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const digits = input.value.replace(/\D/g, '').slice(0, 10);
+    this.placa = digits.length > 4 ? `${digits.slice(0, 4)}-${digits.slice(4)}` : digits;
+    input.value = this.placa;
   }
 
   private resetForm() {

@@ -214,7 +214,7 @@ export class AddResponsableDrawerComponent implements OnInit {
 
 
 
-  @Output() onSave = new EventEmitter<void>();
+  @Output() onSave = new EventEmitter<string>();
 
   responsibleForm: FormGroup;
 
@@ -309,7 +309,7 @@ export class AddResponsableDrawerComponent implements OnInit {
       request$.subscribe({
         next: () => {
           this.saving.set(false);
-          this.onSave.emit();
+          this.onSave.emit(payload.email);
           this.close();
         },
         error: (err) => {
@@ -331,7 +331,7 @@ export class AddResponsableDrawerComponent implements OnInit {
       this.inactiveResponsable.execute(current.id).subscribe({
         next: () => {
           this.saving.set(false);
-          this.onSave.emit(); // Actualizamos la tabla de fondo
+          this.onSave.emit(current.email); // Actualizamos la tabla de fondo
           this.close();       // Cerramos el drawer
         },
         error: (err) => {
@@ -360,7 +360,7 @@ export class AddResponsableDrawerComponent implements OnInit {
       this.updateResponsable.execute(current.id, payload).subscribe({
         next: () => {
           this.saving.set(false);
-          this.onSave.emit();
+          this.onSave.emit(current.email);
           this.close();
         },
         error: (err) => {

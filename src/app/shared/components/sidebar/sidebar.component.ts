@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import Keycloak from 'keycloak-js';
@@ -7,6 +7,7 @@ interface NavItem {
   label: string;
   icon: SafeHtml;
   route: string;
+  adminOnly?: boolean;
 }
 
 @Component({
@@ -30,7 +31,7 @@ interface NavItem {
       </div>
       <!-- Nav -->
       <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        @for (item of navItems; track item.route) {
+        @for (item of visibleNavItems(); track item.route) {
           <a
             [routerLink]="item.route"
             routerLinkActive="bg-indigo-600 text-white"
@@ -59,6 +60,8 @@ interface NavItem {
 export class SidebarComponent {
   private keycloak = inject(Keycloak);
   private sanitizer = inject(DomSanitizer);
+
+  isAdmin = computed(() => this.keycloak.hasRealmRole('admin') || this.keycloak.hasRealmRole('ADMIN'));
 
   private svg(content: string): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(
@@ -103,13 +106,22 @@ export class SidebarComponent {
       icon: this.svg('<path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>')
     },
     {
+      label: 'Catálogos',
+      route: '/catalogs',
+      adminOnly: true,
+      icon: this.svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z"/>')
+    },
+    {
       label: 'Reportes',
       route: '/reports',
       icon: this.svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>')
     },
   ];
 
+  visibleNavItems = computed(() => this.navItems.filter(item => !item.adminOnly || this.isAdmin()));
+
   async logout() {
     await this.keycloak.logout({ redirectUri: window.location.origin });
   }
 }
+

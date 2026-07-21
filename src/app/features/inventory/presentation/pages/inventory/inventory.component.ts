@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Activo } from '../../../domain/models/activo.model';
@@ -22,11 +22,23 @@ import Keycloak from 'keycloak-js';
           <h2 class="text-2xl font-bold text-slate-800">Inventario de Activos</h2>
           <p class="text-sm text-slate-500 mt-1">Gestión integral de hardware y dispositivos</p>
         </div>
-        <button
-          (click)="abrirNuevo()"
-          class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-100">
-          <span class="text-xl leading-none">+</span> Añadir Nuevo Activo
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            (click)="fetchData()"
+            [disabled]="loading()"
+            class="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-slate-50 active:bg-slate-100 rounded-xl border border-slate-200 transition-all shadow-sm bg-white disabled:opacity-50"
+            title="Actualizar listado">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" [class.animate-spin]="loading()">
+              <path d="M23 4v6h-6"></path>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+          </button>
+          <button
+            (click)="abrirNuevo()"
+            class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-100">
+            <span class="text-xl leading-none">+</span> Añadir Nuevo Activo
+          </button>
+        </div>
       </div>
 
       <!-- Filter Bar -->
@@ -96,8 +108,11 @@ import Keycloak from 'keycloak-js';
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              @for (activo of filteredActivos(); track activo.id) {
-                <tr class="hover:bg-slate-50/50 transition-colors">
+              @for (activo of paginatedActivos(); track activo.id) {
+                <tr 
+                  [class.bg-emerald-50/70]="newlyCreatedPlaca() === activo.placa"
+                  [class.hover:bg-emerald-100/50]="newlyCreatedPlaca() === activo.placa"
+                  class="hover:bg-slate-50/50 transition-all duration-500">
                   <td class="px-6 py-4 font-bold text-slate-700 underline decoration-indigo-200 underline-offset-4">{{ activo.placa }}</td>
                   <td class="px-6 py-4">
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-600 border-slate-200">
@@ -144,19 +159,58 @@ import Keycloak from 'keycloak-js';
               }
             </tbody>
           </table>
-          <div class="px-6 py-4 bg-slate-50/30 border-t border-slate-100 text-xs text-slate-400 font-medium">
-            Mostrando {{ filteredActivos().length }} de {{ activos().length }} activos registrados
+          <!-- Barra de navegación de páginas (Paginación) -->
+          <div class="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium select-none">
+            <!-- Rango actual -->
+            <div>
+              Mostrando <span class="font-bold text-slate-700">{{ startIndex() }}</span> a 
+              <span class="font-bold text-slate-700">{{ endIndex() }}</span> de 
+              <span class="font-bold text-slate-700">{{ filteredActivos().length }}</span> activos
+            </div>
+            
+            <!-- Controles -->
+            <div class="flex items-center gap-4">
+              <!-- Selector de cantidad por página -->
+              <div class="flex items-center gap-1.5">
+                <span>Filas por página:</span>
+                <select 
+                  [ngModel]="pageSize()" 
+                  (ngModelChange)="pageSize.set(+$event)"
+                  class="bg-white border border-slate-200 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-indigo-500/30">
+                  <option [value]="5">5</option>
+                  <option [value]="10">10</option>
+                  <option [value]="25">25</option>
+                  <option [value]="50">50</option>
+                </select>
+              </div>
+
+              <!-- Navegación -->
+              <div class="flex items-center gap-1">
+                <button 
+                  (click)="prevPage()" 
+                  [disabled]="currentPage() === 1"
+                  class="w-7 h-7 flex items-center justify-center rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold">
+                  ‹
+                </button>
+                <span class="text-slate-600 font-bold px-1">Pág. {{ currentPage() }} de {{ totalPages() }}</span>
+                <button 
+                  (click)="nextPage()" 
+                  [disabled]="currentPage() === totalPages()"
+                  class="w-7 h-7 flex items-center justify-center rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold">
+                  ›
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       }
     </div>
 
-    <!-- Drawer para agregar activo -->
     <app-add-activo-drawer
       [open]="showDrawer()"
       [activo]="selectedActivo()"
       (openChange)="handleDrawerOpenChange($event)"
-      (saved)="ngOnInit()"
+      (saved)="handleSaved($event)"
     />
   `,
   styles: []
@@ -243,14 +297,79 @@ export class InventoryPageComponent implements OnInit {
     return this.locations().reduce((acc, curr) => ({ ...acc, [curr.id]: curr }), {} as Record<string, any>);
   });
 
+  newlyCreatedPlaca = signal<string | null>(null);
+
+  // Señales de Paginación
+  currentPage = signal(1);
+  pageSize = signal(10);
+
+  // Activos paginados
+  paginatedActivos = computed(() => {
+    const list = this.filteredActivos();
+    const start = (this.currentPage() - 1) * this.pageSize();
+    const end = start + this.pageSize();
+    return list.slice(start, end);
+  });
+
+  startIndex = computed(() => {
+    if (this.filteredActivos().length === 0) return 0;
+    return (this.currentPage() - 1) * this.pageSize() + 1;
+  });
+
+  endIndex = computed(() => {
+    const end = this.currentPage() * this.pageSize();
+    const total = this.filteredActivos().length;
+    return end > total ? total : end;
+  });
+
+  totalPages = computed(() => {
+    const total = this.filteredActivos().length;
+    const size = this.pageSize();
+    return Math.max(Math.ceil(total / size), 1);
+  });
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.set(this.currentPage() - 1);
+    }
+  }
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.set(this.currentPage() + 1);
+    }
+  }
+
   constructor(
     private getAllActivos: GetAllActivosUseCase,
     private getMetadataUC: GetActivoMetadataUseCase,
     private getLocationsUC: GetAllLocationsUseCase // <-- Inyectamos ubicaciones
-  ) { }
+  ) {
+    effect(() => {
+      // Reaccionar a cambios en filtros y reiniciar a página 1
+      this.searchTerm();
+      this.selectedType();
+      this.selectedLocation();
+      this.selectedStatus();
+      
+      untracked(() => {
+        this.currentPage.set(1);
+      });
+    });
+  }
 
   ngOnInit() {
     this.fetchData();
+  }
+
+  handleSaved(placa: string) {
+    this.fetchData();
+    if (placa) {
+      this.newlyCreatedPlaca.set(placa);
+      setTimeout(() => {
+        this.newlyCreatedPlaca.set(null);
+      }, 30000);
+    }
   }
 
   fetchData() {

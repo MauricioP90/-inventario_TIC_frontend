@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { LayoutComponent } from './shared/components/layout/layout.component';
 import { authGuard } from './core/auth/guards/auth-guard';
+import { adminGuard } from './core/auth/guards/admin-guard';
 
 export const routes: Routes = [
   {
@@ -44,10 +45,17 @@ export const routes: Routes = [
           import('./features/responsables/presentation/pages/responsables/responsables.component').then(m => m.ResponsablesPageComponent)
       },
       {
+        path: 'catalogs',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/catalogs/presentation/pages/catalogs/catalogs.component').then(m => m.CatalogsComponent)
+      },
+      {
         path: 'reports',
         loadComponent: () =>
           import('./features/dashboard/presentation/pages/reports/reports.component').then(m => m.ReportsPageComponent)
       },
+
       {
         path: 'maintenance',
         loadComponent: () =>

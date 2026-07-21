@@ -217,7 +217,7 @@ export class AddLocationDrawerComponent implements OnInit {
     return all.filter(area => selectedIds.includes(area.id));
   });
 
-  @Output() onSave = new EventEmitter<void>();
+  @Output() onSave = new EventEmitter<string>();
 
   locationForm: FormGroup;
 
@@ -313,7 +313,7 @@ export class AddLocationDrawerComponent implements OnInit {
       request$.subscribe({
         next: () => {
           this.saving.set(false);
-          this.onSave.emit();
+          this.onSave.emit(payload.code);
           this.close();
         },
         error: (err: any) => {

@@ -1,6 +1,8 @@
 import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../../../environments/environment';
 import { Location } from '../../../../locations/domain/models/location.model';
 import { Responsable } from '../../../../responsables/domain/models/responsable.model';
 import { GetAllLocationsUseCase } from '../../../../locations/application/use-cases/get-all-locations.use-case';
@@ -499,23 +501,65 @@ interface PickItem {
               <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Observaciones</label>
               <textarea [(ngModel)]="notes"
                         placeholder="Detalles adicionales del movimiento..."
-                        rows="4"
-                        class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm resize-none"></textarea>
+                        rows="2"
+                        class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm resize-none"></textarea>
             </div>
             <div class="space-y-4">
-              <div class="space-y-1.5">
-                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" stroke-width="2"/></svg>
-                  Documento soporte (PDF/Imagen)
-                </label>
-                <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center group hover:border-indigo-500 transition-colors">
-                   <input type="file" class="hidden" id="fileInput">
-                   <label for="fileInput" class="cursor-pointer text-xs text-slate-400 group-hover:text-indigo-600 font-medium">
-                     Seleccionar archivo <span class="text-slate-300">| Ningún archivo seleccionado</span>
-                   </label>
+            <!-- Documento Soporte -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                </svg>
+                Documento soporte <span class="text-slate-400 font-normal lowercase">(opcional)</span>
+              </label>
+
+              @if (documentUrl()) {
+                <div class="flex items-center justify-between p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl transition-all shadow-sm">
+                  <div class="flex items-center gap-2.5 overflow-hidden">
+                    <div class="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                      <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                      </svg>
+                    </div>
+                    <div class="truncate">
+                      <p class="text-xs font-bold text-slate-800 truncate">{{ documentFileName || 'Documento cargado' }}</p>
+                      <a [href]="documentUrl()" target="_blank" class="text-[11px] text-emerald-700 hover:underline font-semibold flex items-center gap-1 mt-0.5">
+                        Ver / Descargar archivo
+                        <svg class="w-3 h-3 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <label class="px-2 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50 border border-indigo-200 rounded-lg cursor-pointer transition-colors bg-white shadow-2xs" title="Cambiar por otro archivo">
+                      Reemplazar
+                      <input type="file" class="hidden" accept=".pdf,.jpg,.png,.jpeg" (change)="onDocumentFileChange($event)" />
+                    </label>
+                    <button type="button" (click)="removeDocumentFile()" class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors" title="Quitar archivo adjunto">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.562.621c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-                <p class="text-[10px] text-slate-400 italic">📎 Opcional: Adjunte el respaldo del movimiento</p>
-              </div>
+              } @else {
+                <label class="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 h-[52px] px-4 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/40 transition-colors">
+                  @if (uploadingFile()) {
+                    <div class="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                    <span class="text-xs text-slate-500 font-medium">Subiendo archivo...</span>
+                  } @else {
+                    <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 0l-3 3m3-3l3 3M6.5 20h11A2.5 2.5 0 0020 17.5V7.914a2.5 2.5 0 00-.732-1.768l-3.414-3.414A2.5 2.5 0 0014.086 2H6.5A2.5 2.5 0 004 4.5v13A2.5 2.5 0 006.5 20z"/>
+                    </svg>
+                    <span class="text-xs text-slate-600 font-medium">Subir documento soporte (PDF, JPG, PNG)</span>
+                  }
+                  <input type="file" class="hidden" accept=".pdf,.jpg,.png,.jpeg" (change)="onDocumentFileChange($event)" />
+                </label>
+              }
+            </div>
             </div>
           </div>
 
@@ -925,8 +969,8 @@ interface PickItem {
                     </div>
                     @if (selectedMovementForAction.notes) {
                       <div class="pt-1.5 border-t border-slate-200/60 mt-1">
-                        <span class="text-slate-500 font-medium block mb-0.5">Notas / Motivo de Rechazo:</span>
-                        <span class="font-semibold text-rose-600 block leading-normal bg-rose-50/50 p-2 rounded-lg border border-rose-100/50">{{ selectedMovementForAction.notes }}</span>
+                        <span class="text-slate-500 font-medium block mb-0.5 text-xs">Notas / Motivo de Rechazo:</span>
+                        <span class="font-semibold text-rose-600 block leading-relaxed bg-rose-50/50 p-2 rounded-lg border border-rose-100/50 text-xs max-h-24 overflow-y-auto">{{ selectedMovementForAction.notes }}</span>
                       </div>
                     }
                     <div class="pt-1.5 border-t border-slate-200/60 mt-1">
@@ -1270,6 +1314,9 @@ export class MovementsPageComponent implements OnInit {
   responsibleId = '';
   searchQuery = signal('');
   notes = '';
+  uploadingFile = signal(false);
+  documentUrl = signal<string | null>(null);
+  documentFileName = '';
   selectedActivo = signal<Activo | null>(null);
 
   // 👇 Control del buscador predictivo para Ubicación Origen (modo SIM)
@@ -1570,7 +1617,8 @@ export class MovementsPageComponent implements OnInit {
     private getOneActivo: GetOneActivoUseCase,
     private getAllActivos: GetAllActivosUseCase,
     private getAllSimCards: GetAllSimCardsUseCase,
-    private simCardRepo: SimCardRepository
+    private simCardRepo: SimCardRepository,
+    private http: HttpClient
   ) { }
 
   ngOnInit() {
@@ -1756,6 +1804,7 @@ export class MovementsPageComponent implements OnInit {
       activoIds: this.movementType === 'SIM_TRASLADO' ? [] : [this.selectedActivo()!.id],
       simCardIds: this.movementType === 'SIM_TRASLADO' ? [this.selectedSimForTransfer()!.id] : [],
       notes: this.notes,
+      documentUrl: this.documentUrl() || undefined,
       recipients: this.selectedEmails() // 👈 Enviamos los destinatarios elegidos
     };
 
@@ -1805,12 +1854,50 @@ export class MovementsPageComponent implements OnInit {
     });
   }
 
+  onDocumentFileChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      this.showError.set('El archivo no puede superar los 5MB.');
+      return;
+    }
+    this.documentFileName = file.name;
+    this.uploadingFile.set(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      this.http.post<{ url: string }>(`${environment.apiUrl}/files/upload`, {
+        base64,
+        fileName: file.name,
+        folder: 'soportes'
+      }).subscribe({
+        next: (res) => {
+          this.documentUrl.set(res.url);
+          this.uploadingFile.set(false);
+        },
+        error: () => {
+          this.uploadingFile.set(false);
+          this.showError.set('Error al subir el archivo soporte.');
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removeDocumentFile() {
+    this.documentUrl.set(null);
+    this.documentFileName = '';
+  }
+
   finishSave() {
     this.showSuccess.set(true);
     this.showError.set(null);
     this.searchQuery.set('');
     this.selectedActivo.set(null);
     this.notes = '';
+    this.documentUrl.set(null);
+    this.documentFileName = '';
     this.selectedSimForAssign = null; // Reset SIM selections
     this.simSearchQuery = '';
     this.selectedSimToReplace = null;

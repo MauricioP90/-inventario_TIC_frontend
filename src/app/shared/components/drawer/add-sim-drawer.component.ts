@@ -156,7 +156,7 @@ export class AddSimDrawerComponent implements OnInit, OnChanges {
   @Input() open = false;
   @Input() simCard: SimCard | null = null;
   @Output() openChange = new EventEmitter<boolean>();
-  @Output() saved = new EventEmitter<void>();
+  @Output() saved = new EventEmitter<string>();
 
   // Tus variables de formulario
   numero = '';
@@ -246,7 +246,7 @@ export class AddSimDrawerComponent implements OnInit, OnChanges {
           this.toast.set({ type: 'success', message: `SIM actualizada exitosamente.` });
           setTimeout(() => {
             this.close();
-            this.saved.emit();
+            this.saved.emit(this.numero);
             this.resetForm();
           }, 1200);
         },
@@ -268,7 +268,7 @@ export class AddSimDrawerComponent implements OnInit, OnChanges {
           this.toast.set({ type: 'success', message: `SIM guardada exitosamente.` });
           setTimeout(() => {
             this.close();
-            this.saved.emit();
+            this.saved.emit(this.numero);
             this.resetForm();
           }, 1200);
         },

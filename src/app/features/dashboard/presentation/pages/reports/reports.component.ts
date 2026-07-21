@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GetAllActivosUseCase } from '../../../../inventory/application/use-cases/get-all-activos.use-case';
@@ -178,7 +178,7 @@ import Keycloak from 'keycloak-js';
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 bg-white">
-              @for (m of filteredMovements(); track m.id) {
+              @for (m of paginatedMovements(); track m.id) {
                 <tr class="hover:bg-slate-50/50 transition-colors">
                   <!-- Fecha -->
                   <td class="px-6 py-4 whitespace-nowrap font-medium text-slate-500">
@@ -236,8 +236,8 @@ import Keycloak from 'keycloak-js';
                     <span *ngIf="!m.responsible" class="text-slate-400 italic">No asignado</span>
                   </td>
                   <!-- Notas -->
-                  <td class="px-6 py-4 max-w-xs truncate" [title]="m.notes || ''">
-                    <span class="text-slate-500 italic">{{ m.notes || '-' }}</span>
+                  <td class="px-6 py-4 max-w-[200px] truncate" [title]="m.notes || ''">
+                    <span class="text-slate-500 italic text-xs leading-tight block truncate">{{ m.notes || '-' }}</span>
                   </td>
                   <!-- Estado -->
                   <td class="px-6 py-4 text-center whitespace-nowrap">
@@ -272,7 +272,7 @@ import Keycloak from 'keycloak-js';
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 bg-white">
-              @for (a of filteredAltas(); track a.id) {
+              @for (a of paginatedAltas(); track a.id) {
                 <tr class="hover:bg-slate-50/50 transition-colors">
                   <!-- Fecha Ingreso -->
                   <td class="px-6 py-4 whitespace-nowrap font-medium text-slate-500">
@@ -332,7 +332,7 @@ import Keycloak from 'keycloak-js';
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 bg-white">
-              @for (rep of filteredMantenimientos(); track rep.id) {
+              @for (rep of paginatedMantenimientos(); track rep.id) {
                 <tr class="hover:bg-slate-50/50 transition-colors">
                   <!-- Fecha Cierre -->
                   <td class="px-6 py-4 whitespace-nowrap font-medium text-slate-500">
@@ -396,6 +396,36 @@ import Keycloak from 'keycloak-js';
           </table>
         </div>
 
+        <!-- Pagination Footer -->
+        <div class="flex items-center justify-between px-6 py-3 border-t border-slate-100 bg-slate-50/50" *ngIf="currentListLength() > 0">
+          <div class="flex items-center gap-3 text-xs text-slate-500">
+            <span>Mostrando <strong>{{ startIndex() }}</strong> a <strong>{{ endIndex() }}</strong> de <strong>{{ currentListLength() }}</strong> registros</span>
+            <select
+              [ngModel]="pageSize()"
+              (ngModelChange)="onPageSizeChange($event)"
+              class="px-2 py-1 border border-slate-200 rounded-lg bg-white text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            >
+              <option [value]="5">5 por página</option>
+              <option [value]="10">10 por página</option>
+              <option [value]="25">25 por página</option>
+              <option [value]="50">50 por página</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-1">
+            <button
+              (click)="prevPage()"
+              [disabled]="currentPage() === 1"
+              class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors border border-slate-200 bg-white font-medium"
+            >← Anterior</button>
+            <span class="px-3 py-1.5 text-xs font-bold text-indigo-600">{{ currentPage() }} / {{ totalPages() }}</span>
+            <button
+              (click)="nextPage()"
+              [disabled]="currentPage() === totalPages()"
+              class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors border border-slate-200 bg-white font-medium"
+            >Siguiente →</button>
+          </div>
+        </div>
+
       </div>
 
     </div>
@@ -427,6 +457,49 @@ export class ReportsPageComponent implements OnInit {
   startDate = signal('');
   endDate = signal('');
   selectedLocationId = signal('');
+
+  // Pagination Signals
+  currentPage = signal(1);
+  pageSize = signal(10);
+
+  // Paginated slices for each tab
+  paginatedMovements = computed(() => {
+    const list = this.filteredMovements();
+    const start = (this.currentPage() - 1) * this.pageSize();
+    return list.slice(start, start + this.pageSize());
+  });
+
+  paginatedAltas = computed(() => {
+    const list = this.filteredAltas();
+    const start = (this.currentPage() - 1) * this.pageSize();
+    return list.slice(start, start + this.pageSize());
+  });
+
+  paginatedMantenimientos = computed(() => {
+    const list = this.filteredMantenimientos();
+    const start = (this.currentPage() - 1) * this.pageSize();
+    return list.slice(start, start + this.pageSize());
+  });
+
+  currentListLength = computed(() => {
+    const tab = this.activeTab();
+    if (tab === 'movimientos') return this.filteredMovements().length;
+    if (tab === 'altas') return this.filteredAltas().length;
+    return this.filteredMantenimientos().length;
+  });
+
+  startIndex = computed(() => {
+    if (this.currentListLength() === 0) return 0;
+    return (this.currentPage() - 1) * this.pageSize() + 1;
+  });
+
+  endIndex = computed(() => {
+    const end = this.currentPage() * this.pageSize();
+    const total = this.currentListLength();
+    return end > total ? total : end;
+  });
+
+  totalPages = computed(() => Math.max(1, Math.ceil(this.currentListLength() / this.pageSize())));
 
   // Role Checks
   isAdmin = computed(() => this.keycloak.hasRealmRole('admin') || this.keycloak.hasRealmRole('ADMIN'));
@@ -583,6 +656,19 @@ export class ReportsPageComponent implements OnInit {
     return this.filteredMantenimientos().reduce((sum, rep) => sum + (rep.costoFinal || 0), 0);
   });
 
+  constructor() {
+    effect(() => {
+      this.searchTerm();
+      this.startDate();
+      this.endDate();
+      this.selectedLocationId();
+      this.activeTab();
+      untracked(() => {
+        this.currentPage.set(1);
+      });
+    });
+  }
+
   ngOnInit() {
     this.fetchData();
   }
@@ -625,6 +711,23 @@ export class ReportsPageComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  onPageSizeChange(size: any) {
+    this.pageSize.set(Number(size));
+    this.currentPage.set(1);
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
   }
 
   // Filter resets
