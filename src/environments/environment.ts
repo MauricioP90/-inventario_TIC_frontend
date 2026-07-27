@@ -3,7 +3,7 @@ export const environment = {
   apiUrl: 'http://localhost:3000/api',
   keycloak: {
     url: 'http://localhost:8180',
-    realm: 'inventory-realm',
+    realm: 'Inventory-realm',
     clientId: 'inventory-backend'
   }
 };

@@ -20,13 +20,11 @@ interface NavItem {
   template: `
     <aside class="flex flex-col h-full w-64 bg-slate-900 text-slate-100 shrink-0 shadow-lg">
       <!-- Header -->
-      <div class="flex items-center gap-3 px-6 py-5 border-b border-slate-700">
-        <div class="flex items-center justify-center h-9 w-9 rounded-lg bg-indigo-600">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
-        </div>
-        <div>
-          <h2 class="text-sm font-bold tracking-wide">Flota La Macarena</h2>
-          <p class="text-[11px] text-slate-400">Sistema de Inventario</p>
+      <div class="flex items-center gap-3 px-5 py-4 border-b border-slate-700/80">
+        <img src="/logo-bus.png" alt="Flota La Macarena" class="h-10 w-auto object-contain shrink-0 drop-shadow" />
+        <div class="min-w-0">
+          <h2 class="text-sm font-bold tracking-wide text-white truncate">Flota La Macarena</h2>
+          <p class="text-[11px] font-medium text-slate-400 truncate">Sistema de Inventario</p>
         </div>
       </div>
       <!-- Nav -->
