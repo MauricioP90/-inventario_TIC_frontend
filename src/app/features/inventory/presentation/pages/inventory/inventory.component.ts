@@ -113,7 +113,20 @@ import Keycloak from 'keycloak-js';
                   [class.bg-emerald-50/70]="newlyCreatedPlaca() === activo.placa"
                   [class.hover:bg-emerald-100/50]="newlyCreatedPlaca() === activo.placa"
                   class="hover:bg-slate-50/50 transition-all duration-500">
-                  <td class="px-6 py-4 font-bold text-slate-700 underline decoration-indigo-200 underline-offset-4">{{ activo.placa }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex flex-col items-start gap-1">
+                      <span class="font-bold text-slate-700 underline decoration-indigo-200 underline-offset-4 font-mono text-xs">{{ activo.placa }}</span>
+                      @if (activo.facturaUrl) {
+                        <a 
+                          [href]="activo.facturaUrl" 
+                          target="_blank" 
+                          title="Ver Factura Adjunta"
+                          class="inline-flex items-center gap-1 text-[10px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 border border-indigo-200/80 px-2 py-0.5 rounded-md transition-all">
+                          📄 Factura
+                        </a>
+                      }
+                    </div>
+                  </td>
                   <td class="px-6 py-4">
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-600 border-slate-200">
                       {{ typeMap()[activo.tipoActivoId]?.label || activo.tipoActivoId }}

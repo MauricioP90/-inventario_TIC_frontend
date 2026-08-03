@@ -72,6 +72,35 @@ import { MovementTypePipe } from '../../../../../shared/pipes/movement-type.pipe
         </div>
       }
 
+      <!-- Soportes / Evidencias Adjuntas -->
+      @if (movement.documentUrl || movement.evidenceUrl || movement.receivedEvidenceUrl) {
+        <div class="mb-4 p-3 bg-indigo-50/50 border border-indigo-100/80 rounded-xl space-y-1.5">
+          <p class="text-[9px] text-indigo-500 uppercase font-bold flex items-center gap-1">
+            📎 Soportes Adjuntos
+          </p>
+          <div class="flex flex-wrap gap-2">
+            @if (movement.documentUrl) {
+              <a [href]="movement.documentUrl" target="_blank" title="Ver Comodato / Acta de Soporte"
+                 class="text-[11px] font-bold text-violet-700 hover:text-violet-900 bg-white border border-violet-200 px-2 py-1 rounded-md transition-all flex items-center gap-1 shadow-2xs">
+                📋 Comodato/Acta ↗
+              </a>
+            }
+            @if (movement.evidenceUrl) {
+              <a [href]="movement.evidenceUrl" target="_blank" title="Ver Guía/Soporte de Envío"
+                 class="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 bg-white border border-indigo-200 px-2 py-1 rounded-md transition-all flex items-center gap-1 shadow-2xs">
+                🚚 Soporte Envío ↗
+              </a>
+            }
+            @if (movement.receivedEvidenceUrl) {
+              <a [href]="movement.receivedEvidenceUrl" target="_blank" title="Ver Acta/Soporte de Recepción"
+                 class="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-white border border-emerald-200 px-2 py-1 rounded-md transition-all flex items-center gap-1 shadow-2xs">
+                📦 Soporte Recepción ↗
+              </a>
+            }
+          </div>
+        </div>
+      }
+
       <!-- Acciones -->
       <div class="flex gap-2">
         @if (movement.status === 'PENDING') {

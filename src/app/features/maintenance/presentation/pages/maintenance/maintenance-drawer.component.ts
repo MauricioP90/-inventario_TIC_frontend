@@ -287,7 +287,7 @@ import Keycloak from 'keycloak-js';
                       } @else {
                         <span class="text-xs text-slate-500">{{ soporteProveedorUrl ? '✓ Soporte cargado' : 'Subir Cotización (PDF/Imagen)' }}</span>
                       }
-                      <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg" (change)="subirSoporteArchivo($event, 'proveedor')" />
+                      <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="subirSoporteArchivo($event, 'proveedor')" />
                     </label>
                   </div>
 
@@ -314,7 +314,7 @@ import Keycloak from 'keycloak-js';
                           {{ soporteAutorizacionUrl ? '✓ Autorización cargada' : 'Subir Firma / Correo Soporte (PDF/Imagen)' }}
                         </span>
                       }
-                      <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg" (change)="subirSoporteArchivo($event, 'autorizacion')" />
+                      <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="subirSoporteArchivo($event, 'autorizacion')" />
                     </label>
                   </div>
 

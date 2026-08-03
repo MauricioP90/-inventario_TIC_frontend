@@ -39,7 +39,8 @@ export interface Movement {
   activoIds: string[];
   simCardIds?: string[];
   notes?: string;
-  evidenceUrl?: string;
+  evidenceUrl?: string;         // Guía / soporte de despacho
+  documentUrl?: string;         // Comodato / acta de soporte (registro inicial)
   receivedEvidenceUrl?: string;
   createdAt: Date;
   shippedAt?: Date;
@@ -63,6 +64,8 @@ export interface CreateMovementDto {
   activoIds: string[];
   simCardIds?: string[];
   notes?: string;
+  documentUrl?: string;
+  evidenceUrl?: string;
   recipients?: string[];
 }
 

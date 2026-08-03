@@ -227,13 +227,15 @@ import { GetAllAreasUseCase } from '../../../features/responsables/application/u
               <div class="flex items-center gap-1.5 shrink-0">
                 <label class="px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 border border-indigo-200 rounded-lg cursor-pointer transition-colors bg-white shadow-2xs" title="Cambiar por otro archivo">
                   Reemplazar
-                  <input type="file" class="hidden" accept=".pdf,.jpg,.png,.jpeg" (change)="onFileChange($event)" />
+                  <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="onFileChange($event)" />
                 </label>
-                <button type="button" (click)="removeFactura()" class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors" title="Quitar archivo adjunto">
-                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.562.621c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                  </svg>
-                </button>
+                @if (!activo) {
+                  <button type="button" (click)="removeFactura()" class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors" title="Quitar archivo adjunto">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.562.621c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                    </svg>
+                  </button>
+                }
               </div>
             </div>
           } @else {
@@ -248,8 +250,23 @@ import { GetAllAreasUseCase } from '../../../features/responsables/application/u
                 <span class="text-sm text-slate-600 font-medium">Arrastra o haz clic para subir factura/soporte</span>
                 <span class="text-xs text-slate-400">PDF, JPG, PNG (máx. 5MB)</span>
               }
-              <input type="file" class="hidden" accept=".pdf,.jpg,.png,.jpeg" (change)="onFileChange($event)" />
+              <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="onFileChange($event)" />
             </label>
+          }
+
+          <!-- Justificación Obligatoria de Auditoría -->
+          @if (activo && (facturaUrl() !== (activo.facturaUrl || null) || (precioCompra ?? null) !== (activo.precioCompra ?? null))) {
+            <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1.5 mt-2 animate-fade-in">
+              <label class="block text-xs font-bold text-amber-900">
+                Justificación de Auditoría <span class="text-red-500">*</span>
+              </label>
+              <p class="text-[11px] text-amber-700">Por seguridad contable, ingresa el motivo del cambio o reemplazo de la factura o valor de compra.</p>
+              <textarea 
+                [(ngModel)]="justification" 
+                rows="2" 
+                placeholder="Ej: Corrección de soporte emitido por proveedor o actualización de factura..." 
+                class="w-full p-2 text-xs border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white placeholder:text-amber-400/80"></textarea>
+            </div>
           }
         </div>
 
@@ -355,6 +372,53 @@ import { GetAllAreasUseCase } from '../../../features/responsables/application/u
             }
           </div>
         }
+
+        <!-- Historial de Auditoría de Facturas/Soportes -->
+        @if (activo) {
+          <div class="border-t border-slate-200 pt-5 space-y-4">
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+              <span>📜 Traza de Auditoría de Facturas</span>
+              <span class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-extrabold">{{ auditHistory().length }}</span>
+            </h4>
+            
+            @if (auditHistory().length === 0) {
+              <p class="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-lg p-3 text-center">
+                No hay modificaciones de factura o precio registradas para este activo.
+              </p>
+            } @else {
+              <div class="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                @for (audit of auditHistory(); track audit.id) {
+                  <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-2">
+                    <div class="flex items-center justify-between text-[11px]">
+                      <span class="font-bold text-slate-700">{{ audit.changedByUser || 'Usuario' }}</span>
+                      <span class="text-slate-400 font-mono text-[10px]">{{ audit.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                    </div>
+                    
+                    <div class="text-[11px] text-slate-600 bg-white p-2 rounded-lg border border-slate-100">
+                      <span class="font-bold text-slate-400 text-[10px] uppercase block">Motivo Registrado</span>
+                      <p class="italic text-slate-700 mt-0.5">{{ audit.justification }}</p>
+                    </div>
+
+                    <div class="flex items-center justify-between text-[10px] pt-1 border-t border-slate-100">
+                      @if (audit.previousFacturaUrl) {
+                        <a [href]="audit.previousFacturaUrl" target="_blank" class="text-indigo-600 font-bold hover:underline inline-flex items-center gap-1">
+                          📄 Ver Factura Anterior ↗
+                        </a>
+                      } @else {
+                        <span class="text-slate-400">Sin factura previa</span>
+                      }
+                      @if (audit.previousPrecioCompra !== undefined && audit.previousPrecioCompra !== null && audit.previousPrecioCompra !== audit.newPrecioCompra) {
+                        <span class="text-slate-500">
+                          <s>{{ audit.previousPrecioCompra | currency:'USD':'symbol':'1.0-0' }}</s> → <strong>{{ audit.newPrecioCompra | currency:'USD':'symbol':'1.0-0' }}</strong>
+                        </span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
       </div>
 
       <!-- Footer -->
@@ -394,15 +458,21 @@ export class AddActivoDrawerComponent implements OnInit {
   // Maintenance history
   maintHistory = signal<any[]>([]);
 
+  // Audit history & justification
+  justification = '';
+  auditHistory = signal<any[]>([]);
+
   @Input() open = false;
   @Input() set activo(val: Activo | null) {
     this._activo = val;
     if (val) {
       this.populateForm(val);
       this.loadMaintHistory(val.id);
+      this.loadAuditHistory(val.id);
     } else {
       this.resetForm();
       this.maintHistory.set([]);
+      this.auditHistory.set([]);
     }
   }
   get activo() { return this._activo; }
@@ -412,6 +482,13 @@ export class AddActivoDrawerComponent implements OnInit {
     this.http.get<any[]>(`${environment.apiUrl}/maintenance/history?activoId=${activoId}`).subscribe({
       next: (history) => this.maintHistory.set(history || []),
       error: (err) => console.error("Error loading maintenance history", err)
+    });
+  }
+
+  loadAuditHistory(activoId: string) {
+    this.http.get<any[]>(`${environment.apiUrl}/activos/${activoId}/audit-history`).subscribe({
+      next: (history) => this.auditHistory.set(history || []),
+      error: (err) => console.error("Error loading audit history", err)
     });
   }
 
@@ -552,6 +629,17 @@ export class AddActivoDrawerComponent implements OnInit {
       this.toast.set({ type: 'error', message: 'La placa debe cumplir el formato 0000-000000 (4 números - 6 números).' });
       return;
     }
+
+    // Validación de Auditoría Obligatoria
+    if (this.activo) {
+      const facturaChanged = this.facturaUrl() !== (this.activo.facturaUrl || null);
+      const precioChanged = (this.precioCompra ?? null) !== (this.activo.precioCompra ?? null);
+      if ((facturaChanged || precioChanged) && !this.justification.trim()) {
+        this.toast.set({ type: 'error', message: 'Se requiere ingresar una justificación de auditoría obligatoria para modificar la factura o precio.' });
+        return;
+      }
+    }
+
     this.saving.set(true);
     const payload = {
       tipoActivoId: this.tipo,
@@ -566,6 +654,8 @@ export class AddActivoDrawerComponent implements OnInit {
       fechaIngreso: this.fechaIngreso,
       facturaUrl: this.facturaUrl() ?? undefined,
       precioCompra: this.precioCompra ?? undefined,
+      justification: this.justification || undefined,
+      changedByUser: (this.keycloak as any)?.tokenParsed?.preferred_username || (this.keycloak as any)?.tokenParsed?.email || 'Usuario Autenticado',
       ...(this.estado === 'MANTENIMIENTO' && {
         maintenanceModalidad: this.maintModalidad,
         maintenanceTipo: this.maintTipo,
@@ -582,6 +672,7 @@ export class AddActivoDrawerComponent implements OnInit {
         this.saving.set(false);
         this.toast.set({ type: 'success', message: `Activo "${this.placa}" ${this.activo ? 'actualizado' : 'guardado'} exitosamente.` });
         const savedPlaca = this.placa;
+        this.justification = '';
         if (!this.activo) this.resetForm();
         setTimeout(() => {
           this.toast.set(null);
@@ -618,11 +709,13 @@ export class AddActivoDrawerComponent implements OnInit {
     this.precioCompra = null;
     this.fileName = '';
     this.facturaUrl.set(null);
+    this.justification = '';
     this.toast.set(null);
     this.maintModalidad = 'INTERNO';
     this.maintTipo = 'PREVENTIVO';
     this.maintCostoEstimado = undefined;
     this.maintTecnicoResponsable = '';
     this.maintHistory.set([]);
+    this.auditHistory.set([]);
   }
 }

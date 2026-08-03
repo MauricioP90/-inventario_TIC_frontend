@@ -174,6 +174,7 @@ import Keycloak from 'keycloak-js';
                 <th class="px-6 py-4">Destino</th>
                 <th class="px-6 py-4">Responsable</th>
                 <th class="px-6 py-4">Notas</th>
+                <th class="px-6 py-4">Soportes</th>
                 <th class="px-6 py-4 text-center">Estado</th>
               </tr>
             </thead>
@@ -239,6 +240,33 @@ import Keycloak from 'keycloak-js';
                   <td class="px-6 py-4 max-w-[200px] truncate" [title]="m.notes || ''">
                     <span class="text-slate-500 italic text-xs leading-tight block truncate">{{ m.notes || '-' }}</span>
                   </td>
+                  <!-- Soportes -->
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    @if (m.documentUrl || m.evidenceUrl || m.receivedEvidenceUrl) {
+                      <div class="flex flex-col gap-1">
+                        @if (m.documentUrl) {
+                          <a [href]="m.documentUrl" target="_blank" title="Ver Comodato / Acta de Soporte"
+                             class="inline-flex items-center gap-1 text-[10px] font-bold bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 px-2 py-0.5 rounded transition-all">
+                            📋 Comodato ↗
+                          </a>
+                        }
+                        @if (m.evidenceUrl) {
+                          <a [href]="m.evidenceUrl" target="_blank" title="Ver Soporte Envío"
+                             class="inline-flex items-center gap-1 text-[10px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded transition-all">
+                            🚚 Envío ↗
+                          </a>
+                        }
+                        @if (m.receivedEvidenceUrl) {
+                          <a [href]="m.receivedEvidenceUrl" target="_blank" title="Ver Soporte Recepción"
+                             class="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded transition-all">
+                            📦 Recepción ↗
+                          </a>
+                        }
+                      </div>
+                    } @else {
+                      <span class="text-slate-300 font-mono text-[11px]">—</span>
+                    }
+                  </td>
                   <!-- Estado -->
                   <td class="px-6 py-4 text-center whitespace-nowrap">
                     <span [class]="getMovementStatusClass(m.status)">
@@ -268,6 +296,7 @@ import Keycloak from 'keycloak-js';
                 <th class="px-6 py-4">Marca / Modelo</th>
                 <th class="px-6 py-4">Serial / Número</th>
                 <th class="px-6 py-4">Ubicación Inicial</th>
+                <th class="px-6 py-4">Factura Adjunta</th>
                 <th class="px-6 py-4" *ngIf="isAdmin()">Valor Compra</th>
               </tr>
             </thead>
@@ -299,6 +328,17 @@ import Keycloak from 'keycloak-js';
                   <!-- Ubicación -->
                   <td class="px-6 py-4 font-semibold text-slate-600">
                     {{ a.location?.nombre || 'Bodega Principal' }}
+                  </td>
+                  <!-- Factura -->
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    @if (a.facturaUrl) {
+                      <a [href]="a.facturaUrl" target="_blank" title="Ver Factura"
+                         class="inline-flex items-center gap-1 text-[10px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded transition-all">
+                        📄 Factura ↗
+                      </a>
+                    } @else {
+                      <span class="text-slate-300 font-mono text-[11px]">—</span>
+                    }
                   </td>
                   <!-- Valor de Compra (Admin only) -->
                   <td class="px-6 py-4 font-bold text-slate-800 whitespace-nowrap" *ngIf="isAdmin()">
@@ -819,7 +859,7 @@ export class ReportsPageComponent implements OnInit {
 
     if (tab === 'movimientos') {
       filename = `auditoria_traslados_${new Date().toISOString().split('T')[0]}.csv`;
-      const headers = ['Fecha', 'ID Traslado', 'Tipo Movimiento', 'Activos', 'SIM Cards', 'Origen', 'Destino', 'Estado', 'Notas'];
+      const headers = ['Fecha', 'ID Traslado', 'Tipo Movimiento', 'Activos', 'SIM Cards', 'Origen', 'Destino', 'Estado', 'Notas', 'Comodato/Acta URL', 'Soporte Envío URL', 'Soporte Recepción URL'];
       csvContent += headers.join(';') + '\n';
 
       this.filteredMovements().forEach(m => {
@@ -832,14 +872,17 @@ export class ReportsPageComponent implements OnInit {
         const dest = m.destinationLocation?.nombre || 'N/A';
         const status = this.getMovementStatusLabel(m.status);
         const notes = m.notes || '';
+        const documentUrl = m.documentUrl || '';
+        const evidenceUrl = m.evidenceUrl || '';
+        const receivedEvidenceUrl = m.receivedEvidenceUrl || '';
 
-        const row = [date, id, type, activos, sims, origin, dest, status, notes]
+        const row = [date, id, type, activos, sims, origin, dest, status, notes, documentUrl, evidenceUrl, receivedEvidenceUrl]
           .map(val => `"${val.replace(/"/g, '""')}"`);
         csvContent += row.join(';') + '\n';
       });
     } else if (tab === 'altas') {
       filename = `historial_altas_${new Date().toISOString().split('T')[0]}.csv`;
-      const headers = ['Fecha Ingreso', 'Placa', 'Tipo Activo', 'Marca', 'Modelo', 'Serial', 'Ubicación', 'Valor Compra'];
+      const headers = ['Fecha Ingreso', 'Placa', 'Tipo Activo', 'Marca', 'Modelo', 'Serial', 'Ubicación', 'URL Factura', 'Valor Compra'];
       csvContent += headers.join(';') + '\n';
 
       this.filteredAltas().forEach(a => {
@@ -850,9 +893,10 @@ export class ReportsPageComponent implements OnInit {
         const modelo = a.modelo || '';
         const serial = a.serial || '';
         const location = a.location?.nombre || 'Bodega/Disponible';
+        const facturaUrl = a.facturaUrl || '';
         const valCompra = this.isAdmin() ? (a.precioCompra || 0) : 'RESTRINGIDO';
 
-        const row = [date, placa, type, marca, modelo, serial, location, valCompra]
+        const row = [date, placa, type, marca, modelo, serial, location, facturaUrl, valCompra]
           .map(val => `"${String(val).replace(/"/g, '""')}"`);
         csvContent += row.join(';') + '\n';
       });
