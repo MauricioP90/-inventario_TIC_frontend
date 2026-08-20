@@ -630,6 +630,16 @@ export class AddActivoDrawerComponent implements OnInit {
       return;
     }
 
+    // Validación de Inactivación con SIM Cards vinculadas
+    if (this.activo && this.estado === 'BAJA' && this.activo.simCards && this.activo.simCards.length > 0) {
+      const numeros = this.activo.simCards.map(s => s.numero || s.iccid).join(', ');
+      this.toast.set({
+        type: 'error',
+        message: `No se puede inactivar o dar de baja el activo porque tiene ${this.activo.simCards.length} tarjeta(s) SIM vinculada(s) (${numeros}). Primero debes desvincular las tarjetas SIM.`
+      });
+      return;
+    }
+
     // Validación de Auditoría Obligatoria
     if (this.activo) {
       const facturaChanged = this.facturaUrl() !== (this.activo.facturaUrl || null);

@@ -82,8 +82,13 @@ import { SimCard } from '../../../features/sim-cards/domain/models/sim-card.mode
             <select [(ngModel)]="estado" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
               <option value="BODEGA">Disponible (Bodega)</option>
               <option value="ASIGNADA">Asignada</option>
-              <option value="BAJA">Inactiva (Baja)</option>
+              <option value="BAJA" [disabled]="!!simCard.activoId">Inactiva (Baja){{ simCard.activoId ? ' — (Vinculada a Dispositivo)' : '' }}</option>
             </select>
+            @if (simCard.activoId && estado === 'BAJA') {
+              <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-2.5 rounded-lg flex items-center gap-1.5 font-medium">
+                <span>⚠️ No se puede inactivar esta SIM Card porque está vinculada al dispositivo {{ simCard.activo?.placa ? '("' + simCard.activo?.placa + '")' : '' }}. Desvincúlala del dispositivo primero.</span>
+              </div>
+            }
           </div>
         }
 

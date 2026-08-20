@@ -280,7 +280,8 @@ interface PickItem {
                     <span class="text-emerald-500 text-[10px] font-bold normal-case">✓ Seleccionado</span>
                   }
                 </label>
-                <select [(ngModel)]="responsibleId"
+                <select [ngModel]="responsibleId"
+                        (ngModelChange)="onResponsibleChange($event)"
                         class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm appearance-none font-medium text-slate-700">
                   <option value="">Seleccione el responsable receptor...</option>
                   @for (resp of filteredResponsiblesForDestination(); track resp.id) {
@@ -481,7 +482,8 @@ interface PickItem {
                     <span class="text-emerald-500 text-[10px] font-bold normal-case">✓ Seleccionado</span>
                   }
                 </label>
-                <select [(ngModel)]="responsibleId"
+                <select [ngModel]="responsibleId"
+                        (ngModelChange)="onResponsibleChange($event)"
                         class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm appearance-none font-medium text-slate-700">
                   <option value="">Seleccione el responsable receptor...</option>
                   @for (resp of filteredResponsiblesForDestination(); track resp.id) {
@@ -740,30 +742,79 @@ interface PickItem {
           }
                @if (movementType && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL', 'SIM_TRASLADO'].includes(movementType)) {
             <div class="space-y-3.5 p-6 bg-slate-50/80 border border-slate-200 rounded-2xl animate-in fade-in duration-200">
-              <div class="flex items-center justify-between">
-                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  📧 Enviar Soporte por Correo a:
-                </label>
-                <button (click)="selectAllEmails()" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold transition-colors">
-                  Seleccionar Todos
-                </button>
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <label class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    📧 Enviar Notificación por Correo a:
+                  </label>
+                  @if (!showAllRecipients()) {
+                    <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200">
+                      📍 Sedes Involucradas ({{ relevantResponsibles().length }})
+                    </span>
+                  } @else {
+                    <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                      🌐 Todos los Responsables ({{ relevantResponsibles().length }})
+                    </span>
+                  }
+                </div>
+                <div class="flex items-center gap-3 text-xs">
+                  <button type="button" (click)="toggleShowAllRecipients()" class="text-indigo-600 hover:text-indigo-800 font-bold transition-colors">
+                    {{ showAllRecipients() ? '📍 Ver Solo Sedes' : '🌐 Ver Todos' }}
+                  </button>
+                  <span class="text-slate-300">|</span>
+                  <button type="button" (click)="selectAllRelevantEmails()" class="text-slate-600 hover:text-indigo-600 font-semibold transition-colors">
+                    Marcar Todos
+                  </button>
+                  <span class="text-slate-300">|</span>
+                  <button type="button" (click)="clearAllEmails()" class="text-slate-400 hover:text-red-600 font-semibold transition-colors">
+                    Limpiar
+                  </button>
+                </div>
               </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-48 overflow-y-auto pr-2">
-                @for (resp of responsables(); track resp.id) {
+
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto pr-1">
+                @for (resp of relevantResponsibles(); track resp.id) {
                   @if (resp.email) {
-                    <label class="flex items-center gap-3 p-3 bg-white border border-slate-100 hover:border-slate-200 rounded-xl cursor-pointer transition-all shadow-sm">
+                    <label class="flex items-center gap-3 p-2.5 bg-white border rounded-xl cursor-pointer transition-all shadow-sm group select-none"
+                           [class.border-indigo-300]="selectedEmails().includes(resp.email)"
+                           [class.bg-indigo-50/40]="selectedEmails().includes(resp.email)"
+                           [class.border-slate-200]="!selectedEmails().includes(resp.email)">
                       <input type="checkbox" 
                              [checked]="selectedEmails().includes(resp.email)"
                              (change)="toggleEmail(resp.email)"
                              class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
-                      <div class="flex flex-col min-w-0">
-                        <span class="text-xs font-bold text-slate-800 truncate">{{ resp.nombre }}</span>
+                      <div class="flex flex-col min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5">
+                          <span class="text-xs font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">{{ resp.nombre }}</span>
+                          @if (isReceiver(resp.email)) {
+                            <span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                              ✓ Receptor
+                            </span>
+                          } @else if (isCurrentCustodian(resp.email)) {
+                            <span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 border border-blue-300 shrink-0">
+                              👤 Custodio Origen
+                            </span>
+                          }
+                        </div>
                         <span class="text-[10px] text-slate-400 truncate">{{ resp.email }}</span>
                       </div>
                     </label>
                   }
+                } @empty {
+                  <div class="col-span-full py-6 text-center text-xs text-slate-400 bg-white border border-slate-100 rounded-xl">
+                    <p>No se encontraron responsables con correo en las sedes seleccionadas.</p>
+                    <button type="button" (click)="toggleShowAllRecipients()" class="mt-1.5 text-indigo-600 font-bold hover:underline">
+                      Pulsa aquí para ver todos los responsables del sistema
+                    </button>
+                  </div>
                 }
               </div>
+
+              @if (selectedEmails().length > 0) {
+                <div class="text-[11px] text-slate-500 font-medium pt-1">
+                  Se enviará notificación a <strong class="text-slate-800 font-bold">{{ selectedEmails().length }}</strong> destinatario(s).
+                </div>
+              }
             </div>
           }
           <!-- Footer -->
@@ -1284,8 +1335,52 @@ export class MovementsPageComponent implements OnInit {
 
   // 👇 Guarda los correos de los destinatarios elegidos
   selectedEmails = signal<string[]>([]);
+  showAllRecipients = signal<boolean>(false);
 
-  // Agrega o quita un correo del listado
+  // 👇 Computa la lista de responsables relevantes (sedes origen y destino + custodio actual + receptor)
+  relevantResponsibles = computed<Responsable[]>(() => {
+    const all = this.responsables().filter(r => r.estado === 'ACTIVO' && !!r.email);
+    if (this.showAllRecipients()) {
+      return all;
+    }
+
+    const originLocId = this.originId();
+    const destLocId = this.destinationId;
+    const currentRespId = this.selectedActivo()?.responsibleId || (this.selectedActivo() as any)?.responsible?.id;
+    const receiverRespId = this.responsibleId;
+
+    // Si no hay sedes seleccionadas aún, mostramos los que coincidan con el receptor o custodio
+    if (!originLocId && !destLocId) {
+      return all.filter(r => r.id === currentRespId || r.id === receiverRespId);
+    }
+
+    // Filtramos los responsables asignados a la sede origen o sede destino, o que sean el custodio/receptor
+    return all.filter(r => {
+      const inOrigin = originLocId && r.locationIds?.includes(originLocId);
+      const inDest = destLocId && r.locationIds?.includes(destLocId);
+      const isCurrent = currentRespId && r.id === currentRespId;
+      const isReceiver = receiverRespId && r.id === receiverRespId;
+      return inOrigin || inDest || isCurrent || isReceiver;
+    });
+  });
+
+  onResponsibleChange(newId: string) {
+    this.responsibleId = newId;
+    if (newId) {
+      const resp = this.responsables().find(r => r.id === newId);
+      if (resp && resp.email) {
+        const current = this.selectedEmails();
+        if (!current.includes(resp.email)) {
+          this.selectedEmails.set([...current, resp.email]);
+        }
+      }
+    }
+  }
+
+  toggleShowAllRecipients() {
+    this.showAllRecipients.set(!this.showAllRecipients());
+  }
+
   toggleEmail(email: string) {
     const current = this.selectedEmails();
     if (current.includes(email)) {
@@ -1294,12 +1389,35 @@ export class MovementsPageComponent implements OnInit {
       this.selectedEmails.set([...current, email]);
     }
   }
-  // Permite seleccionar todos los correos activos a la vez
-  selectAllEmails() {
-    const emails = this.responsables()
+
+  selectAllRelevantEmails() {
+    const emails = this.relevantResponsibles()
       .map(r => r.email)
       .filter((email): email is string => !!email);
     this.selectedEmails.set(emails);
+  }
+
+  clearAllEmails() {
+    this.selectedEmails.set([]);
+  }
+
+  isReceiver(email: string): boolean {
+    if (!this.responsibleId) return false;
+    const resp = this.responsables().find(r => r.id === this.responsibleId);
+    return resp?.email === email;
+  }
+
+  isCurrentCustodian(email: string): boolean {
+    const activo = this.selectedActivo();
+    if (!activo) return false;
+    const custodianEmail = activo.responsible?.email;
+    if (custodianEmail) return custodianEmail === email;
+    const currentRespId = activo.responsibleId || (activo as any).responsible?.id;
+    if (currentRespId) {
+      const resp = this.responsables().find(r => r.id === currentRespId);
+      return resp?.email === email;
+    }
+    return false;
   }
 
   movementTypes = Object.entries(MOVEMENT_TYPE_LABELS);
@@ -1788,6 +1906,23 @@ export class MovementsPageComponent implements OnInit {
 
         if (isSameAsOrigin || isInvalidForMaintenance) {
           this.clearDestinationSelection();
+        }
+      }
+    }
+
+    // Preseleccionar el correo del custodio actual del activo si existe
+    const currentRespEmail = activo.responsible?.email;
+    if (currentRespEmail) {
+      const current = this.selectedEmails();
+      if (!current.includes(currentRespEmail)) {
+        this.selectedEmails.set([...current, currentRespEmail]);
+      }
+    } else if (activo.responsibleId) {
+      const resp = this.responsables().find(r => r.id === activo.responsibleId);
+      if (resp && resp.email) {
+        const current = this.selectedEmails();
+        if (!current.includes(resp.email)) {
+          this.selectedEmails.set([...current, resp.email]);
         }
       }
     }
