@@ -2,6 +2,7 @@ import { Component, inject, computed } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import Keycloak from 'keycloak-js';
+import { RoleService } from '../../../core/auth/services/role.service';
 
 interface NavItem {
   label: string;
@@ -42,7 +43,18 @@ interface NavItem {
         }
       </nav>
       <!-- Footer -->
-      <div class="border-t border-slate-700 p-3">
+      <div class="border-t border-slate-700 p-3 space-y-2">
+        <div class="px-3 py-2 bg-slate-800/80 rounded-lg flex items-center gap-3 border border-slate-700/50">
+          <div class="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-xs text-white uppercase shrink-0">
+            {{ roleService.userName().charAt(0) }}
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-semibold text-white truncate">{{ roleService.userName() }}</p>
+            <span class="inline-block text-[10px] font-medium px-2 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 mt-0.5">
+              {{ roleService.userRoleLabel() }}
+            </span>
+          </div>
+        </div>
         <button
           (click)="logout()"
           class="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-all text-sm"
@@ -57,9 +69,10 @@ interface NavItem {
 })
 export class SidebarComponent {
   private keycloak = inject(Keycloak);
+  public roleService = inject(RoleService);
   private sanitizer = inject(DomSanitizer);
 
-  isAdmin = computed(() => this.keycloak.hasRealmRole('admin') || this.keycloak.hasRealmRole('ADMIN'));
+  isAdmin = computed(() => this.roleService.isAdmin());
 
   private svg(content: string): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(
