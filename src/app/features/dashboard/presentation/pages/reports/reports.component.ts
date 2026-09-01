@@ -10,9 +10,8 @@ import { MaintenanceUseCases } from '../../../../maintenance/application/use-cas
 import { Activo, ActivoMetadata } from '../../../../inventory/domain/models/activo.model';
 import { Movement, MOVEMENT_TYPE_LABELS, MovementStatus } from '../../../../movements/domain/models/movement.model';
 import { Location } from '../../../../locations/domain/models/location.model';
-import { SimCard } from '../../../../sim-cards/domain/models/sim-card.model';
 import { MaintenanceReport } from '../../../../maintenance/domain/models/maintenance.model';
-import Keycloak from 'keycloak-js';
+import { RoleService } from '../../../../../core/auth/services/role.service';
 
 @Component({
   selector: 'app-reports-page',
@@ -479,7 +478,7 @@ export class ReportsPageComponent implements OnInit {
   private getAllLocations = inject(GetAllLocationsUseCase);
   private getMetadataUC = inject(GetActivoMetadataUseCase);
   private maintenanceUC = inject(MaintenanceUseCases);
-  private keycloak = inject(Keycloak);
+  public roleService = inject(RoleService);
 
   // States
   loading = signal(false);
@@ -542,7 +541,7 @@ export class ReportsPageComponent implements OnInit {
   totalPages = computed(() => Math.max(1, Math.ceil(this.currentListLength() / this.pageSize())));
 
   // Role Checks
-  isAdmin = computed(() => this.keycloak.hasRealmRole('admin') || this.keycloak.hasRealmRole('ADMIN'));
+  isAdmin = computed(() => this.roleService.isAdmin());
 
   // Metadata Mapping helper
   typeMap = computed(() => {

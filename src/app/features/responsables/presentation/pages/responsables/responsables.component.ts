@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ViewChild, computed, effect, untracked } from '@angular/core';
+import { Component, OnInit, signal, ViewChild, computed, effect, untracked, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Responsable } from '../../../domain/models/responsable.model';
@@ -10,6 +10,7 @@ import { AddResponsableDrawerComponent } from '../../../../../shared/components/
 import { GetAllRolesUseCase } from '../../../application/use-cases/get-all-roles.use-case';
 import { Activo } from '../../../../inventory/domain/models/activo.model';
 import { GetAllActivosUseCase } from '../../../../inventory/application/use-cases/get-all-activos.use-case';
+import { RoleService } from '../../../../../core/auth/services/role.service';
 
 @Component({
   selector: 'app-responsables-page',
@@ -41,11 +42,13 @@ import { GetAllActivosUseCase } from '../../../../inventory/application/use-case
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
             </svg>
           </button>
-          <button 
-            (click)="addDrawer.open()"
-            class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-100">
-            + Nuevo Responsable
-          </button>
+          @if (roleService.canManageResponsables()) {
+            <button 
+              (click)="addDrawer.open()"
+              class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-100">
+              + Nuevo Responsable
+            </button>
+          }
         </div>
       </div>
 
@@ -153,7 +156,9 @@ import { GetAllActivosUseCase } from '../../../../inventory/application/use-case
                 <th class="text-left px-6 py-4">Sedes Asignadas</th>
                 <th class="text-center px-6 py-4">Estadísticas</th>
                 <th class="text-center px-6 py-4">Estado</th>
-                <th class="text-right px-6 py-4">Acciones</th>
+                @if (roleService.canManageResponsables()) {
+                  <th class="text-right px-6 py-4">Acciones</th>
+                }
               </tr>
             </thead>
              <tbody class="divide-y divide-slate-100">
@@ -208,13 +213,15 @@ import { GetAllActivosUseCase } from '../../../../inventory/application/use-case
                   <td class="px-6 py-4 text-center">
                     <span [class]="statusClass(resp.estado)">{{ resp.estado }}</span>
                   </td>
-                  <td class="px-6 py-4 text-right">
-                    <button 
-                      (click)="addDrawer.open(resp)"
-                      class="text-indigo-600 hover:text-indigo-900 font-bold transition-colors">
-                      Editar
-                    </button>
-                  </td>
+                  @if (roleService.canManageResponsables()) {
+                    <td class="px-6 py-4 text-right">
+                      <button 
+                        (click)="addDrawer.open(resp)"
+                        class="text-indigo-600 hover:text-indigo-900 font-bold transition-colors">
+                        Editar
+                      </button>
+                    </td>
+                  }
                 </tr>
                 @if (expandedResponsibleId() === resp.id) {
                   <tr class="bg-slate-50/50">
@@ -290,7 +297,7 @@ import { GetAllActivosUseCase } from '../../../../inventory/application/use-case
                   </tr>
                 }
               } @empty {
-                <tr><td colspan="6" class="px-6 py-12 text-center text-slate-400">No se encontraron responsables</td></tr>
+                <tr><td [attr.colspan]="roleService.canManageResponsables() ? 6 : 5" class="px-6 py-12 text-center text-slate-400">No se encontraron responsables</td></tr>
               }
             </tbody>
           </table>
@@ -348,6 +355,7 @@ import { GetAllActivosUseCase } from '../../../../inventory/application/use-case
 })
 export class ResponsablesPageComponent implements OnInit {
   @ViewChild('addDrawer') addDrawer!: AddResponsableDrawerComponent;
+  public roleService = inject(RoleService);
 
   responsables = signal<Responsable[]>([]);
   locations = signal<Location[]>([]);

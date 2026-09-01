@@ -1,9 +1,10 @@
-import { Component, OnInit, signal, computed, effect, untracked } from '@angular/core';
+import { Component, OnInit, signal, computed, effect, untracked, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SimCard } from '../../../domain/models/sim-card.model';
 import { GetAllSimCardsUseCase } from '../../../application/use-cases/get-all-sim-cards.use-case';
 import { AddSimDrawerComponent } from '../../../../../shared/components/drawer/add-sim-drawer.component';
+import { RoleService } from '../../../../../core/auth/services/role.service';
 
 @Component({
   selector: 'app-sim-cards-page',
@@ -28,11 +29,13 @@ import { AddSimDrawerComponent } from '../../../../../shared/components/drawer/a
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
             </svg>
           </button>
-          <button
-            (click)="abrirNuevo()"
-            class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-100">
-            <span class="text-xl leading-none">+</span> Añadir Nueva SIM
-          </button>
+          @if (roleService.canCreateActivo()) {
+            <button
+              (click)="abrirNuevo()"
+              class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-100">
+              <span class="text-xl leading-none">+</span> Añadir Nueva SIM
+            </button>
+          }
         </div>
       </div>
 
@@ -87,7 +90,9 @@ import { AddSimDrawerComponent } from '../../../../../shared/components/drawer/a
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Ubicación</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Estado</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Equipo Asignado</th>
-                <th class="text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Acciones</th>
+                @if (roleService.canEditActivo()) {
+                  <th class="text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Acciones</th>
+                }
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -108,16 +113,18 @@ import { AddSimDrawerComponent } from '../../../../../shared/components/drawer/a
                     <span [class]="statusClass(sim.estado)">{{ statusLabel(sim.estado) }}</span>
                   </td>
                   <td class="px-6 py-4 font-bold text-indigo-900/60">{{ sim.activo?.placa ?? '—' }}</td>
-                  <td class="px-6 py-4 text-right">
-                    <button 
-                      (click)="editSim(sim)"
-                      class="text-indigo-600 hover:text-indigo-900 font-medium transition-all">
-                      Editar
-                    </button>
-                  </td>
+                  @if (roleService.canEditActivo()) {
+                    <td class="px-6 py-4 text-right">
+                      <button 
+                        (click)="editSim(sim)"
+                        class="text-indigo-600 hover:text-indigo-900 font-medium transition-all">
+                        Editar
+                      </button>
+                    </td>
+                  }
                 </tr>
               } @empty {
-                <tr><td colspan="7" class="px-6 py-12 text-center text-slate-400 text-sm">Sin SIM cards registradas</td></tr>
+                <tr><td [attr.colspan]="roleService.canEditActivo() ? 7 : 6" class="px-6 py-12 text-center text-slate-400 text-sm">Sin SIM cards registradas</td></tr>
               }
             </tbody>
           </table>
@@ -179,6 +186,7 @@ import { AddSimDrawerComponent } from '../../../../../shared/components/drawer/a
   styles: []
 })
 export class SimCardsPageComponent implements OnInit {
+  public roleService = inject(RoleService);
   simCards = signal<SimCard[]>([]);
   loading = signal(false);
   showDrawer = signal(false);

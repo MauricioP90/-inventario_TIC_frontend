@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ViewChild, computed, effect, untracked } from '@angular/core';
+import { Component, OnInit, signal, ViewChild, computed, effect, untracked, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -6,6 +6,7 @@ import { Location } from '../../../domain/models/location.model';
 import { GetAllLocationsUseCase } from '../../../application/use-cases/get-all-locations.use-case';
 import { ReverseGeocodeUseCase } from '../../../application/use-cases/reverse-geocode.use-case';
 import { AddLocationDrawerComponent } from '../../../../../shared/components/drawer/location-drawer/add-location-drawer.component';
+import { RoleService } from '../../../../../core/auth/services/role.service';
 
 @Component({
   selector: 'app-locations-list',
@@ -30,11 +31,13 @@ import { AddLocationDrawerComponent } from '../../../../../shared/components/dra
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
             </svg>
           </button>
-          <button
-            (click)="addDrawer.open()"
-            class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-100">
-            <span class="text-xl leading-none">+</span> Nueva Ubicación
-          </button>
+          @if (roleService.canManageLocations()) {
+            <button
+              (click)="addDrawer.open()"
+              class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-100">
+              <span class="text-xl leading-none">+</span> Nueva Ubicación
+            </button>
+          }
         </div>
       </div>
       <!-- Filtros -->
@@ -75,7 +78,9 @@ import { AddLocationDrawerComponent } from '../../../../../shared/components/dra
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Nombre</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Coordenadas</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Estado</th>
-                <th class="text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Acciones</th>
+                @if (roleService.canManageLocations()) {
+                  <th class="text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Acciones</th>
+                }
               </tr>
             </thead>
              <tbody class="divide-y divide-slate-100">
@@ -103,20 +108,22 @@ import { AddLocationDrawerComponent } from '../../../../../shared/components/dra
                   <td class="px-6 py-4">
                     <span [class]="statusClass(location.estado)">{{ location.estado }}</span>
                   </td>
-                  <td class="px-6 py-4 text-right">
-                    <button 
-                      (click)="addDrawer.open(location)" 
-                      [disabled]="location.estado === 'INACTIVO'"
-                      [class.opacity-30]="location.estado === 'INACTIVO'"
-                      [class.cursor-not-allowed]="location.estado === 'INACTIVO'"
-                      class="text-indigo-600 hover:text-indigo-900 font-medium transition-all">
-                      Editar
-                    </button>
-                  </td>
+                  @if (roleService.canManageLocations()) {
+                    <td class="px-6 py-4 text-right">
+                      <button 
+                        (click)="addDrawer.open(location)" 
+                        [disabled]="location.estado === 'INACTIVO'"
+                        [class.opacity-30]="location.estado === 'INACTIVO'"
+                        [class.cursor-not-allowed]="location.estado === 'INACTIVO'"
+                        class="text-indigo-600 hover:text-indigo-900 font-medium transition-all">
+                        Editar
+                      </button>
+                    </td>
+                  }
                 </tr>
                 @if (expandedLocationId() === location.id) {
                   <tr class="bg-slate-50/50">
-                    <td colspan="5" class="px-8 py-5 border-y border-slate-100">
+                    <td [attr.colspan]="roleService.canManageLocations() ? 5 : 4" class="px-8 py-5 border-y border-slate-100">
                       @if (parseCoordinates(location.coordenadas); as coords) {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                           <!-- Col 1: Geocoding & Additional Details -->
@@ -216,7 +223,7 @@ import { AddLocationDrawerComponent } from '../../../../../shared/components/dra
                   </tr>
                 }
               } @empty {
-                <tr><td colspan="5" class="px-6 py-12 text-center text-slate-400 text-sm">Sin ubicaciones registradas</td></tr>
+                <tr><td [attr.colspan]="roleService.canManageLocations() ? 5 : 4" class="px-6 py-12 text-center text-slate-400 text-sm">Sin ubicaciones registradas</td></tr>
               }
             </tbody>
           </table>
@@ -274,6 +281,7 @@ import { AddLocationDrawerComponent } from '../../../../../shared/components/dra
 })
 export class LocationsListComponent implements OnInit {
   @ViewChild('addDrawer') addDrawer!: AddLocationDrawerComponent;
+  public roleService = inject(RoleService);
 
   locations = signal<Location[]>([]);
   searchTerm = signal('');

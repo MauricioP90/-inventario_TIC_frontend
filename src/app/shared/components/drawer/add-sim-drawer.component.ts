@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, OnInit, OnChanges, SimpleChanges, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, OnInit, OnChanges, SimpleChanges, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CreateSimCardUseCase } from '../../../features/sim-cards/application/use-cases/create-sim-card.use-case';
@@ -6,6 +6,7 @@ import { UpdateSimCardUseCase } from '../../../features/sim-cards/application/us
 import { GetAllLocationsUseCase } from '../../../features/locations/application/use-cases/get-all-locations.use-case';
 import { Location } from '../../../features/locations/domain/models/location.model';
 import { SimCard } from '../../../features/sim-cards/domain/models/sim-card.model';
+import { RoleService } from '../../../core/auth/services/role.service';
 
 @Component({
   selector: 'app-add-sim-drawer',
@@ -148,16 +149,19 @@ import { SimCard } from '../../../features/sim-cards/domain/models/sim-card.mode
 
       <!-- Footer -->
       <div class="px-6 py-4 border-t border-slate-200 shrink-0">
-        <button (click)="handleSave()"
-          class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg transition-colors">
-          {{ simCard ? 'Guardar Cambios' : 'Guardar SIM' }}
-        </button>
+        @if ((!simCard && roleService.canCreateActivo()) || (simCard && roleService.canEditActivo())) {
+          <button (click)="handleSave()"
+            class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg transition-colors">
+            {{ simCard ? 'Guardar Cambios' : 'Guardar SIM' }}
+          </button>
+        }
       </div>
     </div>
   `,
   styles: []
 })
 export class AddSimDrawerComponent implements OnInit, OnChanges {
+  public roleService = inject(RoleService);
   @Input() open = false;
   @Input() simCard: SimCard | null = null;
   @Output() openChange = new EventEmitter<boolean>();

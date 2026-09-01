@@ -1,7 +1,8 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import Keycloak from 'keycloak-js';
 import { environment } from '../../../../../../environments/environment';
 import { Location } from '../../../../locations/domain/models/location.model';
 import { Responsable } from '../../../../responsables/domain/models/responsable.model';
@@ -21,6 +22,7 @@ import { GetAllSimCardsUseCase } from '../../../../sim-cards/application/use-cas
 import { SimCardRepository } from '../../../../sim-cards/domain/repositories/sim-card.repository';
 import { SimCard } from '../../../../sim-cards/domain/models/sim-card.model';
 import { Area } from '../../../../responsables/domain/models/area.model';
+import { RoleService } from '../../../../../core/auth/services/role.service';
 import * as QRCode from 'qrcode';
 
 interface PickItem {
@@ -39,7 +41,8 @@ interface PickItem {
     <div class="p-4 md:p-6 space-y-8 max-w-5xl mx-auto">
       
       <!-- FORM: Registrar Movimiento -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      @if (roleService.canRegisterMovement()) {
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="px-6 py-5 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
           <h2 class="text-xl font-bold text-slate-700 flex items-center gap-3">
             <div class="p-2 bg-white rounded-lg shadow-sm">
@@ -183,6 +186,24 @@ interface PickItem {
               </div>
             }
 
+            <!-- Banner de Alerta para Hurto o Pérdida -->
+            @if (movementType === 'HURTO_PERDIDA') {
+              <div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3 shadow-xs animate-in fade-in">
+                <div class="p-2 bg-rose-100 text-rose-700 rounded-xl text-lg shrink-0">
+                  🚨
+                </div>
+                <div>
+                  <h4 class="text-sm font-bold text-rose-900 leading-tight">Reporte Oficial de Hurto / Pérdida de Activo</h4>
+                  <p class="text-xs text-rose-700 mt-1 leading-relaxed">
+                    Este movimiento dará de <strong>baja definitiva</strong> al activo en el sistema, lo desvinculará de su custodio actual y notificará de forma inmediata a los correos suscritos de <strong>Seguridad, Jurídica y Contabilidad</strong>.
+                  </p>
+                  <p class="text-[11px] font-bold text-rose-800 mt-1.5 flex items-center gap-1">
+                    ⚠️ Es OBLIGATORIO adjuntar el archivo del denuncio policial ante la Fiscalía / Policía Nacional en la sección de documentos abajo.
+                  </p>
+                </div>
+              </div>
+            }
+
             <!-- Grid: Ubicaciones (Origen & Destino) -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <!-- Ubicación Origen -->
@@ -197,14 +218,14 @@ interface PickItem {
                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación Destino *</label>
                 <div class="relative group">
                   <input type="text" 
-                         [ngModel]="destinationSearchQuery()" 
-                         (focus)="(!movementType || movementType === 'TRASLADO_AREA') ? null : showDestinationDropdown.set(true)"
+                         [ngModel]="movementType === 'HURTO_PERDIDA' ? 'No aplica (Baja definitiva por hurto)' : destinationSearchQuery()" 
+                         (focus)="(!movementType || movementType === 'TRASLADO_AREA' || movementType === 'HURTO_PERDIDA') ? null : showDestinationDropdown.set(true)"
                          (input)="destinationSearchQuery.set($any($event.target).value); showDestinationDropdown.set(true)"
-                         [disabled]="!movementType || movementType === 'TRASLADO_AREA' || ['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)"
-                         [placeholder]="!movementType ? 'Seleccione tipo de movimiento primero...' : (['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType) ? 'No aplica (Mismo equipo)' : 'Escriba Código o Nombre de la Sede...')"
+                         [disabled]="!movementType || movementType === 'TRASLADO_AREA' || movementType === 'HURTO_PERDIDA' || ['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)"
+                         [placeholder]="!movementType ? 'Seleccione tipo de movimiento primero...' : (movementType === 'HURTO_PERDIDA' ? 'No aplica (Baja definitiva)' : (['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType) ? 'No aplica (Mismo equipo)' : 'Escriba Código o Nombre de la Sede...'))"
                          class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium text-slate-700 disabled:bg-slate-100 disabled:text-slate-500">
                   
-                  @if (destinationSearchQuery() && movementType && movementType !== 'TRASLADO_AREA' && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)) {
+                  @if (destinationSearchQuery() && movementType && movementType !== 'TRASLADO_AREA' && movementType !== 'HURTO_PERDIDA' && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)) {
                     <button (click)="clearDestinationSelection()" 
                             class="absolute right-3 top-3 text-slate-300 hover:text-slate-500 transition-colors">
                       <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -213,7 +234,7 @@ interface PickItem {
                     </button>
                   }
 
-                  @if (showDestinationDropdown() && filteredDestinations().length > 0 && movementType && movementType !== 'TRASLADO_AREA' && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)) {
+                  @if (showDestinationDropdown() && filteredDestinations().length > 0 && movementType && movementType !== 'TRASLADO_AREA' && movementType !== 'HURTO_PERDIDA' && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)) {
                     <div class="absolute z-20 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
                       @for (loc of filteredDestinations(); track loc.id) {
                         <div (click)="selectDestination(loc)" 
@@ -226,7 +247,7 @@ interface PickItem {
                   }
                 </div>
 
-                @if (selectedDestination() && movementType !== 'TRASLADO_AREA' && (!selectedDestination()!.responsibleIds || selectedDestination()!.responsibleIds.length === 0)) {
+                @if (selectedDestination() && movementType !== 'TRASLADO_AREA' && movementType !== 'HURTO_PERDIDA' && (!selectedDestination()!.responsibleIds || selectedDestination()!.responsibleIds.length === 0)) {
                   <div class="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 animate-in fade-in duration-200">
                     <span class="text-amber-500 text-sm">⚠️</span>
                     <p class="text-[11px] font-bold text-amber-800 leading-normal">
@@ -238,7 +259,7 @@ interface PickItem {
             </div>
 
             <!-- Área Destino -->
-            @if (selectedDestination() && movementType && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)) {
+            @if (selectedDestination() && movementType && movementType !== 'HURTO_PERDIDA' && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType)) {
               <div class="space-y-1.5 mt-4">
                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Área Destino *</label>
                 @if (getAvailableDestinationAreas().length > 0) {
@@ -513,7 +534,11 @@ interface PickItem {
                 <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
                 </svg>
-                Documento soporte <span class="text-slate-400 font-normal lowercase">(opcional)</span>
+                @if (movementType === 'HURTO_PERDIDA') {
+                  <span class="text-rose-700 font-bold">Denuncio Policial * (Obligatorio)</span>
+                } @else {
+                  <span>Documento soporte <span class="text-slate-400 font-normal lowercase">(opcional)</span></span>
+                }
               </label>
 
               @if (documentUrl()) {
@@ -828,6 +853,7 @@ interface PickItem {
           </div>
         </div>
       </div>
+      }
 
       <!-- LISTADO: Gestión de Envíos (Tabs + Búsqueda) -->
       <div class="space-y-6">
@@ -1319,12 +1345,18 @@ export class MovementsPageComponent implements OnInit {
     this.destinationAreaId.set('');
     this.responsibleId = '';
 
-    if (newType === 'TRASLADO_AREA') {
+    if (newType === 'TRASLADO_AREA' || newType === 'HURTO_PERDIDA') {
       const activo = this.selectedActivo();
       if (activo && activo.location) {
         this.selectedDestination.set(activo.location);
         this.destinationId = activo.location.id;
         this.destinationSearchQuery.set(activo.location.nombre);
+        if (newType === 'HURTO_PERDIDA') {
+          const currentRespId = activo.responsibleId || (activo as any).responsible?.id;
+          if (currentRespId) {
+            this.responsibleId = currentRespId;
+          }
+        }
       } else {
         this.clearDestinationSelection();
       }
@@ -1420,10 +1452,14 @@ export class MovementsPageComponent implements OnInit {
     return false;
   }
 
+  public roleService = inject(RoleService);
+  isAdmin = computed(() => this.roleService.isAdmin());
+
   movementTypes = Object.entries(MOVEMENT_TYPE_LABELS);
   filteredMovementTypes = computed(() => {
     const activo = this.selectedActivo();
     const mode = this.operationMode();
+    const canHurto = this.roleService.canRegisterHurto();
 
     if (mode === 'SIM') {
       return this.movementTypes.filter(([key]) => key === 'SIM_TRASLADO');
@@ -1433,6 +1469,11 @@ export class MovementsPageComponent implements OnInit {
     let types = this.movementTypes.filter(([key]) =>
       !['SIM_TRASLADO', 'REINGRESO_SOPORTE', 'RETORNO_POR_RECHAZO'].includes(key)
     );
+
+    // Restringir HURTO_PERDIDA únicamente a usuarios con rol ADMIN
+    if (!canHurto) {
+      types = types.filter(([key]) => key !== 'HURTO_PERDIDA');
+    }
 
     if (activo) {
       if (activo.estado === 'MANTENIMIENTO') {
@@ -1936,10 +1977,22 @@ export class MovementsPageComponent implements OnInit {
       this.destinationId = this.originId();
     }
 
-    // Para TRASLADO_AREA, el destino es la misma sede que el origen
+    // Para TRASLADO_AREA o HURTO_PERDIDA, el destino es la misma sede que el origen
     const isAreaTransfer = this.movementType === 'TRASLADO_AREA';
-    if (isAreaTransfer && this.selectedActivo()) {
+    const isTheftOrLoss = this.movementType === 'HURTO_PERDIDA';
+    if ((isAreaTransfer || isTheftOrLoss) && this.selectedActivo()) {
       this.destinationId = this.originId();
+      if (isTheftOrLoss && !this.responsibleId) {
+        this.responsibleId = this.selectedActivo()?.responsibleId || (this.selectedActivo() as any)?.responsible?.id || '';
+      }
+    }
+
+    // Validación para HURTO_PERDIDA: obligatorio el denuncio policial
+    if (isTheftOrLoss) {
+      if (!this.documentUrl()) {
+        alert('Para registrar un reporte de Hurto o Pérdida, es OBLIGATORIO adjuntar el archivo del denuncio policial (Fiscalía / Policía).');
+        return;
+      }
     }
 
     // Validación adicional para TRASLADO_AREA: se requiere área destino

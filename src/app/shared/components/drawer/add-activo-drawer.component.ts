@@ -12,7 +12,7 @@ import { Location } from '../../../features/locations/domain/models/location.mod
 import { GetAllLocationsUseCase } from '../../../features/locations/application/use-cases/get-all-locations.use-case';
 import { environment } from '../../../../environments/environment';
 import { UpdateActivoUseCase } from '../../../features/inventory/application/use-cases/update-activo.use-case';
-import Keycloak from 'keycloak-js';
+import { RoleService } from '../../../core/auth/services/role.service';
 import { Area } from '../../../features/responsables/domain/models/area.model';
 import { GetAllAreasUseCase } from '../../../features/responsables/application/use-cases/get-all-areas.use-case';
 
@@ -423,15 +423,17 @@ import { GetAllAreasUseCase } from '../../../features/responsables/application/u
 
       <!-- Footer -->
       <div class="px-6 py-4 border-t border-slate-200 shrink-0">
-        <button (click)="handleSave()" [disabled]="saving()"
-          class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
-          @if (saving()) {
-            <div class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-            Guardando...
-          } @else {
-            {{ activo ? 'Actualizar Activo' : 'Guardar Activo' }}
-          }
-        </button>
+        @if ((!activo && roleService.canCreateActivo()) || (activo && roleService.canEditActivo())) {
+          <button (click)="handleSave()" [disabled]="saving()"
+            class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
+            @if (saving()) {
+              <div class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              Guardando...
+            } @else {
+              {{ activo ? 'Actualizar Activo' : 'Guardar Activo' }}
+            }
+          </button>
+        }
       </div>
     </div>
   `,
@@ -444,10 +446,10 @@ export class AddActivoDrawerComponent implements OnInit {
   private getMetadataUC = inject(GetActivoMetadataUseCase);
   private getLocationsUC = inject(GetAllLocationsUseCase);
   private http = inject(HttpClient);
-  private keycloak = inject(Keycloak);
+  public roleService = inject(RoleService);
   private getAllAreasUC = inject(GetAllAreasUseCase);
 
-  isAdmin = computed(() => this.keycloak.hasRealmRole('admin') || this.keycloak.hasRealmRole('ADMIN'));
+  isAdmin = computed(() => this.roleService.isAdmin());
 
   // Maintenance fields for auto-creating a report
   maintModalidad = 'INTERNO';
@@ -665,7 +667,7 @@ export class AddActivoDrawerComponent implements OnInit {
       facturaUrl: this.facturaUrl() ?? undefined,
       precioCompra: this.precioCompra ?? undefined,
       justification: this.justification || undefined,
-      changedByUser: (this.keycloak as any)?.tokenParsed?.preferred_username || (this.keycloak as any)?.tokenParsed?.email || 'Usuario Autenticado',
+      changedByUser: this.roleService.userName() || 'Usuario Autenticado',
       ...(this.estado === 'MANTENIMIENTO' && {
         maintenanceModalidad: this.maintModalidad,
         maintenanceTipo: this.maintTipo,

@@ -7,7 +7,7 @@ import { MaintenanceUseCases } from '../../../application/use-cases/maintenance.
 import { Activo } from '../../../../inventory/domain/models/activo.model';
 import { HttpActivoRepository } from '../../../../inventory/infrastructure/adapters/http-activo.repository';
 import { environment } from '../../../../../../environments/environment';
-import Keycloak from 'keycloak-js';
+import { RoleService } from '../../../../../core/auth/services/role.service';
 
 @Component({
   selector: 'app-maintenance-drawer',
@@ -437,7 +437,7 @@ import Keycloak from 'keycloak-js';
       </div>
 
       <!-- Footer (Para Creación únicamente) -->
-      @if (!report) {
+      @if (!report && roleService.canRegisterMaintenance()) {
         <div class="px-6 py-4 border-t border-slate-200 shrink-0">
           <button (click)="guardarNuevaFicha()" [disabled]="saving() || !activoId"
             class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
@@ -458,7 +458,7 @@ export class MaintenanceDrawerComponent implements OnInit {
   private usecases = inject(MaintenanceUseCases);
   private activoRepo = inject(HttpActivoRepository);
   private http = inject(HttpClient);
-  private keycloak = inject(Keycloak);
+  public roleService = inject(RoleService);
 
   @Input() open = false;
   @Input() set report(val: MaintenanceReport | null) {
@@ -476,8 +476,8 @@ export class MaintenanceDrawerComponent implements OnInit {
   @Output() saved = new EventEmitter<void>();
 
   // Permisos basados en Roles
-  isAdmin = computed(() => this.keycloak.hasRealmRole('admin') || this.keycloak.hasRealmRole('ADMIN'));
-  isTecnico = computed(() => this.keycloak.hasRealmRole('tecnico') || this.keycloak.hasRealmRole('TECNICO') || this.isAdmin());
+  isAdmin = computed(() => this.roleService.isAdmin());
+  isTecnico = computed(() => this.roleService.canRegisterMaintenance());
 
   // Form Fields
   disponibles = signal<Activo[]>([]);

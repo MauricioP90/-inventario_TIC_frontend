@@ -6,7 +6,7 @@ import { MaintenanceUseCases } from '../../../application/use-cases/maintenance.
 import { MaintenanceDrawerComponent } from './maintenance-drawer.component';
 import { Activo } from '../../../../inventory/domain/models/activo.model';
 import { HttpActivoRepository } from '../../../../inventory/infrastructure/adapters/http-activo.repository';
-import Keycloak from 'keycloak-js';
+import { RoleService } from '../../../../../core/auth/services/role.service';
 
 @Component({
   selector: 'app-maintenance-list',
@@ -20,7 +20,7 @@ import Keycloak from 'keycloak-js';
           <h2 class="text-2xl font-bold text-slate-800 font-sans tracking-tight">Gestión de Mantenimientos</h2>
           <p class="text-sm text-slate-500 mt-1">Bandeja de trabajo para técnicos y control de reparaciones externas</p>
         </div>
-        @if (isTecnico()) {
+        @if (roleService.canRegisterMaintenance()) {
           <button
             (click)="abrirNuevo()"
             class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-100">
@@ -291,7 +291,7 @@ import Keycloak from 'keycloak-js';
 export class MaintenanceListComponent implements OnInit {
   private usecases = inject(MaintenanceUseCases);
   private activoRepo = inject(HttpActivoRepository);
-  private keycloak = inject(Keycloak);
+  public roleService = inject(RoleService);
 
   // States
   activeTab = signal<'activos' | 'historial'>('activos');
@@ -326,8 +326,8 @@ export class MaintenanceListComponent implements OnInit {
   selectedReport = signal<MaintenanceReport | null>(null);
 
   // Permisos
-  isAdmin = computed(() => this.keycloak.hasRealmRole('admin') || this.keycloak.hasRealmRole('ADMIN'));
-  isTecnico = computed(() => this.keycloak.hasRealmRole('tecnico') || this.keycloak.hasRealmRole('TECNICO') || this.isAdmin());
+  isAdmin = computed(() => this.roleService.isAdmin());
+  isTecnico = computed(() => this.roleService.canRegisterMaintenance());
 
   // Count active tickets
   activeCount = computed(() => this.reports().filter(r => r.estado !== EstadoFicha.CERRADO).length);

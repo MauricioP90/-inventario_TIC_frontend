@@ -1,4 +1,4 @@
-import { Component, EventEmitter, OnInit, Output, signal, computed } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Responsable } from '../../../../features/responsables/domain/models/responsable.model';
@@ -11,6 +11,7 @@ import { Role } from '../../../../features/responsables/domain/models/role.model
 import { GetAllRolesUseCase } from '../../../../features/responsables/application/use-cases/get-all-roles.use-case';
 import { Area } from '../../../../features/responsables/domain/models/area.model';
 import { GetAllAreasUseCase } from '../../../../features/responsables/application/use-cases/get-all-areas.use-case';
+import { RoleService } from '../../../../core/auth/services/role.service';
 
 
 
@@ -143,28 +144,29 @@ import { GetAllAreasUseCase } from '../../../../features/responsables/applicatio
               }
             </div>
             <div class="pt-4 border-t border-slate-50 flex gap-3">
-
-              <!-- Mostrar Botón Inactivar SI está ACTIVO -->
-              @if (selectedResponsable() && selectedResponsable()?.estado === 'ACTIVO') {
-                <button 
-                  type="button" 
-                  (click)="inactivate()"
-                  [disabled]="saving()"
-                  class="px-4 py-3 rounded-xl bg-red-50 text-red-600 font-bold text-sm hover:bg-red-100 disabled:opacity-50 transition-all border border-red-100"
-                  title="Inactivar Responsable">
-                  🗑️ Inactivar
-                </button>
-              }
-              <!-- Mostrar Botón Activar SI está INACTIVO -->
-              @if (selectedResponsable() && selectedResponsable()?.estado === 'INACTIVO') {
-                <button 
-                  type="button" 
-                  (click)="activate()"
-                  [disabled]="saving()"
-                  class="px-4 py-3 rounded-xl bg-green-50 text-green-600 font-bold text-sm hover:bg-green-100 disabled:opacity-50 transition-all border border-green-100"
-                  title="Activar Responsable">
-                  ✅ Activar
-                </button>
+              @if (roleService.canManageResponsables()) {
+                <!-- Mostrar Botón Inactivar SI está ACTIVO -->
+                @if (selectedResponsable() && selectedResponsable()?.estado === 'ACTIVO') {
+                  <button 
+                    type="button" 
+                    (click)="inactivate()"
+                    [disabled]="saving()"
+                    class="px-4 py-3 rounded-xl bg-red-50 text-red-600 font-bold text-sm hover:bg-red-100 disabled:opacity-50 transition-all border border-red-100"
+                    title="Inactivar Responsable">
+                    🗑️ Inactivar
+                  </button>
+                }
+                <!-- Mostrar Botón Activar SI está INACTIVO -->
+                @if (selectedResponsable() && selectedResponsable()?.estado === 'INACTIVO') {
+                  <button 
+                    type="button" 
+                    (click)="activate()"
+                    [disabled]="saving()"
+                    class="px-4 py-3 rounded-xl bg-green-50 text-green-600 font-bold text-sm hover:bg-green-100 disabled:opacity-50 transition-all border border-green-100"
+                    title="Activar Responsable">
+                    ✅ Activar
+                  </button>
+                }
               }
               <button 
                 type="button" 
@@ -172,12 +174,14 @@ import { GetAllAreasUseCase } from '../../../../features/responsables/applicatio
                 class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-all">
                 Cancelar
               </button>
-              <button 
-                type="submit" 
-                [disabled]="responsibleForm.invalid || saving()"
-                class="flex-1 px-4 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-100">
-                {{ saving() ? 'Guardando...' : 'Guardar' }}
-              </button>
+              @if (roleService.canManageResponsables()) {
+                <button 
+                  type="submit" 
+                  [disabled]="responsibleForm.invalid || saving()"
+                  class="flex-1 px-4 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-100">
+                  {{ saving() ? 'Guardando...' : 'Guardar' }}
+                </button>
+              }
             </div>
           </form>
         </div>
@@ -187,6 +191,7 @@ import { GetAllAreasUseCase } from '../../../../features/responsables/applicatio
   styles: []
 })
 export class AddResponsableDrawerComponent implements OnInit {
+  public roleService = inject(RoleService);
   isOpen = signal(false);
   saving = signal(false);
   locations = signal<Location[]>([]);

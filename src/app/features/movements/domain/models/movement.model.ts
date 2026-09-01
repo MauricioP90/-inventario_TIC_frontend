@@ -14,6 +14,7 @@ export enum MovementType {
   PROVIDER_WARRANTY = 'ENVIO_PROVEEDOR',
   PROVIDER_RETURN = 'RETORNO_PROVEEDOR',
   DISPOSAL = 'BAJA_ACTIVO',
+  THEFT_LOSS = 'HURTO_PERDIDA',
   RETURN_BY_REJECTION = 'RETORNO_POR_RECHAZO',
   INGRESO_MANTENIMIENTO = 'INGRESO_MANTENIMIENTO',
   SALIDA_MANTENIMIENTO = 'SALIDA_MANTENIMIENTO',
@@ -81,6 +82,7 @@ export const MOVEMENT_TYPE_LABELS: Record<string, string> = {
   [MovementType.INGRESO_MANTENIMIENTO]: 'Ingreso a Mantenimiento',
   [MovementType.SALIDA_MANTENIMIENTO]: 'Salida de Mantenimiento',
   [MovementType.DISPOSAL]: 'Baja de Activo',
+  [MovementType.THEFT_LOSS]: '🚨 Reporte de Hurto / Pérdida',
   [MovementType.AREA_TRANSFER]: 'Traslado entre Áreas',
   // SIM Cards
   [MovementType.SIM_ASSIGNMENT]: 'Asignación de SIMCARD',

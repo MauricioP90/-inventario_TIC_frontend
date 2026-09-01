@@ -8,7 +8,7 @@ import { GetAllLocationsUseCase } from '../../../../locations/application/use-ca
 import { AddActivoDrawerComponent } from '../../../../../shared/components/drawer/add-activo-drawer.component';
 import { ActivoMetadata } from '../../../domain/models/activo.model';
 import { Location } from '../../../../locations/domain/models/location.model'; // <-- Importamos para el tipado
-import Keycloak from 'keycloak-js';
+import { RoleService } from '../../../../../core/auth/services/role.service';
 
 @Component({
   selector: 'app-inventory-page',
@@ -33,11 +33,13 @@ import Keycloak from 'keycloak-js';
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
             </svg>
           </button>
-          <button
-            (click)="abrirNuevo()"
-            class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-100">
-            <span class="text-xl leading-none">+</span> Añadir Nuevo Activo
-          </button>
+          @if (roleService.canCreateActivo()) {
+            <button
+              (click)="abrirNuevo()"
+              class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-100">
+              <span class="text-xl leading-none">+</span> Añadir Nuevo Activo
+            </button>
+          }
         </div>
       </div>
 
@@ -104,7 +106,9 @@ import Keycloak from 'keycloak-js';
                 @if (isAdmin()) {
                   <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Precio Compra</th>
                 }
-                <th class="text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Acciones</th>
+                @if (roleService.canEditActivo()) {
+                  <th class="text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Acciones</th>
+                }
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -153,22 +157,24 @@ import Keycloak from 'keycloak-js';
                       {{ activo.precioCompra ? '$ ' + (activo.precioCompra | number:'1.2-2') : '—' }}
                     </td>
                   }
-                  <td class="px-6 py-4 text-right">
-                    @if (activo.estado !== 'BAJA') {
-                      <button 
-                        (click)="editarActivo(activo)"
-                        class="text-indigo-600 hover:text-indigo-900 font-medium transition-all">
-                        Editar
-                      </button>
-                    } @else {
-                      <span class="text-slate-300 font-medium cursor-not-allowed" title="Equipo inactivo, no modificable">
-                        Editar
-                      </span>
-                    }
-                  </td>
+                  @if (roleService.canEditActivo()) {
+                    <td class="px-6 py-4 text-right">
+                      @if (activo.estado !== 'BAJA') {
+                        <button 
+                          (click)="editarActivo(activo)"
+                          class="text-indigo-600 hover:text-indigo-900 font-medium transition-all">
+                          Editar
+                        </button>
+                      } @else {
+                        <span class="text-slate-300 font-medium cursor-not-allowed" title="Equipo inactivo, no modificable">
+                          Editar
+                        </span>
+                      }
+                    </td>
+                  }
                 </tr>
               } @empty {
-                <tr><td [attr.colspan]="isAdmin() ? 9 : 8" class="px-6 py-12 text-center text-slate-400 text-sm">Sin activos registrados</td></tr>
+                <tr><td [attr.colspan]="(isAdmin() ? 8 : 7) + (roleService.canEditActivo() ? 1 : 0)" class="px-6 py-12 text-center text-slate-400 text-sm">Sin activos registrados</td></tr>
               }
             </tbody>
           </table>
@@ -229,8 +235,8 @@ import Keycloak from 'keycloak-js';
   styles: []
 })
 export class InventoryPageComponent implements OnInit {
-  private keycloak = inject(Keycloak);
-  isAdmin = computed(() => this.keycloak.hasRealmRole('admin') || this.keycloak.hasRealmRole('ADMIN'));
+  public roleService = inject(RoleService);
+  isAdmin = computed(() => this.roleService.isAdmin());
 
   activos = signal<Activo[]>([]);
   locations = signal<Location[]>([]);
