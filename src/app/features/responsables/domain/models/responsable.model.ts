@@ -1,13 +1,14 @@
-import { Role } from './role.model';
 import { Area } from './area.model';
+import { Cargo } from './cargo.model';
 
 export interface Responsable {
   id: string;
   nombre: string;
   email: string;
   telefono: string;
-  role: Role;
+  role?: any;
   area?: Area | null;
+  cargo?: Cargo | null;
   estado: 'ACTIVO' | 'INACTIVO';
   locationIds: string[];
   // Campos visuales opcionales (mapeados desde el adapter)

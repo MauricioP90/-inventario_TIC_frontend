@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { LayoutComponent } from './shared/components/layout/layout.component';
 import { authGuard } from './core/auth/guards/auth-guard';
 import { adminGuard } from './core/auth/guards/admin-guard';
+import { simCardGuard, maintenanceGuard } from './core/auth/guards/role-guards';
 
 export const routes: Routes = [
   {
@@ -36,6 +37,7 @@ export const routes: Routes = [
       },
       {
         path: 'sim-cards',
+        canActivate: [simCardGuard],
         loadComponent: () =>
           import('./features/sim-cards/presentation/pages/sim-cards/sim-cards.component').then(m => m.SimCardsPageComponent)
       },
@@ -58,6 +60,7 @@ export const routes: Routes = [
 
       {
         path: 'maintenance',
+        canActivate: [maintenanceGuard],
         loadComponent: () =>
           import('./features/maintenance/presentation/pages/maintenance/maintenance-list.component').then(m => m.MaintenanceListComponent)
       },

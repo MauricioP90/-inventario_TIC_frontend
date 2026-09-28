@@ -1,8 +1,16 @@
 import { Observable } from 'rxjs';
-import { Activo, CreateActivoDto, UpdateActivoDto, ActivoMetadata } from '../models/activo.model';
+import {
+  Activo,
+  CreateActivoDto,
+  UpdateActivoDto,
+  ActivoMetadata,
+  SearchActivosFilters,
+  SearchActivosResponse
+} from '../models/activo.model';
 
 export abstract class ActivoRepository {
   abstract getAll(): Observable<Activo[]>;
+  abstract search(filters: SearchActivosFilters): Observable<SearchActivosResponse>;
   abstract getByPlaca(placa: string): Observable<Activo>;
   abstract create(activo: CreateActivoDto): Observable<Activo>;
   abstract update(placa: string, activo: UpdateActivoDto): Observable<Activo>;

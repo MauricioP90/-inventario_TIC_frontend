@@ -9,6 +9,7 @@ interface NavItem {
   icon: SafeHtml;
   route: string;
   adminOnly?: boolean;
+  visible?: () => boolean;
 }
 
 @Component({
@@ -30,6 +31,17 @@ interface NavItem {
       </div>
       <!-- Nav -->
       <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        @if (!roleService.hasAnyRole()) {
+          <div class="px-3 py-6 text-center space-y-2.5 bg-slate-800/40 rounded-xl border border-slate-800 my-2">
+            <div class="w-10 h-10 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-base">
+              🔒
+            </div>
+            <p class="text-xs font-semibold text-slate-300">Sin acceso</p>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              Tu cuenta no tiene ningún rol asignado en Keycloak.
+            </p>
+          </div>
+        }
         @for (item of visibleNavItems(); track item.route) {
           <a
             [routerLink]="item.route"
@@ -45,12 +57,16 @@ interface NavItem {
       <!-- Footer -->
       <div class="border-t border-slate-700 p-3 space-y-2">
         <div class="px-3 py-2 bg-slate-800/80 rounded-lg flex items-center gap-3 border border-slate-700/50">
-          <div class="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-xs text-white uppercase shrink-0">
+          <div 
+            class="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 transition-colors"
+            [class]="roleService.userRoleTheme().avatar">
             {{ roleService.userName().charAt(0) }}
           </div>
           <div class="min-w-0 flex-1">
             <p class="text-xs font-semibold text-white truncate">{{ roleService.userName() }}</p>
-            <span class="inline-block text-[10px] font-medium px-2 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 mt-0.5">
+            <span 
+              class="inline-block text-[10px] font-medium px-2 py-0.5 rounded border mt-0.5 transition-colors"
+              [class]="roleService.userRoleTheme().badge">
               {{ roleService.userRoleLabel() }}
             </span>
           </div>
@@ -104,6 +120,7 @@ export class SidebarComponent {
     {
       label: 'SIM Cards',
       route: '/sim-cards',
+      visible: () => !this.roleService.isTecnico(),
       icon: this.svg('<path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>')
     },
     {
@@ -114,12 +131,13 @@ export class SidebarComponent {
     {
       label: 'Mantenimiento',
       route: '/maintenance',
+      visible: () => !this.roleService.isConsultor() && !this.roleService.isAuxiliarInventario(),
       icon: this.svg('<path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>')
     },
     {
       label: 'Catálogos',
       route: '/catalogs',
-      adminOnly: true,
+      visible: () => this.roleService.isAdmin(),
       icon: this.svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z"/>')
     },
     {
@@ -129,7 +147,12 @@ export class SidebarComponent {
     },
   ];
 
-  visibleNavItems = computed(() => this.navItems.filter(item => !item.adminOnly || this.isAdmin()));
+  visibleNavItems = computed(() => {
+    if (!this.roleService.hasAnyRole()) {
+      return [];
+    }
+    return this.navItems.filter(item => item.visible ? item.visible() : true);
+  });
 
   async logout() {
     await this.keycloak.logout({ redirectUri: window.location.origin });

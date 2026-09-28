@@ -1,8 +1,9 @@
-import { Component, OnInit, signal, computed, inject, effect, untracked } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { Activo } from '../../../domain/models/activo.model';
-import { GetAllActivosUseCase } from '../../../application/use-cases/get-all-activos.use-case';
+import { SearchActivosUseCase } from '../../../application/use-cases/search-activos.use-case';
 import { GetActivoMetadataUseCase } from '../../../application/use-cases/get-activo-metadata.use-case';
 import { GetAllLocationsUseCase } from '../../../../locations/application/use-cases/get-all-locations.use-case'; // <-- Importamos para el filtro
 import { AddActivoDrawerComponent } from '../../../../../shared/components/drawer/add-activo-drawer.component';
@@ -49,14 +50,14 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           <input type="text" 
                  [ngModel]="searchTerm()" 
-                 (ngModelChange)="searchTerm.set($event)"
+                 (ngModelChange)="onSearchInput($event)"
                  placeholder="Buscar por placa, serial, modelo..." 
                  class="w-full pl-10 pr-4 h-10 bg-slate-50 border border-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500/20 outline-none text-sm transition-all">
         </div>
         
         <select 
           [ngModel]="selectedType()" 
-          (ngModelChange)="selectedType.set($event)"
+          (ngModelChange)="onTypeChange($event)"
           class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
           <option value="">Todos los tipos</option>
           @for (type of metadata()?.types; track type.id) {
@@ -66,7 +67,7 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
 
         <select 
           [ngModel]="selectedLocation()" 
-          (ngModelChange)="selectedLocation.set($event)"
+          (ngModelChange)="onLocationChange($event)"
           class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
           <option value="">Todas las ubicaciones</option>
           @for (loc of locations(); track loc.id) {
@@ -76,7 +77,7 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
 
         <select 
           [ngModel]="selectedStatus()" 
-          (ngModelChange)="selectedStatus.set($event)"
+          (ngModelChange)="onStatusChange($event)"
           class="h-10 bg-slate-50 border border-slate-100 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none transition-all">
           <option value="">Todos los estados</option>
           @for (st of metadata()?.statuses; track st.id) {
@@ -184,7 +185,7 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
             <div>
               Mostrando <span class="font-bold text-slate-700">{{ startIndex() }}</span> a 
               <span class="font-bold text-slate-700">{{ endIndex() }}</span> de 
-              <span class="font-bold text-slate-700">{{ filteredActivos().length }}</span> activos
+              <span class="font-bold text-slate-700">{{ totalActivos() }}</span> activos
             </div>
             
             <!-- Controles -->
@@ -194,7 +195,7 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
                 <span>Filas por página:</span>
                 <select 
                   [ngModel]="pageSize()" 
-                  (ngModelChange)="pageSize.set(+$event)"
+                  (ngModelChange)="onPageSizeChange(+$event)"
                   class="bg-white border border-slate-200 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-indigo-500/30">
                   <option [value]="5">5</option>
                   <option [value]="10">10</option>
@@ -239,65 +240,42 @@ export class InventoryPageComponent implements OnInit {
   isAdmin = computed(() => this.roleService.isAdmin());
 
   activos = signal<Activo[]>([]);
+  totalActivos = signal<number>(0);
   locations = signal<Location[]>([]);
   loading = signal(false);
   showDrawer = signal(false);
   selectedActivo = signal<Activo | null>(null);
   metadata = signal<ActivoMetadata | null>(null);
 
-  abrirNuevo() {
-    this.selectedActivo.set(null); // Limpiamos selección para que sea "Nuevo"
-    this.showDrawer.set(true);
-  }
-
-  editarActivo(activo: Activo) {
-    this.selectedActivo.set(activo); // Guardamos el activo para editar
-    this.showDrawer.set(true);
-  }
-
-  handleDrawerOpenChange(isOpen: boolean) {
-    this.showDrawer.set(isOpen);
-    if (!isOpen) {
-      this.selectedActivo.set(null); // Al cerrar, limpiamos selección
-    }
-  }
-
   // Señales para filtros
   searchTerm = signal('');
   selectedType = signal('');
   selectedLocation = signal('');
   selectedStatus = signal('');
+  private searchSubject = new Subject<string>();
 
-  // Lógica de filtrado reactivo
-  filteredActivos = computed(() => {
-    let list = this.activos();
-    const search = this.searchTerm().toLowerCase();
-    const type = this.selectedType();
-    const loc = this.selectedLocation();
-    const status = this.selectedStatus();
+  // Señales de Paginación
+  currentPage = signal(1);
+  pageSize = signal(10);
 
-    if (search) {
-      list = list.filter(a =>
-        a.placa.toLowerCase().includes(search) ||
-        a.serial.toLowerCase().includes(search) ||
-        a.modelo.toLowerCase().includes(search) ||
-        a.marca.toLowerCase().includes(search)
-      );
-    }
+  // Datos de la página actual
+  paginatedActivos = computed(() => this.activos());
 
-    if (type) {
-      list = list.filter(a => a.tipoActivoId === type);
-    }
+  startIndex = computed(() => {
+    if (this.totalActivos() === 0) return 0;
+    return (this.currentPage() - 1) * this.pageSize() + 1;
+  });
 
-    if (loc) {
-      list = list.filter(a => a.locationId === loc);
-    }
+  endIndex = computed(() => {
+    const end = this.currentPage() * this.pageSize();
+    const total = this.totalActivos();
+    return end > total ? total : end;
+  });
 
-    if (status) {
-      list = list.filter(a => a.estado === status);
-    }
-
-    return list;
+  totalPages = computed(() => {
+    const total = this.totalActivos();
+    const size = this.pageSize();
+    return Math.max(Math.ceil(total / size), 1);
   });
 
   statusMap = computed(() => {
@@ -318,62 +296,18 @@ export class InventoryPageComponent implements OnInit {
 
   newlyCreatedPlaca = signal<string | null>(null);
 
-  // Señales de Paginación
-  currentPage = signal(1);
-  pageSize = signal(10);
-
-  // Activos paginados
-  paginatedActivos = computed(() => {
-    const list = this.filteredActivos();
-    const start = (this.currentPage() - 1) * this.pageSize();
-    const end = start + this.pageSize();
-    return list.slice(start, end);
-  });
-
-  startIndex = computed(() => {
-    if (this.filteredActivos().length === 0) return 0;
-    return (this.currentPage() - 1) * this.pageSize() + 1;
-  });
-
-  endIndex = computed(() => {
-    const end = this.currentPage() * this.pageSize();
-    const total = this.filteredActivos().length;
-    return end > total ? total : end;
-  });
-
-  totalPages = computed(() => {
-    const total = this.filteredActivos().length;
-    const size = this.pageSize();
-    return Math.max(Math.ceil(total / size), 1);
-  });
-
-  prevPage() {
-    if (this.currentPage() > 1) {
-      this.currentPage.set(this.currentPage() - 1);
-    }
-  }
-
-  nextPage() {
-    if (this.currentPage() < this.totalPages()) {
-      this.currentPage.set(this.currentPage() + 1);
-    }
-  }
-
   constructor(
-    private getAllActivos: GetAllActivosUseCase,
+    private searchActivosUC: SearchActivosUseCase,
     private getMetadataUC: GetActivoMetadataUseCase,
-    private getLocationsUC: GetAllLocationsUseCase // <-- Inyectamos ubicaciones
+    private getLocationsUC: GetAllLocationsUseCase
   ) {
-    effect(() => {
-      // Reaccionar a cambios en filtros y reiniciar a página 1
-      this.searchTerm();
-      this.selectedType();
-      this.selectedLocation();
-      this.selectedStatus();
-      
-      untracked(() => {
-        this.currentPage.set(1);
-      });
+    this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged()
+    ).subscribe((term) => {
+      this.searchTerm.set(term);
+      this.currentPage.set(1);
+      this.fetchActivos();
     });
   }
 
@@ -381,8 +315,67 @@ export class InventoryPageComponent implements OnInit {
     this.fetchData();
   }
 
+  abrirNuevo() {
+    this.selectedActivo.set(null);
+    this.showDrawer.set(true);
+  }
+
+  editarActivo(activo: Activo) {
+    this.selectedActivo.set(activo);
+    this.showDrawer.set(true);
+  }
+
+  handleDrawerOpenChange(isOpen: boolean) {
+    this.showDrawer.set(isOpen);
+    if (!isOpen) {
+      this.selectedActivo.set(null);
+    }
+  }
+
+  onSearchInput(val: string) {
+    this.searchSubject.next(val);
+  }
+
+  onTypeChange(val: string) {
+    this.selectedType.set(val);
+    this.currentPage.set(1);
+    this.fetchActivos();
+  }
+
+  onLocationChange(val: string) {
+    this.selectedLocation.set(val);
+    this.currentPage.set(1);
+    this.fetchActivos();
+  }
+
+  onStatusChange(val: string) {
+    this.selectedStatus.set(val);
+    this.currentPage.set(1);
+    this.fetchActivos();
+  }
+
+  onPageSizeChange(val: number) {
+    this.pageSize.set(val);
+    this.currentPage.set(1);
+    this.fetchActivos();
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.set(this.currentPage() - 1);
+      this.fetchActivos();
+    }
+  }
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.set(this.currentPage() + 1);
+      this.fetchActivos();
+    }
+  }
+
   handleSaved(placa: string) {
-    this.fetchData();
+    this.fetchActivos();
     if (placa) {
       this.newlyCreatedPlaca.set(placa);
       setTimeout(() => {
@@ -392,8 +385,6 @@ export class InventoryPageComponent implements OnInit {
   }
 
   fetchData() {
-    this.loading.set(true);
-
     // 1. Cargamos la Metadata (Filtros dinámicos de tipos y estados)
     this.getMetadataUC.execute().subscribe({
       next: (meta) => this.metadata.set(meta),
@@ -406,13 +397,29 @@ export class InventoryPageComponent implements OnInit {
       error: (err) => console.error("Error cargando ubicaciones", err)
     });
 
-    // 3. Cargamos los Activos Reales
-    this.getAllActivos.execute().subscribe({
-      next: (data: Activo[]) => {
-        this.activos.set(data);
+    // 3. Cargamos los Activos mediante Search
+    this.fetchActivos();
+  }
+
+  fetchActivos() {
+    this.loading.set(true);
+    this.searchActivosUC.execute({
+      search: this.searchTerm().trim() || undefined,
+      tipoActivoId: this.selectedType() || undefined,
+      locationId: this.selectedLocation() || undefined,
+      estado: this.selectedStatus() || undefined,
+      page: this.currentPage(),
+      limit: this.pageSize()
+    }).subscribe({
+      next: (res) => {
+        this.activos.set(res.data);
+        this.totalActivos.set(res.total);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false)
+      error: (err) => {
+        console.error("Error cargando activos", err);
+        this.loading.set(false);
+      }
     });
   }
 

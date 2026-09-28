@@ -3,11 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Responsable } from '../../../domain/models/responsable.model';
 import { Location } from '../../../../locations/domain/models/location.model';
-import { Role } from '../../../domain/models/role.model';
+import { Area } from '../../../domain/models/area.model';
 import { GetAllResponsablesUseCase } from '../../../application/use-cases/get-all-responsables.use-case';
 import { GetAllLocationsUseCase } from '../../../../locations/application/use-cases/get-all-locations.use-case';
 import { AddResponsableDrawerComponent } from '../../../../../shared/components/drawer/responsable-drawer/add-responsable-drawer.component';
-import { GetAllRolesUseCase } from '../../../application/use-cases/get-all-roles.use-case';
+import { GetAllAreasUseCase } from '../../../application/use-cases/get-all-areas.use-case';
 import { Activo } from '../../../../inventory/domain/models/activo.model';
 import { GetAllActivosUseCase } from '../../../../inventory/application/use-cases/get-all-activos.use-case';
 import { RoleService } from '../../../../../core/auth/services/role.service';
@@ -120,12 +120,12 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
         </div>
                 <div class="md:col-span-3">
           <select 
-            [value]="roleFilter()"
-            (change)="roleFilter.set($any($event.target).value)"
+            [value]="areaFilter()"
+            (change)="areaFilter.set($any($event.target).value)"
             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white cursor-pointer">
-            <option value="">Cualquier Rol</option>
-            @for (role of roles(); track role.id) {
-              <option [value]="role.nombre">{{ role.nombre }}</option>
+            <option value="">Cualquier Área</option>
+            @for (area of areas(); track area.id) {
+              <option [value]="area.nombre">{{ area.nombre }}</option>
             }
           </select>
         </div>
@@ -152,7 +152,7 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
             <thead class="bg-slate-50/50 border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
               <tr>
                 <th class="text-left px-6 py-4">Responsable</th>
-                <th class="text-left px-6 py-4">Rol / Área</th>
+                <th class="text-left px-6 py-4">Área / Cargo</th>
                 <th class="text-left px-6 py-4">Sedes Asignadas</th>
                 <th class="text-center px-6 py-4">Estadísticas</th>
                 <th class="text-center px-6 py-4">Estado</th>
@@ -180,9 +180,23 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
                   </td>
                   <td class="px-6 py-4">
                     <div class="flex flex-col gap-1 items-start">
-                      <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-600">{{ resp.role.nombre }}</span>
                       @if (resp.area) {
-                        <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-100">{{ resp.area.nombre }}</span>
+                        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100/80">
+                          <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                          {{ resp.area.nombre }}
+                        </span>
+                      } @else {
+                        <span class="inline-flex items-center text-xs font-normal text-slate-400 italic">
+                          Sin Área
+                        </span>
+                      }
+                      @if (resp.cargo) {
+                        <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200/80">
+                          <svg class="w-3 h-3 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z" />
+                          </svg>
+                          {{ resp.cargo.nombre }}
+                        </span>
                       }
                     </div>
                   </td>
@@ -362,7 +376,7 @@ export class ResponsablesPageComponent implements OnInit {
   activos = signal<Activo[]>([]);
   expandedResponsibleId = signal<string | null>(null);
   loading = signal(false);
-  roles = signal<Role[]>([]);
+  areas = signal<Area[]>([]);
 
   // Filtros
   searchTerm = signal('');
@@ -388,23 +402,25 @@ export class ResponsablesPageComponent implements OnInit {
   }
 
   statusFilter = signal('');
-  roleFilter = signal('');
+  areaFilter = signal('');
 
   filteredResponsables = computed(() => {
     const term = this.searchTerm().toLowerCase().trim();
     const locIds = this.locationFilter(); // Ahora es un array
     const status = this.statusFilter();
-    const role = this.roleFilter();
+    const area = this.areaFilter();
     return this.responsables().filter(resp => {
-      const matchesSearch = resp.nombre.toLowerCase().includes(term) || resp.email.toLowerCase().includes(term);
+      const matchesSearch = resp.nombre.toLowerCase().includes(term) ||
+        resp.email.toLowerCase().includes(term) ||
+        (resp.cargo?.nombre ? resp.cargo.nombre.toLowerCase().includes(term) : false);
 
       // La magia: Si no hay filtro, pasan todos. Si hay, verificamos si el responsable tiene alguna de las sedes seleccionadas.
       const matchesLocation = locIds.length === 0 ||
         locIds.some(id => resp.locationIds?.includes(id));
 
       const matchesStatus = !status || resp.estado === status;
-      const matchesRol = !role || resp.role.nombre === role;
-      return matchesSearch && matchesLocation && matchesStatus && matchesRol;
+      const matchesArea = !area || resp.area?.nombre === area;
+      return matchesSearch && matchesLocation && matchesStatus && matchesArea;
     });
   });
 
@@ -454,7 +470,7 @@ export class ResponsablesPageComponent implements OnInit {
   constructor(
     private getAllResponsables: GetAllResponsablesUseCase,
     private getAllLocations: GetAllLocationsUseCase,
-    private getAllRoles: GetAllRolesUseCase,
+    private getAllAreas: GetAllAreasUseCase,
     private getAllActivos: GetAllActivosUseCase
   ) {
     effect(() => {
@@ -462,7 +478,7 @@ export class ResponsablesPageComponent implements OnInit {
       this.searchTerm();
       this.locationFilter();
       this.statusFilter();
-      this.roleFilter();
+      this.areaFilter();
       
       untracked(() => {
         this.currentPage.set(1);
@@ -487,7 +503,7 @@ export class ResponsablesPageComponent implements OnInit {
   fetchData() {
     this.loading.set(true);
     this.getAllLocations.execute().subscribe(locs => this.locations.set(locs));
-    this.getAllRoles.execute().subscribe(roles => this.roles.set(roles));
+    this.getAllAreas.execute().subscribe(areas => this.areas.set(areas));
     this.getAllActivos.execute().subscribe(acts => this.activos.set(acts));
     this.getAllResponsables.execute().subscribe({
       next: (resps) => {

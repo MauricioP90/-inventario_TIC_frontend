@@ -306,7 +306,7 @@ interface PickItem {
                         class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm appearance-none font-medium text-slate-700">
                   <option value="">Seleccione el responsable receptor...</option>
                   @for (resp of filteredResponsiblesForDestination(); track resp.id) {
-                    <option [value]="resp.id">{{ resp.nombre }} ({{ resp.role.nombre }}){{ resp.area?.nombre ? ' — ' + resp.area?.nombre : '' }}</option>
+                    <option [value]="resp.id">{{ resp.nombre }}{{ resp.area?.nombre ? ' — ' + resp.area?.nombre : '' }}</option>
                   }
                 </select>
                 @if (filteredResponsiblesForDestination().length === 0) {
@@ -508,7 +508,7 @@ interface PickItem {
                         class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm appearance-none font-medium text-slate-700">
                   <option value="">Seleccione el responsable receptor...</option>
                   @for (resp of filteredResponsiblesForDestination(); track resp.id) {
-                    <option [value]="resp.id">{{ resp.nombre }} ({{ resp.role.nombre }}){{ resp.area?.nombre ? ' — ' + resp.area?.nombre : '' }}</option>
+                    <option [value]="resp.id">{{ resp.nombre }}{{ resp.area?.nombre ? ' — ' + resp.area?.nombre : '' }}</option>
                   }
                 </select>
                 @if (filteredResponsiblesForDestination().length === 0) {
@@ -1076,7 +1076,7 @@ interface PickItem {
                              class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none text-sm transition-all">
                       <option value="">Seleccione el responsable...</option>
                       @for (resp of responsables(); track resp.id) {
-                        <option [value]="resp.id">{{ resp.nombre }} ({{ resp.role.nombre }})</option>
+                        <option [value]="resp.id">{{ resp.nombre }}{{ resp.area?.nombre ? ' — ' + resp.area?.nombre : '' }}</option>
                       }
                       </select>
                     </div>

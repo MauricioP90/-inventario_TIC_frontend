@@ -39,3 +39,22 @@ export interface Activo {
 
 export type CreateActivoDto = Omit<Activo, 'id' | 'tipoActivo' | 'location' | 'responsible'>;
 export type UpdateActivoDto = Partial<CreateActivoDto>;
+
+export interface SearchActivosFilters {
+  search?: string;
+  tipoActivoId?: string;
+  locationId?: string;
+  responsibleId?: string;
+  estado?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface SearchActivosResponse {
+  data: Activo[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+

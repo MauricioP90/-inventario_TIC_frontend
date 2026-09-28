@@ -7,10 +7,10 @@ import { CreateResponsableUseCase } from '../../../../features/responsables/appl
 import { UpdateResponsableUseCase } from '../../../../features/responsables/application/use-cases/update-responsable.use-case';
 import { GetAllLocationsUseCase } from '../../../../features/locations/application/use-cases/get-all-locations.use-case';
 import { InactiveResponsableUseCase } from '../../../../features/responsables/application/use-cases/inactive-responsable.use-case';
-import { Role } from '../../../../features/responsables/domain/models/role.model';
-import { GetAllRolesUseCase } from '../../../../features/responsables/application/use-cases/get-all-roles.use-case';
 import { Area } from '../../../../features/responsables/domain/models/area.model';
 import { GetAllAreasUseCase } from '../../../../features/responsables/application/use-cases/get-all-areas.use-case';
+import { Cargo } from '../../../../features/responsables/domain/models/cargo.model';
+import { GetAllCargosUseCase } from '../../../../features/responsables/application/use-cases/get-all-cargos.use-case';
 import { RoleService } from '../../../../core/auth/services/role.service';
 
 
@@ -67,38 +67,39 @@ import { RoleService } from '../../../../core/auth/services/role.service';
                 class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm">
             </div>
 
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Teléfono</label>
+              <input 
+                type="text" 
+                formControlName="telefono"
+                placeholder="3001234567"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm">
+            </div>
+
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Teléfono</label>
-                <input 
-                  type="text" 
-                  formControlName="telefono"
-                  placeholder="3001234567"
-                  class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm">
-              </div>
-              <div>
-                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Rol</label>
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Área / Depto</label>
                 <select 
-                  formControlName="roleId"
-                  class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white">
-                  @for (role of roles(); track role.id) {
-                    <option [value]="role.id">{{ role.nombre }}</option>
+                  formControlName="area"
+                  class="w-full px-3.5 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white">
+                  <option [value]="null">-- Sin Área --</option>
+                  @for (area of areas(); track area.id) {
+                    <option [value]="area.id">{{ area.nombre }}</option>
                   }
                 </select>
               </div>
-            </div>
-
-            <!-- Área / Departamento -->
-            <div>
-              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Área / Departamento</label>
-              <select 
-                formControlName="area"
-                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white">
-                <option [value]="null">-- Seleccionar Área --</option>
-                @for (area of areas(); track area.id) {
-                  <option [value]="area.id">{{ area.nombre }}</option>
-                }
-              </select>
+              <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Cargo / Puesto</label>
+                <select 
+                  formControlName="cargo"
+                  class="w-full px-3.5 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white"
+                  id="select-cargo-responsable">
+                  <option [value]="null">-- Sin Cargo --</option>
+                  @for (cargo of cargos(); track cargo.id) {
+                    <option [value]="cargo.id">{{ cargo.nombre }}</option>
+                  }
+                </select>
+              </div>
             </div>
 
             <!-- Offices Multi-select -->
@@ -195,8 +196,8 @@ export class AddResponsableDrawerComponent implements OnInit {
   isOpen = signal(false);
   saving = signal(false);
   locations = signal<Location[]>([]);
-  roles = signal<Role[]>([]);
   areas = signal<Area[]>([]);
+  cargos = signal<Cargo[]>([]);
   selectedResponsable = signal<Responsable | null>(null);
   selectedLocationIds = signal<string[]>([]);
   showWarning = signal(false);
@@ -229,23 +230,23 @@ export class AddResponsableDrawerComponent implements OnInit {
     private updateResponsable: UpdateResponsableUseCase,
     private getAllLocations: GetAllLocationsUseCase,
     private inactiveResponsable: InactiveResponsableUseCase,
-    private getAllRoles: GetAllRolesUseCase,
-    private getAllAreas: GetAllAreasUseCase
+    private getAllAreas: GetAllAreasUseCase,
+    private getAllCargos: GetAllCargosUseCase
   ) {
     this.responsibleForm = this.fb.group({
       nombre: ['', [Validators.required]],
       email: ['', [Validators.required, Validators.email]],
       telefono: ['', [Validators.required]],
-      roleId: [null, [Validators.required]],
       area: [null],
+      cargo: [null],
       estado: ['ACTIVO']
     });
   }
 
   ngOnInit() {
     this.fetchLocations();
-    this.getAllRoles.execute().subscribe(res => this.roles.set(res));
     this.getAllAreas.execute().subscribe(res => this.areas.set(res));
+    this.getAllCargos.execute().subscribe(res => this.cargos.set(res.filter(c => c.estado === 'ACTIVO')));
   }
 
   fetchLocations() {
@@ -279,10 +280,14 @@ export class AddResponsableDrawerComponent implements OnInit {
     this.showWarning.set(false);
 
     if (responsable) {
-      this.responsibleForm.patchValue({ ...responsable, roleId: responsable.role?.id, area: responsable.area?.id });
+      this.responsibleForm.patchValue({
+        ...responsable,
+        area: responsable.area?.id || null,
+        cargo: responsable.cargo?.id || null
+      });
       this.selectedLocationIds.set(responsable.locationIds || []);
     } else {
-      this.responsibleForm.reset({ roleId: null, area: null, estado: 'ACTIVO' });
+      this.responsibleForm.reset({ area: null, cargo: null, estado: 'ACTIVO' });
       this.selectedLocationIds.set([]);
       this.searchLocationTerm.set('');
     }
@@ -291,7 +296,7 @@ export class AddResponsableDrawerComponent implements OnInit {
 
   close() {
     this.isOpen.set(false);
-    this.responsibleForm.reset({ roleId: null, area: null, estado: 'ACTIVO' });
+    this.responsibleForm.reset({ area: null, cargo: null, estado: 'ACTIVO' });
     this.selectedLocationIds.set([]);
     this.searchLocationTerm.set('');
   }
@@ -303,7 +308,6 @@ export class AddResponsableDrawerComponent implements OnInit {
 
       const payload: any = {
         ...this.responsibleForm.value,
-        role: this.responsibleForm.value.roleId,
         locationIds: this.selectedLocationIds()
       };
 
@@ -358,7 +362,6 @@ export class AddResponsableDrawerComponent implements OnInit {
       // Armamos el payload tomando los datos del formulario, pero forzando el estado
       const payload: any = {
         ...this.responsibleForm.value,
-        role: this.responsibleForm.value.roleId,
         locationIds: this.selectedLocationIds(),
         estado: 'ACTIVO' // <-- Forzamos la activación
       };

@@ -1,6 +1,7 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { SidebarComponent } from '../sidebar/sidebar.component';
+import { RoleService } from '../../../core/auth/services/role.service';
 import { filter } from 'rxjs/operators';
 
 @Component({
@@ -50,7 +51,29 @@ import { filter } from 'rxjs/operators';
           </div>
         </header>
         <main class="flex-1 overflow-auto p-3 sm:p-6">
-          <router-outlet />
+          @if (!roleService.hasAnyRole()) {
+            <div class="h-full min-h-[400px] flex items-center justify-center">
+              <div class="max-w-md w-full bg-white rounded-2xl p-8 border border-slate-200 shadow-sm text-center space-y-4">
+                <div class="w-16 h-16 bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-inner">
+                  🔒
+                </div>
+                <div class="space-y-1">
+                  <h3 class="text-lg font-bold text-slate-800">Acceso no autorizado</h3>
+                  <p class="text-xs text-slate-500 leading-relaxed">
+                    Hola <span class="font-semibold text-slate-700">{{ roleService.userName() }}</span>, tu cuenta no tiene permisos asignados para acceder a los módulos de la plataforma.
+                  </p>
+                </div>
+                <div class="p-4 bg-slate-50 border border-slate-200/60 rounded-xl text-left space-y-1.5 text-xs text-slate-600">
+                  <p class="font-semibold text-slate-700">¿Cómo obtener acceso?</p>
+                  <p class="text-[11px] text-slate-500 leading-relaxed">
+                    Comunícate con el área de tecnología o con un administrador del sistema para que te asigne uno de los roles autorizados (<span class="font-mono text-indigo-600 font-semibold">admin, coordinador, técnico, consultor o auxiliar_inventario</span>) en Keycloak.
+                  </p>
+                </div>
+              </div>
+            </div>
+          } @else {
+            <router-outlet />
+          }
         </main>
       </div>
     </div>
@@ -58,6 +81,7 @@ import { filter } from 'rxjs/operators';
   styles: []
 })
 export class LayoutComponent {
+  public roleService = inject(RoleService);
   isMobileMenuOpen = signal(false);
 
   constructor(private router: Router) {
