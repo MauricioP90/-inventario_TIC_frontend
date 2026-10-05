@@ -41,7 +41,7 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
         </div>
       </div>
       <!-- Filtros -->
-      <div class="flex flex-wrap gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6">
+      <div class="flex flex-wrap items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6">
         <div class="flex-1 min-w-[280px] relative">
           <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
             🔍
@@ -53,10 +53,23 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
             (input)="searchTerm.set($any($event.target).value)"
             class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm">
         </div>
+        
+        <!-- Filtro por Tipo de Oficina / Ubicación -->
+        <select 
+          [value]="typeFilter()"
+          (change)="typeFilter.set($any($event.target).value)"
+          class="px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white cursor-pointer font-medium text-slate-700">
+          <option value="">🏢 Todas las Sedes</option>
+          <option value="OFICINA_PROPIA">Oficina Propia</option>
+          <option value="CONTRATISTA">Agencia Contratista</option>
+          <option value="PUNTO_TI">Punto TI / Soporte</option>
+          <option value="PROVEEDOR">Proveedor Externo</option>
+        </select>
+
         <select 
           [value]="statusFilter()"
           (change)="statusFilter.set($any($event.target).value)"
-          class="px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white">
+          class="px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white cursor-pointer font-medium text-slate-700">
           <option value="">Todos los estados</option>
           <option value="ACTIVO">Activo</option>
           <option value="INACTIVO">Inactivo</option>
@@ -76,6 +89,7 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
               <tr>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Código</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Nombre</th>
+                <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Tipo</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Coordenadas</th>
                 <th class="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider px-6 py-4">Estado</th>
                 @if (roleService.canManageLocations()) {
@@ -102,6 +116,9 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
                   <td class="px-6 py-4">
                     <span class="font-medium text-slate-600 block">{{ location.nombre }}</span>
                   </td>
+                  <td class="px-6 py-4">
+                    <span [class]="typeBadgeClass(location.tipo)">{{ formatType(location.tipo) }}</span>
+                  </td>
                   <td class="px-6 py-4 text-slate-500 font-mono text-[11px] select-all">
                     {{ location.coordenadas || 'N/A' }}
                   </td>
@@ -123,7 +140,7 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
                 </tr>
                 @if (expandedLocationId() === location.id) {
                   <tr class="bg-slate-50/50">
-                    <td [attr.colspan]="roleService.canManageLocations() ? 5 : 4" class="px-8 py-5 border-y border-slate-100">
+                    <td [attr.colspan]="roleService.canManageLocations() ? 6 : 5" class="px-8 py-5 border-y border-slate-100">
                       @if (parseCoordinates(location.coordenadas); as coords) {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                           <!-- Col 1: Geocoding & Additional Details -->
@@ -286,19 +303,22 @@ export class LocationsListComponent implements OnInit {
   locations = signal<Location[]>([]);
   searchTerm = signal('');
   statusFilter = signal('');
+  typeFilter = signal('');
   expandedLocationId = signal<string | null>(null);
   resolvedAddresses = signal<Record<string, { address: string; loading: boolean; error?: string }>>({});
 
   filteredLocations = computed(() => {
     const term = this.searchTerm().toLowerCase().trim();
     const status = this.statusFilter();
+    const type = this.typeFilter();
 
     return this.locations().filter(loc => {
-
       const matchesSearch = loc.code.toLowerCase().includes(term) || loc.nombre.toLowerCase().includes(term);
       const matchesStatus = status === '' || loc.estado === status;
+      const locType = loc.tipo || 'OFICINA_PROPIA';
+      const matchesType = type === '' || locType === type;
 
-      return matchesSearch && matchesStatus;
+      return matchesSearch && matchesStatus && matchesType;
     });
   });
 
@@ -356,6 +376,7 @@ export class LocationsListComponent implements OnInit {
       // Reaccionar a cambios en filtros y reiniciar a página 1
       this.searchTerm();
       this.statusFilter();
+      this.typeFilter();
       
       untracked(() => {
         this.currentPage.set(1);
@@ -442,5 +463,41 @@ export class LocationsListComponent implements OnInit {
     return status === 'ACTIVO'
       ? base + 'bg-emerald-50 text-emerald-600 border-emerald-100'
       : base + 'bg-slate-50 text-slate-600 border-slate-100';
+  }
+
+  typeBadgeClass(tipo?: string): string {
+    const base = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full border inline-flex items-center ';
+    switch (tipo) {
+      case 'PUNTO_TI':
+      case 'BODEGA':
+        return base + 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'CONTRATISTA':
+      case 'REGIONAL':
+        return base + 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'PROVEEDOR':
+        return base + 'bg-slate-100 text-slate-700 border-slate-200';
+      case 'OFICINA_PROPIA':
+      case 'OFICINA':
+      default:
+        return base + 'bg-blue-50 text-blue-700 border-blue-200';
+    }
+  }
+
+  formatType(tipo?: string): string {
+    switch (tipo) {
+      case 'PUNTO_TI':
+      case 'BODEGA':
+        return 'Punto TI / Soporte';
+      case 'CONTRATISTA':
+        return 'Agencia Contratista';
+      case 'REGIONAL':
+        return 'Regional';
+      case 'PROVEEDOR':
+        return 'Proveedor Externo';
+      case 'OFICINA_PROPIA':
+      case 'OFICINA':
+      default:
+        return 'Oficina Propia';
+    }
   }
 }

@@ -1,11 +1,13 @@
 import { Area } from '../../../responsables/domain/models/area.model';
 
+export type LocationTipo = 'PUNTO_TI' | 'OFICINA_PROPIA' | 'CONTRATISTA' | 'PROVEEDOR' | 'BODEGA' | 'OFICINA' | 'REGIONAL';
+
 export interface Location {
   id: string;
   code: string;
   nombre: string;
   coordenadas?: string | null;
-  tipo?: 'BODEGA' | 'OFICINA' | 'REGIONAL' | 'PROVEEDOR';
+  tipo?: LocationTipo;
   responsibleIds: string[];
   areaIds?: string[];
   areas?: Area[];

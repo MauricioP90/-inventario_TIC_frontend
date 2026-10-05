@@ -1479,11 +1479,12 @@ export class MovementsPageComponent implements OnInit {
       if (activo.estado === 'MANTENIMIENTO') {
         const loc = this.locations().find(l => l.id === activo.locationId);
         const originType = loc?.tipo;
+        const isOriginBodega = originType === 'PUNTO_TI' || originType === 'BODEGA';
         if (originType === 'PROVEEDOR') {
           // Si está en Proveedor y en mantenimiento, solo puede retornar de proveedor
           types = types.filter(([key]) => key === 'RETORNO_PROVEEDOR');
-        } else if (originType === 'BODEGA') {
-          // Si está en Bodega y en mantenimiento, puede enviarse al proveedor o trasladarse a otra Bodega
+        } else if (isOriginBodega) {
+          // Si está en Bodega/Punto TI y en mantenimiento, puede enviarse al proveedor o trasladarse a otra Bodega/Punto TI
           types = types.filter(([key]) => ['ENVIO_PROVEEDOR', 'TRASLADO_REGIONAL'].includes(key));
         } else {
           types = [];
@@ -1491,10 +1492,11 @@ export class MovementsPageComponent implements OnInit {
       } else {
         // Si no está en mantenimiento:
         // - No se permite Retorno de Proveedor
-        // - Envío a Proveedor solo se permite si el activo está físicamente en una Bodega
+        // - Envío a Proveedor solo se permite si el activo está físicamente en una Bodega / Punto TI
         const loc = this.locations().find(l => l.id === activo.locationId);
         const originType = loc?.tipo;
-        if (originType === 'BODEGA') {
+        const isOriginBodega = originType === 'PUNTO_TI' || originType === 'BODEGA';
+        if (isOriginBodega) {
           types = types.filter(([key]) => key !== 'RETORNO_PROVEEDOR');
         } else {
           types = types.filter(([key]) => key !== 'RETORNO_PROVEEDOR' && key !== 'ENVIO_PROVEEDOR');
@@ -1604,18 +1606,19 @@ export class MovementsPageComponent implements OnInit {
     // }
 
     // 3. Regla: Restricciones específicas por tipo de movimiento
+    const isBodegaType = (tipo?: string) => tipo === 'PUNTO_TI' || tipo === 'BODEGA';
     if (this.movementType === 'ENVIO_PROVEEDOR') {
       todos = todos.filter(loc => loc.tipo === 'PROVEEDOR');
     } else if (this.movementType === 'RETORNO_PROVEEDOR') {
-      todos = todos.filter(loc => loc.tipo === 'BODEGA');
+      todos = todos.filter(loc => isBodegaType(loc.tipo));
     } else if (this.movementType === 'TRASLADO_REGIONAL' && isMaintenance) {
-      todos = todos.filter(loc => loc.tipo === 'BODEGA');
+      todos = todos.filter(loc => isBodegaType(loc.tipo));
     } else if (isMaintenance) {
       const originType = this.locations().find(loc => loc.id === origin)?.tipo;
       if (originType === 'PROVEEDOR') {
-        todos = todos.filter(loc => loc.tipo === 'BODEGA');
+        todos = todos.filter(loc => isBodegaType(loc.tipo));
       } else {
-        todos = todos.filter(loc => loc.tipo === 'BODEGA' || loc.tipo === 'PROVEEDOR');
+        todos = todos.filter(loc => isBodegaType(loc.tipo) || loc.tipo === 'PROVEEDOR');
       }
     }
 
@@ -1934,14 +1937,15 @@ export class MovementsPageComponent implements OnInit {
         const originType = this.locations().find(loc => loc.id === newOriginId)?.tipo;
         const isMaintenance = activo.estado === 'MANTENIMIENTO';
         let isInvalidForMaintenance = false;
+        const isDestBodega = dest.tipo === 'PUNTO_TI' || dest.tipo === 'BODEGA';
         if (this.movementType === 'ENVIO_PROVEEDOR') {
           isInvalidForMaintenance = dest.tipo !== 'PROVEEDOR';
         } else if (this.movementType === 'RETORNO_PROVEEDOR') {
-          isInvalidForMaintenance = dest.tipo !== 'BODEGA';
+          isInvalidForMaintenance = !isDestBodega;
         } else if (this.movementType === 'TRASLADO_REGIONAL' && isMaintenance) {
-          isInvalidForMaintenance = dest.tipo !== 'BODEGA';
+          isInvalidForMaintenance = !isDestBodega;
         } else if (isMaintenance) {
-          isInvalidForMaintenance = (dest.tipo !== 'BODEGA' && dest.tipo !== 'PROVEEDOR') ||
+          isInvalidForMaintenance = (!isDestBodega && dest.tipo !== 'PROVEEDOR') ||
             (dest.tipo === 'PROVEEDOR' && originType === 'PROVEEDOR');
         }
 

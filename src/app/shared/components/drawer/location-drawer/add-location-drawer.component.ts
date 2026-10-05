@@ -75,10 +75,10 @@ import { GetAllAreasUseCase } from '../../../../features/responsables/applicatio
               <select 
                 formControlName="tipo"
                 class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white">
-                <option value="OFICINA">Oficina</option>
-                <option value="BODEGA">Bodega</option>
-                <option value="REGIONAL">Regional</option>
-                <option value="PROVEEDOR">Proveedor</option>
+                <option value="OFICINA_PROPIA">Oficina Propia</option>
+                <option value="CONTRATISTA">Agencia Contratista</option>
+                <option value="PUNTO_TI">Punto TI / Soporte</option>
+                <option value="PROVEEDOR">Proveedor Externo</option>
               </select>
             </div>
 
@@ -232,7 +232,7 @@ export class AddLocationDrawerComponent implements OnInit {
       code: ['', [Validators.required]],
       nombre: ['', [Validators.required]],
       coordenadas: [''],
-      tipo: ['OFICINA', [Validators.required]],
+      tipo: ['OFICINA_PROPIA', [Validators.required]],
       observaciones: [''],
       estado: ['ACTIVO']
     });
@@ -279,7 +279,7 @@ export class AddLocationDrawerComponent implements OnInit {
       this.selectedResponsibleIds.set(location.responsibleIds || []);
       this.selectedAreaIds.set(location.areas?.map(a => a.id) || []);
     } else {
-      this.locationForm.reset({ estado: 'ACTIVO', tipo: 'OFICINA', observaciones: '' });
+      this.locationForm.reset({ estado: 'ACTIVO', tipo: 'OFICINA_PROPIA', observaciones: '' });
       this.selectedResponsibleIds.set([]);
       this.selectedAreaIds.set([]);
     }
@@ -288,7 +288,7 @@ export class AddLocationDrawerComponent implements OnInit {
 
   close() {
     this.isOpen.set(false);
-    this.locationForm.reset({ estado: 'ACTIVO', tipo: 'OFICINA', observaciones: '' });
+    this.locationForm.reset({ estado: 'ACTIVO', tipo: 'OFICINA_PROPIA', observaciones: '' });
     this.selectedResponsibleIds.set([]);
     this.selectedAreaIds.set([]);
     this.searchResponsableTerm.set('');
