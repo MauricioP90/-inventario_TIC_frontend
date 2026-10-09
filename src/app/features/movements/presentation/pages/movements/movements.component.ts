@@ -2,6 +2,7 @@ import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import Keycloak from 'keycloak-js';
 import { environment } from '../../../../../../environments/environment';
 import { Location } from '../../../../locations/domain/models/location.model';
@@ -13,8 +14,10 @@ import { RegisterMovementUseCase } from '../../../application/use-cases/register
 import { DispatchMovementUseCase } from '../../../application/use-cases/dispatch-movement.use-case';
 import { ReceiveMovementUseCase } from '../../../application/use-cases/receive-movement.use-case';
 import { RejectMovementUseCase } from '../../../application/use-cases/reject-movement.use-case';
+import { CancelMovementUseCase } from '../../../application/use-cases/cancel-movement.use-case';
 import { Movement, MovementStatus, MOVEMENT_TYPE_LABELS } from '../../../domain/models/movement.model';
 import { MovementItemComponent } from '../../components/movement-item/movement-item.component';
+import { MovementDocumentModalComponent } from '../../components/movement-document-modal/movement-document-modal.component';
 import { GetOneActivoUseCase } from '../../../../inventory/application/use-cases/get-one-activo.use-case';
 import { GetAllActivosUseCase } from '../../../../inventory/application/use-cases/get-all-activos.use-case';
 import { Activo } from '../../../../inventory/domain/models/activo.model';
@@ -36,7 +39,7 @@ interface PickItem {
 @Component({
   selector: 'app-movements-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, MovementItemComponent],
+  imports: [CommonModule, FormsModule, MovementItemComponent, MovementDocumentModalComponent],
   template: `
     <div class="p-4 md:p-6 space-y-8 max-w-5xl mx-auto">
       
@@ -56,9 +59,16 @@ interface PickItem {
 
         <div class="p-6 space-y-6">
           @if (showSuccess()) {
-            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-              <span class="text-emerald-500">✅</span>
-              <p class="text-sm font-bold text-emerald-900">Movimiento registrado correctamente</p>
+            <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 flex items-start gap-3.5 animate-in fade-in slide-in-from-top-2 shadow-xs">
+              <div class="h-9 w-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-lg shrink-0">
+                📦
+              </div>
+              <div class="space-y-1">
+                <h4 class="text-sm font-bold text-indigo-950">¡Traslado Registrado con Éxito! (Estado: En Curso)</h4>
+                <p class="text-xs text-indigo-900 leading-relaxed">
+                  El movimiento ha quedado generado en la pestaña <strong>"En Curso"</strong>. El correo formal de notificación con los documentos oficiales (Acta y Guía) se despachará en el siguiente paso cuando pulses <strong>"Despachar"</strong> en la tarjeta del traslado.
+                </p>
+              </div>
             </div>
           }
 
@@ -182,6 +192,24 @@ interface PickItem {
                       <span class="font-mono">{{ getSimCardsNumbers(selectedActivo()?.simCards || []) }}</span>
                     </p>
                   }
+                </div>
+              </div>
+            }
+
+            <!-- Banner Informativo para Equipo en Mantenimiento -->
+            @if (selectedActivo()?.estado === 'MANTENIMIENTO') {
+              <div class="p-4 bg-amber-50 border border-amber-200/90 rounded-2xl flex items-start gap-3 shadow-xs animate-in fade-in">
+                <div class="p-2 bg-amber-100 text-amber-800 rounded-xl text-lg shrink-0">
+                  🔧
+                </div>
+                <div>
+                  <h4 class="text-sm font-bold text-amber-900 leading-tight">Equipo en Estado de MANTENIMIENTO</h4>
+                  <p class="text-xs text-amber-800 mt-1 leading-relaxed">
+                    Este equipo cuenta con un proceso de mantenimiento activo. Por regla de control, <strong>solo se permite el retiro de SIM Cards</strong> o su <strong>traslado hacia Bodega TI / Soporte Técnico</strong>.
+                  </p>
+                  <p class="text-[11px] text-amber-700 mt-1 font-medium">
+                    ℹ️ Para asignar o cambiar SIM Card, el equipo debe ser liberado de mantenimiento y pasar a estado <strong>DISPONIBLE</strong>.
+                  </p>
                 </div>
               </div>
             }
@@ -537,7 +565,7 @@ interface PickItem {
                 @if (movementType === 'HURTO_PERDIDA') {
                   <span class="text-rose-700 font-bold">Denuncio Policial * (Obligatorio)</span>
                 } @else {
-                  <span>Documento soporte <span class="text-slate-400 font-normal lowercase">(opcional)</span></span>
+                  <span>Soporte Externo / Solicitud previa <span class="text-slate-400 font-normal lowercase">(opcional - ticket, correo de autorización)</span></span>
                 }
               </label>
 
@@ -550,7 +578,7 @@ interface PickItem {
                       </svg>
                     </div>
                     <div class="truncate">
-                      <p class="text-xs font-bold text-slate-800 truncate">{{ documentFileName || 'Documento cargado' }}</p>
+                      <p class="text-xs font-bold text-slate-800 truncate">{{ documentFileName || 'Soporte externo cargado' }}</p>
                       <a [href]="documentUrl()" target="_blank" class="text-[11px] text-emerald-700 hover:underline font-semibold flex items-center gap-1 mt-0.5">
                         Ver / Descargar archivo
                         <svg class="w-3 h-3 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -581,7 +609,7 @@ interface PickItem {
                     <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 0l-3 3m3-3l3 3M6.5 20h11A2.5 2.5 0 0020 17.5V7.914a2.5 2.5 0 00-.732-1.768l-3.414-3.414A2.5 2.5 0 0014.086 2H6.5A2.5 2.5 0 004 4.5v13A2.5 2.5 0 006.5 20z"/>
                     </svg>
-                    <span class="text-xs text-slate-600 font-medium">Subir comodato / acta de soporte (PDF, PNG, JPG…)</span>
+                    <span class="text-xs text-slate-600 font-medium">Subir soporte previo o autorización (PDF, PNG, JPG…)</span>
                   }
                   <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="onDocumentFileChange($event)" />
                 </label>
@@ -608,29 +636,52 @@ interface PickItem {
               @if (movementType === 'SIM_ASIGNACION' && (selectedActivo()?.simCards?.length || 0) < 2) {
                 <div class="space-y-2">
                   <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Seleccionar SIM Card Disponible *</label>
-                  <div class="relative">
-                    <input type="text"
-                           [(ngModel)]="simSearchQuery"
-                           placeholder="Escriba número o ICCID..."
-                           (focus)="showSimDropdown = true"
-                           (input)="showSimDropdown = true"
-                           class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none transition-all text-sm">
-                    
-                    @if (showSimDropdown && filteredBodegaSims().length > 0) {
-                      <div class="absolute z-30 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-40 overflow-y-auto">
-                        @for (sim of filteredBodegaSims(); track sim.id) {
-                          <div (click)="selectSimForAssign(sim)"
-                               class="p-3 hover:bg-purple-50 cursor-pointer border-b border-slate-50 last:border-none flex flex-col gap-0.5 transition-colors">
-                            <p class="text-sm font-bold text-slate-800">{{ sim.numero }}</p>
-                            <div class="flex items-center justify-between">
-                              <p class="text-[10px] text-slate-500">ICCID: {{ sim.iccid }}</p>
-                              <span class="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold uppercase">{{ sim.operador }}</span>
-                            </div>
-                          </div>
-                        }
+                  @if (availableBodegaSimsInOrigin().length === 0) {
+                    <div class="p-4 bg-amber-50 border border-amber-200/80 rounded-xl space-y-2.5 animate-in fade-in">
+                      <div class="flex items-center gap-2 text-amber-900 font-bold text-xs">
+                        <span>⚠️</span>
+                        <span>No hay SIM Cards disponibles en BODEGA en {{ selectedActivo()?.location?.nombre || 'esta sede' }}.</span>
                       </div>
-                    }
-                  </div>
+                      @if (otherLocationsWithAvailableSims().length > 0) {
+                        <p class="text-[11px] text-amber-800 leading-relaxed">
+                          Hay SIM Cards disponibles en otras sedes: <span class="font-bold">{{ otherLocationsWithAvailableSimsText() }}</span>.
+                        </p>
+                        <button type="button"
+                                (click)="requestSimTransferToCurrentLocation()"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer">
+                          <span>🚚</span> Solicitar traslado de SIM a esta sede →
+                        </button>
+                      } @else {
+                        <p class="text-[11px] text-amber-800">
+                          Actualmente no hay ninguna SIM Card en estado BODEGA en ninguna sede del sistema.
+                        </p>
+                      }
+                    </div>
+                  } @else {
+                    <div class="relative">
+                      <input type="text"
+                             [(ngModel)]="simSearchQuery"
+                             placeholder="Escriba número o ICCID..."
+                             (focus)="showSimDropdown = true"
+                             (input)="showSimDropdown = true"
+                             class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none transition-all text-sm">
+                      
+                      @if (showSimDropdown && filteredBodegaSims().length > 0) {
+                        <div class="absolute z-30 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-40 overflow-y-auto">
+                          @for (sim of filteredBodegaSims(); track sim.id) {
+                            <div (click)="selectSimForAssign(sim)"
+                                 class="p-3 hover:bg-purple-50 cursor-pointer border-b border-slate-50 last:border-none flex flex-col gap-0.5 transition-colors">
+                              <p class="text-sm font-bold text-slate-800">{{ sim.numero }}</p>
+                              <div class="flex items-center justify-between">
+                                <p class="text-[10px] text-slate-500">ICCID: {{ sim.iccid }}</p>
+                                <span class="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold uppercase">{{ sim.operador }}</span>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
                 </div>
               }
 
@@ -655,41 +706,62 @@ interface PickItem {
                   <!-- Nueva SIM -->
                   <div class="space-y-2">
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Seleccionar SIM Card Disponible *</label>
-                    <div class="relative">
-                      <input type="text"
-                             [(ngModel)]="simSearchQuery"
-                             placeholder="Escriba número o ICCID..."
-                             (focus)="showSimDropdown = true"
-                             (input)="showSimDropdown = true"
-                             class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none transition-all text-sm">
-                      
-                      @if (showSimDropdown && filteredBodegaSims().length > 0) {
-                        <div class="absolute z-30 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-40 overflow-y-auto">
-                          @for (sim of filteredBodegaSims(); track sim.id) {
-                            <div (click)="selectSimForAssign(sim)"
-                                 class="p-3 hover:bg-purple-50 cursor-pointer border-b border-slate-50 last:border-none flex flex-col gap-0.5 transition-colors">
-                              <p class="text-sm font-bold text-slate-800">{{ sim.numero }}</p>
-                              <div class="flex items-center justify-between">
-                                <p class="text-[10px] text-slate-500">ICCID: {{ sim.iccid }}</p>
-                                <span class="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold uppercase">{{ sim.operador }}</span>
-                              </div>
-                            </div>
-                          }
+                    @if (availableBodegaSimsInOrigin().length === 0) {
+                      <div class="p-4 bg-amber-50 border border-amber-200/80 rounded-xl space-y-2.5 animate-in fade-in">
+                        <div class="flex items-center gap-2 text-amber-900 font-bold text-xs">
+                          <span>⚠️</span>
+                          <span>No hay SIM Cards disponibles en BODEGA en {{ selectedActivo()?.location?.nombre || 'esta sede' }}.</span>
                         </div>
-                      }
-                    </div>
+                        @if (otherLocationsWithAvailableSims().length > 0) {
+                          <p class="text-[11px] text-amber-800 leading-relaxed">
+                            Hay SIM Cards disponibles en otras sedes: <span class="font-bold">{{ otherLocationsWithAvailableSimsText() }}</span>.
+                          </p>
+                          <button type="button"
+                                  (click)="requestSimTransferToCurrentLocation()"
+                                  class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer">
+                            <span>🚚</span> Solicitar traslado de SIM a esta sede →
+                          </button>
+                        } @else {
+                          <p class="text-[11px] text-amber-800">
+                            Actualmente no hay ninguna SIM Card en estado BODEGA en ninguna sede del sistema.
+                          </p>
+                        }
+                      </div>
+                    } @else {
+                      <div class="relative">
+                        <input type="text"
+                               [(ngModel)]="simSearchQuery"
+                               placeholder="Escriba número o ICCID..."
+                               (focus)="showSimDropdown = true"
+                               (input)="showSimDropdown = true"
+                               class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none transition-all text-sm">
+                        
+                        @if (showSimDropdown && filteredBodegaSims().length > 0) {
+                          <div class="absolute z-30 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-40 overflow-y-auto">
+                            @for (sim of filteredBodegaSims(); track sim.id) {
+                              <div (click)="selectSimForAssign(sim)"
+                                   class="p-3 hover:bg-purple-50 cursor-pointer border-b border-slate-50 last:border-none flex flex-col gap-0.5 transition-colors">
+                                <p class="text-sm font-bold text-slate-800">{{ sim.numero }}</p>
+                                <div class="flex items-center justify-between">
+                                  <p class="text-[10px] text-slate-500">ICCID: {{ sim.iccid }}</p>
+                                  <span class="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold uppercase">{{ sim.operador }}</span>
+                                </div>
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
                   </div>
 
                   <!-- Ubicación Bodega SIM que SALE -->
-                  <div class="space-y-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación de BODEGA para la SIM que SALE *</label>
-                    <select [(ngModel)]="removedSimLocationId"
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none appearance-none text-sm transition-all">
-                      <option value="">Escriba Código o Nombre...</option>
-                      @for (loc of locations(); track loc.id) {
-                        <option [value]="loc.id">{{ loc.nombre }}</option>
-                      }
-                    </select>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación de BODEGA para la SIM que sale</label>
+                    <div class="px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 flex items-center justify-between">
+                      <span>📍 {{ selectedActivo()?.location?.nombre || 'Sede actual del equipo' }}</span>
+                      <span class="text-[10px] bg-slate-200/80 text-slate-600 px-2 py-0.5 rounded-full font-semibold">Sede actual del activo</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500">La SIM saliente queda registrada en BODEGA en esta misma sede física.</p>
                   </div>
                 </div>
               }
@@ -717,15 +789,13 @@ interface PickItem {
                     </select>
                   </div>
 
-                  <div class="space-y-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación donde quedará la SIM *</label>
-                    <select [(ngModel)]="removedSimLocationId"
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none appearance-none text-sm transition-all">
-                      <option value="">Escriba Código o Nombre...</option>
-                      @for (loc of locations(); track loc.id) {
-                        <option [value]="loc.id">{{ loc.nombre }}</option>
-                      }
-                    </select>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubicación donde quedará la SIM</label>
+                    <div class="px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 flex items-center justify-between">
+                      <span>📍 {{ selectedActivo()?.location?.nombre || 'Sede actual del equipo' }}</span>
+                      <span class="text-[10px] bg-slate-200/80 text-slate-600 px-2 py-0.5 rounded-full font-semibold">Sede actual del activo</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500">La SIM retirada permanecerá en la sede física actual del equipo.</p>
                   </div>
                 </div>
               }
@@ -738,15 +808,12 @@ interface PickItem {
                       <p class="text-sm font-bold text-purple-700">📱 SIM {{ i + 1 }}: {{ sim.numero }} ({{ sim.operador }})</p>
                       
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="space-y-2">
-                          <label class="text-[10px] font-bold text-slate-500 uppercase">Ubicación destino SIM {{ i + 1 }} *</label>
-                          <select [(ngModel)]="simDestinations[i]"
-                                  class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-purple-500">
-                            <option value="">Seleccione ubicación...</option>
-                            @for (loc of locations(); track loc.id) {
-                              <option [value]="loc.id">{{ loc.nombre }}</option>
-                            }
-                          </select>
+                        <div class="space-y-1.5">
+                          <label class="text-[10px] font-bold text-slate-500 uppercase">Ubicación destino SIM {{ i + 1 }}</label>
+                          <div class="px-3 py-2.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 flex items-center justify-between">
+                            <span>📍 {{ selectedActivo()?.location?.nombre || 'Sede actual' }}</span>
+                            <span class="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-medium">Sede actual</span>
+                          </div>
                         </div>
                         <div class="space-y-2">
                           <label class="text-[10px] font-bold text-slate-500 uppercase">Nuevo estado SIM {{ i + 1 }} *</label>
@@ -770,7 +837,7 @@ interface PickItem {
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
                   <label class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    📧 Enviar Notificación por Correo a:
+                    📧 Destinatarios para la Notificación de Despacho:
                   </label>
                   @if (!showAllRecipients()) {
                     <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200">
@@ -837,7 +904,7 @@ interface PickItem {
 
               @if (selectedEmails().length > 0) {
                 <div class="text-[11px] text-slate-500 font-medium pt-1">
-                  Se enviará notificación a <strong class="text-slate-800 font-bold">{{ selectedEmails().length }}</strong> destinatario(s).
+                  ℹ️ Se notificará formalmente a <strong class="text-slate-800 font-bold">{{ selectedEmails().length }}</strong> destinatario(s) al confirmar el despacho con los soportes adjuntos.
                 </div>
               }
             </div>
@@ -846,9 +913,9 @@ interface PickItem {
           <div class="pt-4 flex justify-start">
             <button (click)="saveMovement()"
                     [disabled]="loading() || !responsibleId || !originId() || (movementType !== 'SIM_TRASLADO' && !selectedActivo()) || (movementType === 'SIM_TRASLADO' && !selectedSimForTransfer()) || (!destinationId && !['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(movementType))"
-                    class="px-8 py-3.5 bg-[#4f39f6a9] hover:bg-[#594af3] text-white font-bold rounded-xl shadow-lg shadow-orange-100 transition-all flex items-center gap-3 disabled:opacity-50">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke-width="2"/></svg>
-              Registrar y Enviar Correo
+                    class="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-100 transition-all flex items-center gap-2.5 disabled:opacity-50 cursor-pointer">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              Registrar Traslado
             </button>
           </div>
         </div>
@@ -905,6 +972,17 @@ interface PickItem {
           </button>
         </div>
 
+        <!-- Notificación de Anulación Exitosa -->
+        @if (cancelToastMessage()) {
+          <div class="mb-4 bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 shadow-xs">
+            <div class="flex items-center gap-2.5">
+              <span class="text-rose-600 text-base">🚫</span>
+              <p class="text-xs font-bold text-rose-900">{{ cancelToastMessage() }}</p>
+            </div>
+            <button (click)="cancelToastMessage.set(null)" class="text-rose-700 text-xs font-bold hover:underline cursor-pointer">✕</button>
+          </div>
+        }
+
         <!-- Resultados (Cards) -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           @for (mov of filteredMovements(); track mov.id) {
@@ -913,7 +991,9 @@ interface PickItem {
               (onDispatch)="openDispatchModal(mov)"
               (onReceive)="openReceiveModal(mov)"
               (onViewRoute)="openRouteModal(mov)"
-              (onCopyMagicLink)="copyMagicLink(mov)">
+              (onCopyMagicLink)="copyMagicLink(mov)"
+              (onGenerateDocument)="openDocumentModal(mov, documentModal)"
+              (onCancel)="openCancelModal(mov)">
             </app-movement-item>
           }
         </div>
@@ -1092,85 +1172,201 @@ interface PickItem {
                     </div>
                   }
                   <!-- Comodato / Acta de Soporte ya registrado (solo lectura) -->
-                  @if (selectedMovementForAction.documentUrl) {
-                    <div class="space-y-1.5">
-                      <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                        <span>📋 Comodato / Acta de Soporte</span>
-                        <span class="text-[10px] text-violet-500 font-semibold normal-case">(registrado al crear el traslado)</span>
-                      </label>
-                      <a [href]="selectedMovementForAction.documentUrl" target="_blank"
-                         class="flex items-center gap-2.5 p-3 bg-violet-50/70 border border-violet-200 rounded-xl hover:bg-violet-100/60 transition-all">
-                        <div class="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600 shrink-0">
-                          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                          </svg>
+                  <!-- ============================================== -->
+                  <!-- CASO 1: MODAL DE DESPACHO (GUÍA + COMODATO)    -->
+                  <!-- ============================================== -->
+                  @if (actionType === 'dispatch') {
+                    <div class="space-y-4">
+                      <!-- 1. GUÍA DE ENVÍO / TRANSPORTE (evidenceUrl) -->
+                      <div class="p-4 bg-slate-50/80 border border-slate-200/90 rounded-2xl space-y-2.5">
+                        <div class="flex items-center justify-between">
+                          <label class="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>🚚</span> Guía de Envío / Transporte
+                          </label>
+                          <span class="text-[10px] text-slate-400 font-medium">(Transportadora, remesa o conductor)</span>
                         </div>
-                        <span class="text-xs font-semibold text-violet-800 hover:underline">Ver / Descargar Comodato ↗</span>
-                      </a>
+
+                        @if (modalEvidenceUrl) {
+                          <div class="flex items-center justify-between p-3 bg-white border border-indigo-200 rounded-xl shadow-2xs">
+                            <div class="flex items-center gap-2.5 overflow-hidden">
+                              <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                                🚚
+                              </div>
+                              <div class="truncate">
+                                <p class="text-xs font-bold text-slate-800 truncate">{{ modalFileName || 'Guía de transporte adjunta' }}</p>
+                                <a [href]="modalEvidenceUrl" target="_blank" class="text-[11px] text-indigo-600 hover:underline font-semibold flex items-center gap-1 mt-0.5">
+                                  Ver / Descargar guía ↗
+                                </a>
+                              </div>
+                            </div>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                              <label class="px-2.5 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50 border border-indigo-200 rounded-lg cursor-pointer transition-colors bg-white shadow-2xs">
+                                Reemplazar
+                                <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="onModalFileChange($event)" />
+                              </label>
+                              <button type="button" (click)="removeModalFile()" class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.562.621c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                              </button>
+                            </div>
+                          </div>
+                        } @else {
+                          <div class="space-y-2">
+                            <label class="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-white h-[50px] px-4 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/40 transition-colors">
+                              @if (uploadingModalFile()) {
+                                <div class="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                                <span class="text-xs text-slate-500 font-medium">Subiendo guía...</span>
+                              } @else {
+                                <svg class="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 0l-3 3m3-3l3 3M6.5 20h11A2.5 2.5 0 0020 17.5V7.914a2.5 2.5 0 00-.732-1.768l-3.414-3.414A2.5 2.5 0 0014.086 2H6.5A2.5 2.5 0 004 4.5v13A2.5 2.5 0 006.5 20z"/></svg>
+                                <span class="text-xs text-slate-700 font-semibold">Subir Guía de Envío (PDF, PNG, JPG)</span>
+                              }
+                              <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="onModalFileChange($event)" />
+                            </label>
+                            <div class="flex items-center gap-2">
+                              <span class="text-[10px] text-slate-400 font-medium whitespace-nowrap">O pegar URL:</span>
+                              <input type="text" [(ngModel)]="modalEvidenceUrl" placeholder="https://..."
+                                     class="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-400 transition-all">
+                            </div>
+                          </div>
+                        }
+                      </div>
+
+                      <!-- 2. COMODATO O ACTA FIRMADA (documentUrl) -->
+                      <div class="p-4 bg-slate-50/80 border border-slate-200/90 rounded-2xl space-y-2.5">
+                        <div class="flex items-center justify-between">
+                          <label class="text-xs font-bold text-violet-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>📋</span> Comodato o Acta Firmada
+                          </label>
+                          <span class="text-[10px] text-slate-400 font-medium">(Documento legal con firmas del receptor)</span>
+                        </div>
+
+                        @if (modalDocumentUrl) {
+                          <div class="flex items-center justify-between p-3 bg-white border border-violet-200 rounded-xl shadow-2xs">
+                            <div class="flex items-center gap-2.5 overflow-hidden">
+                              <div class="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center text-violet-600 shrink-0">
+                                📋
+                              </div>
+                              <div class="truncate">
+                                <p class="text-xs font-bold text-slate-800 truncate">{{ modalDocFileName || 'Comodato / Acta adjunta' }}</p>
+                                <a [href]="modalDocumentUrl" target="_blank" class="text-[11px] text-violet-600 hover:underline font-semibold flex items-center gap-1 mt-0.5">
+                                  Ver / Descargar documento ↗
+                                </a>
+                              </div>
+                            </div>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                              <label class="px-2.5 py-1 text-[11px] font-semibold text-violet-700 hover:bg-violet-50 border border-violet-200 rounded-lg cursor-pointer transition-colors bg-white shadow-2xs">
+                                Reemplazar
+                                <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="onModalDocFileChange($event)" />
+                              </label>
+                              <button type="button" (click)="removeModalDocFile()" class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.562.621c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                              </button>
+                            </div>
+                          </div>
+                        } @else {
+                          <div class="space-y-2">
+                            <label class="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-white h-[50px] px-4 cursor-pointer hover:border-violet-400 hover:bg-violet-50/40 transition-colors">
+                              @if (uploadingModalDocFile()) {
+                                <div class="animate-spin h-4 w-4 border-2 border-violet-500 border-t-transparent rounded-full"></div>
+                                <span class="text-xs text-slate-500 font-medium">Subiendo documento...</span>
+                              } @else {
+                                <svg class="h-4 w-4 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                <span class="text-xs text-slate-700 font-semibold">Subir Comodato / Acta Firmada (PDF, PNG, JPG)</span>
+                              }
+                              <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="onModalDocFileChange($event)" />
+                            </label>
+                            <div class="flex items-center gap-2">
+                              <span class="text-[10px] text-slate-400 font-medium whitespace-nowrap">O pegar URL:</span>
+                              <input type="text" [(ngModel)]="modalDocumentUrl" placeholder="https://..."
+                                     class="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-violet-400 transition-all">
+                            </div>
+                          </div>
+                        }
+                      </div>
                     </div>
                   }
 
-                  <div class="space-y-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
-                      <span>{{ actionType === 'dispatch' ? '🚚 Guía / Soporte de Despacho' : '📦 Soporte de Recepción' }} *</span>
-                      <span class="text-[10px] text-slate-400 font-normal lowercase">(PDF, PNG, JPG, etc.)</span>
-                    </label>
-
-                    @if (modalEvidenceUrl) {
-                      <div class="flex items-center justify-between p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl transition-all shadow-sm">
-                        <div class="flex items-center gap-2.5 overflow-hidden">
-                          <div class="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                            </svg>
-                          </div>
-                          <div class="truncate">
-                            <p class="text-xs font-bold text-slate-800 truncate">{{ modalFileName || 'Soporte cargado' }}</p>
-                            <a [href]="modalEvidenceUrl" target="_blank" class="text-[11px] text-emerald-700 hover:underline font-semibold flex items-center gap-1 mt-0.5">
-                              Ver / Descargar archivo ↗
+                  <!-- ============================================== -->
+                  <!-- CASO 2: MODAL DE RECEPCIÓN                     -->
+                  <!-- ============================================== -->
+                  @if (actionType === 'receive') {
+                    <!-- Soportes previos del traslado (lectura) -->
+                    @if (selectedMovementForAction.documentUrl || selectedMovementForAction.evidenceUrl) {
+                      <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
+                        <p class="text-[10px] text-slate-500 uppercase font-bold">Documentos del Traslado:</p>
+                        <div class="flex flex-wrap gap-2">
+                          @if (selectedMovementForAction.documentUrl) {
+                            <a [href]="selectedMovementForAction.documentUrl" target="_blank"
+                               class="text-xs font-semibold text-violet-700 hover:text-violet-900 bg-white border border-violet-200 px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-2xs">
+                              📋 Ver Comodato / Acta ↗
                             </a>
-                          </div>
-                        </div>
-                        
-                        <div class="flex items-center gap-1.5 shrink-0">
-                          <label class="px-2.5 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50 border border-indigo-200 rounded-lg cursor-pointer transition-colors bg-white shadow-2xs">
-                            Reemplazar
-                            <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="onModalFileChange($event)" />
-                          </label>
-                          <button type="button" (click)="removeModalFile()" class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.562.621c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    } @else {
-                      <div class="space-y-2">
-                        <label class="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 h-[56px] px-4 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/40 transition-colors">
-                          @if (uploadingModalFile()) {
-                            <div class="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
-                            <span class="text-xs text-slate-500 font-medium">Subiendo archivo...</span>
-                          } @else {
-                            <svg class="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 0l-3 3m3-3l3 3M6.5 20h11A2.5 2.5 0 0020 17.5V7.914a2.5 2.5 0 00-.732-1.768l-3.414-3.414A2.5 2.5 0 0014.086 2H6.5A2.5 2.5 0 004 4.5v13A2.5 2.5 0 006.5 20z"/>
-                            </svg>
-                            <span class="text-xs text-slate-700 font-semibold">Subir Guía / Soporte (PDF, PNG, JPG)</span>
                           }
-                          <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="onModalFileChange($event)" />
-                        </label>
-                        
-                        <div class="flex items-center gap-2 pt-0.5">
-                          <span class="text-[10px] text-slate-400 font-medium whitespace-nowrap">O pegar URL externa:</span>
-                          <input type="text" [(ngModel)]="modalEvidenceUrl" placeholder="https://..."
-                                 class="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-400 transition-all">
+                          @if (selectedMovementForAction.evidenceUrl) {
+                            <a [href]="selectedMovementForAction.evidenceUrl" target="_blank"
+                               class="text-xs font-semibold text-indigo-700 hover:text-indigo-900 bg-white border border-indigo-200 px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-2xs">
+                              🚚 Ver Guía de Envío ↗
+                            </a>
+                          }
                         </div>
                       </div>
                     }
-                  </div>
+
+                    <!-- Soporte de Recepción -->
+                    <div class="space-y-2">
+                      <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                        <span>📦 Soporte de Recepción *</span>
+                        <span class="text-[10px] text-slate-400 font-normal lowercase">(Firma / Foto / Acta de Recibido)</span>
+                      </label>
+
+                      @if (modalEvidenceUrl) {
+                        <div class="flex items-center justify-between p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl transition-all shadow-sm">
+                          <div class="flex items-center gap-2.5 overflow-hidden">
+                            <div class="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                              📦
+                            </div>
+                            <div class="truncate">
+                              <p class="text-xs font-bold text-slate-800 truncate">{{ modalFileName || 'Soporte de recepción cargado' }}</p>
+                              <a [href]="modalEvidenceUrl" target="_blank" class="text-[11px] text-emerald-700 hover:underline font-semibold flex items-center gap-1 mt-0.5">
+                                Ver / Descargar archivo ↗
+                              </a>
+                            </div>
+                          </div>
+                          
+                          <div class="flex items-center gap-1.5 shrink-0">
+                            <label class="px-2.5 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50 border border-indigo-200 rounded-lg cursor-pointer transition-colors bg-white shadow-2xs">
+                              Reemplazar
+                              <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="onModalFileChange($event)" />
+                            </label>
+                            <button type="button" (click)="removeModalFile()" class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
+                              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.562.621c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                            </button>
+                          </div>
+                        </div>
+                      } @else {
+                        <div class="space-y-2">
+                          <label class="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 h-[56px] px-4 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/40 transition-colors">
+                            @if (uploadingModalFile()) {
+                              <div class="animate-spin h-4 w-4 border-2 border-emerald-500 border-t-transparent rounded-full"></div>
+                              <span class="text-xs text-slate-500 font-medium">Subiendo soporte...</span>
+                            } @else {
+                              <svg class="h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 0l-3 3m3-3l3 3M6.5 20h11A2.5 2.5 0 0020 17.5V7.914a2.5 2.5 0 00-.732-1.768l-3.414-3.414A2.5 2.5 0 0014.086 2H6.5A2.5 2.5 0 004 4.5v13A2.5 2.5 0 006.5 20z"/></svg>
+                              <span class="text-xs text-slate-700 font-semibold">Subir Soporte de Recepción (PDF, Imagen)</span>
+                            }
+                            <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="onModalFileChange($event)" />
+                          </label>
+                          
+                          <div class="flex items-center gap-2 pt-0.5">
+                            <span class="text-[10px] text-slate-400 font-medium whitespace-nowrap">O pegar URL:</span>
+                            <input type="text" [(ngModel)]="modalEvidenceUrl" placeholder="https://..."
+                                   class="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-emerald-400 transition-all">
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
                   
                   <button (click)="confirmAction()"
                           class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-xl shadow-indigo-100 transition-all mt-4 flex items-center justify-center gap-2 cursor-pointer">
-                    {{ actionType === 'dispatch' ? 'Confirmar Despacho' : 'Confirmar Recepción' }}
+                    {{ actionType === 'dispatch' ? 'Confirmar Despacho y Notificar' : 'Confirmar Recepción' }}
                   </button>
 
                   <!-- BOTÓN Y FORMULARIO DE RECHAZO / NOVEDADES -->
@@ -1303,10 +1499,82 @@ interface PickItem {
       </div>
     }
 
+    <!-- Modal de Anulación de Movimiento (Auditoría e Integridad) -->
+    @if (cancelMovementTarget()) {
+      <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col border border-slate-100">
+          <div class="p-5 border-b border-rose-100 bg-rose-50/70 flex justify-between items-center">
+            <h3 class="font-bold text-rose-900 text-base flex items-center gap-2">
+              <span>🚫</span> Anular Traslado #{{ cancelMovementTarget()!.id.slice(-6).toUpperCase() }}
+            </h3>
+            <button (click)="closeCancelModal()" class="w-8 h-8 rounded-full bg-white text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors flex items-center justify-center shadow-xs cursor-pointer">
+              ✕
+            </button>
+          </div>
+          
+          <div class="p-6 space-y-4">
+            <div class="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl text-xs text-amber-900 space-y-1">
+              <p class="font-bold flex items-center gap-1.5">
+                <span>⚠️</span> Advertencia de Auditoría:
+              </p>
+              <p class="leading-relaxed text-amber-800">
+                El traslado quedará registrado como <strong class="font-bold text-rose-700">ANULADO</strong> en la auditoría histórica y los equipos/SIMs involucrados se liberarán de inmediato en su sede de origen.
+              </p>
+            </div>
+
+            <div class="text-xs text-slate-600 space-y-1.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+              <p><span class="font-bold text-slate-700">Origen:</span> {{ cancelMovementTarget()!.originLocation?.nombre || 'Sede Origen' }}</p>
+              <p><span class="font-bold text-slate-700">Destino:</span> {{ cancelMovementTarget()!.destinationLocation?.nombre || 'Sede Destino' }}</p>
+              <p><span class="font-bold text-slate-700">Equipos/SIMs:</span> {{ cancelMovementTarget()!.activoIds.length }} equipo(s) / chip(s)</p>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Motivo de la Anulación *
+              </label>
+              <textarea [ngModel]="cancelReason()" (ngModelChange)="cancelReason.set($event)" rows="3"
+                        placeholder="Ej: Error al seleccionar sede destino / Digitación equivocada de activo..."
+                        class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all resize-none"></textarea>
+              <p class="text-[11px] text-slate-400 italic">El motivo quedará guardado permanentemente para trazabilidad.</p>
+            </div>
+          </div>
+
+          <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+            <button type="button" (click)="closeCancelModal()" [disabled]="isCancelling()"
+                    class="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-all cursor-pointer">
+              Cerrar
+            </button>
+            <button type="button" (click)="confirmCancelMovement()" [disabled]="isCancelling() || !cancelReason().trim()"
+                    class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-[0.98] disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md shadow-rose-200/50 transition-all flex items-center gap-2 cursor-pointer">
+              @if (isCancelling()) {
+                <span class="animate-spin w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                Anulando...
+              } @else {
+                <span>Confirmar Anulación</span>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modal de Documentos Oficiales (Actas / Comodatos) -->
+    <app-movement-document-modal 
+      #documentModal 
+      (onMovementUpdated)="handleMovementUpdated($event)" />
+
   `,
   styles: []
 })
 export class MovementsPageComponent implements OnInit {
+  openDocumentModal(mov: Movement, modal: MovementDocumentModalComponent) {
+    const dest = this.locations().find(l => l.id === mov.destinationLocationId) || mov.destinationLocation;
+    modal.open(mov, dest);
+  }
+
+  handleMovementUpdated(updated: Movement) {
+    this.movements.update(list => list.map(m => m.id === updated.id ? { ...m, notes: updated.notes } : m));
+  }
   getSimCardsNumbers(simCards: any[]): string {
     if (!simCards || simCards.length === 0) return '';
     return simCards.map((s: any) => s.numero).join(' - ');
@@ -1345,13 +1613,17 @@ export class MovementsPageComponent implements OnInit {
     this.destinationAreaId.set('');
     this.responsibleId = '';
 
-    if (newType === 'TRASLADO_AREA' || newType === 'HURTO_PERDIDA') {
+    const isLocalSIM = ['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(newType);
+    if (newType === 'TRASLADO_AREA' || newType === 'HURTO_PERDIDA' || isLocalSIM) {
       const activo = this.selectedActivo();
-      if (activo && activo.location) {
-        this.selectedDestination.set(activo.location);
-        this.destinationId = activo.location.id;
-        this.destinationSearchQuery.set(activo.location.nombre);
-        if (newType === 'HURTO_PERDIDA') {
+      if (activo) {
+        const loc = activo.location || this.locations().find(l => l.id === (activo.locationId || (activo as any).location?.id));
+        if (loc) {
+          this.selectedDestination.set(loc);
+          this.destinationId = loc.id;
+          this.destinationSearchQuery.set(loc.nombre);
+        }
+        if (newType === 'HURTO_PERDIDA' || isLocalSIM) {
           const currentRespId = activo.responsibleId || (activo as any).responsible?.id;
           if (currentRespId) {
             this.responsibleId = currentRespId;
@@ -1480,14 +1752,25 @@ export class MovementsPageComponent implements OnInit {
         const loc = this.locations().find(l => l.id === activo.locationId);
         const originType = loc?.tipo;
         const isOriginBodega = originType === 'PUNTO_TI' || originType === 'BODEGA';
+        const hasSims = (activo.simCards?.length || 0) > 0;
+
         if (originType === 'PROVEEDOR') {
           // Si está en Proveedor y en mantenimiento, solo puede retornar de proveedor
           types = types.filter(([key]) => key === 'RETORNO_PROVEEDOR');
         } else if (isOriginBodega) {
-          // Si está en Bodega/Punto TI y en mantenimiento, puede enviarse al proveedor o trasladarse a otra Bodega/Punto TI
-          types = types.filter(([key]) => ['ENVIO_PROVEEDOR', 'TRASLADO_REGIONAL'].includes(key));
+          // Si está en Bodega/Punto TI y en mantenimiento, puede enviarse a proveedor, trasladarse a otra Bodega o retirar SIMs
+          types = types.filter(([key]) => {
+            if (['ENVIO_PROVEEDOR', 'TRASLADO_REGIONAL'].includes(key)) return true;
+            if (hasSims && ['SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(key)) return true;
+            return false;
+          });
         } else {
-          types = [];
+          // Si está en una Oficina y en mantenimiento: puede trasladarse a Bodega TI o retirar sus SIMs
+          types = types.filter(([key]) => {
+            if (key === 'TRASLADO_REGIONAL') return true;
+            if (hasSims && ['SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(key)) return true;
+            return false;
+          });
         }
       } else {
         // Si no está en mantenimiento:
@@ -1765,12 +2048,16 @@ export class MovementsPageComponent implements OnInit {
   simDestinations: string[] = ['', ''];
   simStates: ('BODEGA' | 'BAJA')[] = ['BODEGA', 'BODEGA'];
 
-  filteredBodegaSims = computed(() => {
-    const term = this.simSearchQuery.toLowerCase().trim();
+  availableBodegaSimsInOrigin = computed(() => {
     const activeOriginId = this.originId();
-    const available = this.simCards().filter(s =>
+    return this.simCards().filter(s =>
       s.estado === 'BODEGA' && (!activeOriginId || s.locationId === activeOriginId)
     );
+  });
+
+  filteredBodegaSims = computed(() => {
+    const term = this.simSearchQuery.toLowerCase().trim();
+    const available = this.availableBodegaSimsInOrigin();
     if (!term) return available;
     return available.filter(s =>
       s.numero.toLowerCase().includes(term) ||
@@ -1778,6 +2065,42 @@ export class MovementsPageComponent implements OnInit {
       (s.operador && s.operador.toLowerCase().includes(term))
     );
   });
+
+  otherLocationsWithAvailableSims = computed(() => {
+    const activeOriginId = this.originId();
+    const available = this.simCards().filter(s => s.estado === 'BODEGA' && s.locationId !== activeOriginId);
+    
+    const countsByLoc: Record<string, number> = {};
+    for (const sim of available) {
+      if (sim.locationId) {
+        countsByLoc[sim.locationId] = (countsByLoc[sim.locationId] || 0) + 1;
+      }
+    }
+
+    const locMap = this.locations().reduce((acc, l) => ({ ...acc, [l.id]: l.nombre }), {} as Record<string, string>);
+    
+    return Object.entries(countsByLoc).map(([locId, count]) => ({
+      locationId: locId,
+      locationName: locMap[locId] || 'Sede sin nombre',
+      count
+    }));
+  });
+
+  otherLocationsWithAvailableSimsText = computed(() => {
+    const list = this.otherLocationsWithAvailableSims();
+    if (list.length === 0) return '';
+    return list.map(item => `${item.locationName} (${item.count})`).join(' · ');
+  });
+
+  requestSimTransferToCurrentLocation() {
+    const activo = this.selectedActivo();
+    const currentLoc = activo?.location || this.locations().find(l => l.id === this.originId());
+    
+    this.setOperationMode('SIM');
+    if (currentLoc) {
+      this.selectDestination(currentLoc);
+    }
+  }
 
   selectSimForAssign(sim: SimCard) {
     this.selectedSimForAssign = sim;
@@ -1839,6 +2162,14 @@ export class MovementsPageComponent implements OnInit {
   qrCodeDataUrl = signal<string | null>(null);
   magicLinkTab = signal<'link' | 'qr'>('link');
 
+  // Cancel Movement Modal State (Auditoría)
+  cancelMovementTarget = signal<Movement | null>(null);
+  cancelReason = signal<string>('');
+  isCancelling = signal<boolean>(false);
+  cancelToastMessage = signal<string | null>(null);
+
+  private route = inject(ActivatedRoute);
+
   constructor(
     private getAllLocations: GetAllLocationsUseCase,
     private getAllResponsables: GetAllResponsablesUseCase,
@@ -1847,6 +2178,7 @@ export class MovementsPageComponent implements OnInit {
     private dispatchMovement: DispatchMovementUseCase,
     private receiveMovement: ReceiveMovementUseCase,
     private rejectMovementUC: RejectMovementUseCase,
+    private cancelMovementUC: CancelMovementUseCase,
     private getOneActivo: GetOneActivoUseCase,
     private getAllActivos: GetAllActivosUseCase,
     private getAllSimCards: GetAllSimCardsUseCase,
@@ -1855,6 +2187,17 @@ export class MovementsPageComponent implements OnInit {
   ) { }
 
   ngOnInit() {
+    this.route.queryParams.subscribe(params => {
+      if (params['tab']) {
+        const tab = (params['tab'] as string).toUpperCase();
+        if (tab === 'PENDING' || tab === 'HISTORY') {
+          this.activeTab.set(tab as 'PENDING' | 'HISTORY');
+        }
+      }
+      if (params['search']) {
+        this.searchMovementQuery.set(params['search']);
+      }
+    });
     this.fetchData();
   }
 
@@ -1914,6 +2257,11 @@ export class MovementsPageComponent implements OnInit {
   }
 
   selectActivo(activo: Activo) {
+    if (activo.estado === 'EN_TRANSITO' || (activo.estado as any) === 'EN_TRANSIT') {
+      alert(`El equipo con placa "${activo.placa}" se encuentra actualmente EN TRÁNSITO y no puede ser seleccionado para un nuevo movimiento.`);
+      return;
+    }
+
     this.selectedActivo.set(activo);
     this.searchQuery.set(activo.placa);
     const newOriginId = activo.locationId || (activo as any).location?.id || '';
@@ -1925,11 +2273,20 @@ export class MovementsPageComponent implements OnInit {
       this.movementType = '';
     }
 
-    if (this.movementType === 'TRASLADO_AREA' && (activo.location || (activo as any).location)) {
-      const loc = activo.location || (activo as any).location;
-      this.selectedDestination.set(loc);
-      this.destinationId = loc.id;
-      this.destinationSearchQuery.set(loc.nombre);
+    const isLocalSIM = ['SIM_ASIGNACION', 'SIM_CAMBIO', 'SIM_RETIRO', 'SIM_RETIRO_TOTAL'].includes(this.movementType);
+    if ((this.movementType === 'TRASLADO_AREA' || isLocalSIM || this.movementType === 'HURTO_PERDIDA') && (activo.location || (activo as any).location || this.locations().find(l => l.id === newOriginId))) {
+      const loc = activo.location || (activo as any).location || this.locations().find(l => l.id === newOriginId);
+      if (loc) {
+        this.selectedDestination.set(loc);
+        this.destinationId = loc.id;
+        this.destinationSearchQuery.set(loc.nombre);
+      }
+      if (isLocalSIM || this.movementType === 'HURTO_PERDIDA') {
+        const currentRespId = activo.responsibleId || (activo as any).responsible?.id || '';
+        if (currentRespId) {
+          this.responsibleId = currentRespId;
+        }
+      }
     } else {
       const dest = this.selectedDestination();
       if (dest) {
@@ -2030,17 +2387,9 @@ export class MovementsPageComponent implements OnInit {
         alert('Por favor selecciona la nueva SIM a asignar.');
         return;
       }
-      if (!this.removedSimLocationId) {
-        alert('Por favor selecciona la ubicación de bodega para la SIM que sale.');
-        return;
-      }
     } else if (this.movementType === 'SIM_RETIRO') {
       if (!this.selectedSimToRemove) {
         alert('Por favor selecciona la SIM a retirar del equipo.');
-        return;
-      }
-      if (!this.removedSimLocationId) {
-        alert('Por favor selecciona la ubicación donde quedará la SIM.');
         return;
       }
     } else if (this.movementType === 'SIM_RETIRO_TOTAL') {
@@ -2049,14 +2398,17 @@ export class MovementsPageComponent implements OnInit {
         alert('Este equipo no tiene SIMs asignadas para retirar.');
         return;
       }
-      if (activeSims.length >= 1 && !this.simDestinations[0]) {
-        alert('Por favor selecciona la ubicación destino de la SIM 1.');
-        return;
-      }
-      if (activeSims.length >= 2 && !this.simDestinations[1]) {
-        alert('Por favor selecciona la ubicación destino de la SIM 2.');
-        return;
-      }
+    }
+
+    const simCardIds: string[] = [];
+    if (this.movementType === 'SIM_TRASLADO' && this.selectedSimForTransfer()) {
+      simCardIds.push(this.selectedSimForTransfer()!.id);
+    } else if (this.movementType === 'SIM_ASIGNACION' && this.selectedSimForAssign) {
+      simCardIds.push(this.selectedSimForAssign.id);
+    } else if (this.movementType === 'SIM_CAMBIO' && this.selectedSimForAssign) {
+      simCardIds.push(this.selectedSimForAssign.id);
+    } else if (this.movementType === 'SIM_RETIRO' && this.selectedSimToRemove) {
+      simCardIds.push(this.selectedSimToRemove.id);
     }
 
     const dto: any = {
@@ -2065,10 +2417,16 @@ export class MovementsPageComponent implements OnInit {
       destinationLocationId: this.destinationId,
       responsibleId: this.responsibleId,
       activoIds: this.movementType === 'SIM_TRASLADO' ? [] : [this.selectedActivo()!.id],
-      simCardIds: this.movementType === 'SIM_TRASLADO' ? [this.selectedSimForTransfer()!.id] : [],
+      simCardIds,
       notes: this.notes,
       documentUrl: this.documentUrl() || undefined,
-      recipients: this.selectedEmails() // 👈 Enviamos los destinatarios elegidos
+      recipients: this.selectedEmails(),
+      // Datos para ejecución atómica de operaciones SIM en el backend
+      simCardIdToAssign: this.selectedSimForAssign?.id,
+      simCardIdToReplace: this.selectedSimToReplace?.id,
+      simCardIdToRemove: this.selectedSimToRemove?.id,
+      removedSimNewState: this.removedSimNewState,
+      simStates: this.simStates
     };
 
     // Incluir área destino solo para TRASLADO_AREA
@@ -2078,41 +2436,12 @@ export class MovementsPageComponent implements OnInit {
 
     this.registerMovement.execute(dto).subscribe({
       next: () => {
-        // Ejecutar las operaciones de SIM Card correspondientes
-        if (this.movementType === 'SIM_ASIGNACION' && this.selectedSimForAssign) {
-          this.simCardRepo.assign(this.selectedSimForAssign.id, this.selectedActivo()!.placa).subscribe(() => this.finishSave());
-        } else if (this.movementType === 'SIM_CAMBIO' && this.selectedSimToReplace && this.selectedSimForAssign) {
-          // Desvincular SIM vieja
-          this.simCardRepo.update(this.selectedSimToReplace.id, { estado: 'BODEGA', activoId: '', locationId: this.removedSimLocationId }).subscribe(() => {
-            // Vincular SIM nueva
-            this.simCardRepo.assign(this.selectedSimForAssign!.id, this.selectedActivo()!.placa).subscribe(() => this.finishSave());
-          });
-        } else if (this.movementType === 'SIM_RETIRO' && this.selectedSimToRemove) {
-          this.simCardRepo.update(this.selectedSimToRemove.id, { estado: this.removedSimNewState, activoId: '', locationId: this.removedSimLocationId }).subscribe(() => this.finishSave());
-        } else if (this.movementType === 'SIM_RETIRO_TOTAL') {
-          const sims = this.selectedActivo()?.simCards || [];
-          if (sims.length === 0) {
-            this.finishSave();
-          } else {
-            let processed = 0;
-            sims.forEach((sim, idx) => {
-              const newState = this.simStates[idx];
-              const destLocId = this.simDestinations[idx];
-              this.simCardRepo.update(sim.id, { estado: newState, activoId: '', locationId: destLocId }).subscribe(() => {
-                processed++;
-                if (processed === sims.length) {
-                  this.finishSave();
-                }
-              });
-            });
-          }
-        } else {
-          this.finishSave();
-        }
+        this.finishSave();
       },
       error: (err) => {
         const msg = err.error?.message || err.message || 'Error al registrar el movimiento';
         this.showError.set(msg);
+        this.loading.set(false);
       }
     });
   }
@@ -2192,6 +2521,47 @@ export class MovementsPageComponent implements OnInit {
     this.modalFileName = '';
   }
 
+  // Soporte de Comodato / Acta Firmada en Modal de Despacho (Independiente y No Excluyente)
+  uploadingModalDocFile = signal(false);
+  modalDocFileName = '';
+  modalDocumentUrl = '';
+
+  onModalDocFileChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('El archivo no puede superar los 5MB.');
+      return;
+    }
+    this.modalDocFileName = file.name;
+    this.uploadingModalDocFile.set(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      this.http.post<{ url: string }>(`${environment.apiUrl}/files/upload`, {
+        base64,
+        fileName: file.name,
+        folder: 'soportes'
+      }).subscribe({
+        next: (res) => {
+          this.modalDocumentUrl = res.url;
+          this.uploadingModalDocFile.set(false);
+        },
+        error: () => {
+          this.uploadingModalDocFile.set(false);
+          alert('Error al subir el comodato o acta.');
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removeModalDocFile() {
+    this.modalDocumentUrl = '';
+    this.modalDocFileName = '';
+  }
+
   finishSave() {
     this.showSuccess.set(true);
     this.showError.set(null);
@@ -2212,17 +2582,17 @@ export class MovementsPageComponent implements OnInit {
     this.clearDestinationSelection(); // Limpieza de sede destino
     this.setOperationMode('ACTIVO'); // Vuelve a activos por defecto
     this.fetchData(); // Recarga todo (incluyendo SIM cards actualizadas y activos)
-    setTimeout(() => this.showSuccess.set(false), 5000);
+    setTimeout(() => this.showSuccess.set(false), 8000);
   }
 
   // Modal Logic
   openDispatchModal(movement: Movement) {
     this.selectedMovementForAction = movement;
     this.actionType = 'dispatch';
-    // evidenceUrl es la guía de despacho — siempre empieza vacío para que el usuario la suba
-    // documentUrl (comodato) se muestra como lectura separada en el template
     this.modalEvidenceUrl = movement.evidenceUrl || '';
-    this.modalFileName = movement.evidenceUrl ? '📄 Guía de despacho existente' : '';
+    this.modalFileName = movement.evidenceUrl ? '🚚 Guía de envío existente' : '';
+    this.modalDocumentUrl = movement.documentUrl || '';
+    this.modalDocFileName = movement.documentUrl ? '📋 Comodato / Acta existente' : '';
   }
   openReceiveModal(movement: Movement) {
     this.selectedMovementForAction = movement;
@@ -2242,6 +2612,8 @@ export class MovementsPageComponent implements OnInit {
     this.actionType = null;
     this.modalEvidenceUrl = '';
     this.modalFileName = '';
+    this.modalDocumentUrl = '';
+    this.modalDocFileName = '';
     this.showRejectionForm.set(false);
     this.rejectionReason.set('');
     this.magicLinkUrl.set(null);
@@ -2252,16 +2624,19 @@ export class MovementsPageComponent implements OnInit {
     const id = this.selectedMovementForAction.id;
 
     if (this.actionType === 'dispatch') {
-      if (!this.modalEvidenceUrl) return alert('Ingresa soporte');
-      this.dispatchMovement.execute(id, this.modalEvidenceUrl).subscribe({
+      if (!this.modalEvidenceUrl && !this.modalDocumentUrl) {
+        return alert('Por favor, adjunta al menos la Guía de Envío o el Comodato/Acta firmado para despachar.');
+      }
+      const recipientsToSend = this.selectedEmails().length > 0 ? this.selectedEmails() : undefined;
+      this.dispatchMovement.execute(id, this.modalEvidenceUrl || undefined, this.modalDocumentUrl || undefined, recipientsToSend).subscribe({
         next: () => { this.loadMovements(); this.closeModal(); },
-        error: (err) => alert(err.error?.message || err.message || 'Error al procesar el despacho/recepción')
+        error: (err) => alert(err.error?.message || err.message || 'Error al procesar el despacho')
       });
     } else if (this.actionType === 'receive') {
-      if (!this.modalReceiverId || !this.modalEvidenceUrl) return alert('Completa datos');
+      if (!this.modalReceiverId || !this.modalEvidenceUrl) return alert('Completa datos de recepción y soporte.');
       this.receiveMovement.execute(id, this.modalReceiverId, this.modalEvidenceUrl, this.modalDestinationId).subscribe({
         next: () => { this.loadMovements(); this.closeModal(); },
-        error: (err) => alert(err.error?.message || err.message || 'Error al procesar el despacho/recepción')
+        error: (err) => alert(err.error?.message || err.message || 'Error al procesar la recepción')
       });
     }
   }
@@ -2277,6 +2652,43 @@ export class MovementsPageComponent implements OnInit {
         this.closeModal();
       },
       error: (err) => alert(err.error?.message || err.message || 'Error al rechazar el traslado')
+    });
+  }
+
+  // Cancel Movement Modal Logic (Auditoría e Integridad)
+  openCancelModal(movement: Movement) {
+    this.cancelMovementTarget.set(movement);
+    this.cancelReason.set('');
+  }
+
+  closeCancelModal() {
+    this.cancelMovementTarget.set(null);
+    this.cancelReason.set('');
+    this.isCancelling.set(false);
+  }
+
+  confirmCancelMovement() {
+    const target = this.cancelMovementTarget();
+    if (!target) return;
+    const reason = this.cancelReason().trim();
+    if (!reason) {
+      alert('Por favor, ingresa el motivo de la anulación.');
+      return;
+    }
+
+    this.isCancelling.set(true);
+    this.cancelMovementUC.execute(target.id, reason).subscribe({
+      next: () => {
+        this.isCancelling.set(false);
+        this.closeCancelModal();
+        this.cancelToastMessage.set(`El traslado #${target.id.slice(-6).toUpperCase()} ha sido ANULADO correctamente y los equipos han sido liberados.`);
+        setTimeout(() => this.cancelToastMessage.set(null), 6000);
+        this.loadMovements();
+      },
+      error: (err) => {
+        this.isCancelling.set(false);
+        alert(err.error?.message || err.message || 'Error al anular el traslado');
+      }
     });
   }
 

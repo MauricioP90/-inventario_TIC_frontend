@@ -22,8 +22,8 @@ export class HttpMovementRepository implements MovementRepository {
     return this.http.post<Movement>(this.apiUrl, movement);
   }
 
-  dispatch(id: string, evidenceUrl: string): Observable<Movement> {
-    return this.http.patch<Movement>(`${this.apiUrl}/${id}/dispatch`, { evidenceUrl });
+  dispatch(id: string, evidenceUrl?: string, documentUrl?: string, recipients?: string[]): Observable<Movement> {
+    return this.http.patch<Movement>(`${this.apiUrl}/${id}/dispatch`, { evidenceUrl, documentUrl, recipients });
   }
 
   receive(id: string, receiverId: string, receiverEvidenceUrl: string, destinationLocationId?: string): Observable<Movement> {
@@ -32,5 +32,13 @@ export class HttpMovementRepository implements MovementRepository {
 
   reject(id: string, rejectionReason: string): Observable<Movement> {
     return this.http.patch<Movement>(`${this.apiUrl}/${id}/reject`, { rejectionReason });
+  }
+
+  updateNotes(id: string, notes: string): Observable<Movement> {
+    return this.http.patch<Movement>(`${this.apiUrl}/${id}/notes`, { notes });
+  }
+
+  cancel(id: string, reason: string): Observable<Movement> {
+    return this.http.patch<Movement>(`${this.apiUrl}/${id}/cancel`, { reason });
   }
 }

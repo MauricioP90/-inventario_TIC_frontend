@@ -101,30 +101,47 @@ import { MovementTypePipe } from '../../../../../shared/pipes/movement-type.pipe
         </div>
       }
 
-      <!-- Acciones -->
-      <div class="flex gap-2">
+      <!-- Acciones: 2 Niveles Ordenados (Primario y Secundario) -->
+      <div class="space-y-2 pt-2 border-t border-slate-100">
+        <!-- Fila 1: Acción Operativa Principal -->
         @if (movement.status === 'PENDING') {
           <button (click)="onDispatch.emit(movement)"
-                  class="flex-1 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-100 flex items-center justify-center gap-2">
-            Despachar
+                  class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-indigo-200/50 flex items-center justify-center gap-2">
+            <span>🚛</span> Despachar Traslado
           </button>
         }
         @if (movement.status === 'EN_TRANSIT') {
-          <button (click)="onReceive.emit(movement)"
-                  class="flex-1 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-100 flex items-center justify-center gap-2">
-            Recibir
+          <div class="flex gap-2">
+            <button (click)="onReceive.emit(movement)"
+                    class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-emerald-200/50 flex items-center justify-center gap-2">
+              <span>📦</span> Confirmar Recepción
+            </button>
+            @if (movement.magicLinkToken) {
+              <button (click)="onCopyMagicLink.emit(movement)" title="Copiar Enlace de recepción externa (Magic Link)"
+                      class="px-3.5 py-2.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-xl hover:bg-indigo-100 transition-all flex items-center justify-center border border-indigo-200">
+                🔗
+              </button>
+            }
+          </div>
+        }
+
+        <!-- Fila 2: Utilidades y Acciones Secundarias -->
+        <div class="flex items-center gap-2">
+          <button (click)="onGenerateDocument.emit(movement)" title="Ver o Imprimir Formato Oficial (Acta, Comodato, Paz y Salvo)"
+                  class="flex-1 py-1.5 px-2.5 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold rounded-lg border border-indigo-200/60 transition-all flex items-center justify-center gap-1.5">
+            <span>📄</span> Formato / Acta
           </button>
-          @if (movement.magicLinkToken) {
-            <button (click)="onCopyMagicLink.emit(movement)" title="Copiar Enlace de autenticación única para recepción externa"
-                    class="px-3 py-2 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center border border-indigo-200">
-              🔗
+          <button (click)="onViewRoute.emit(movement)" title="Ver trazabilidad de ruta"
+                  class="py-1.5 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold rounded-lg transition-all flex items-center justify-center gap-1">
+            <span>🗺️</span> Ruta
+          </button>
+          @if (movement.status === 'PENDING') {
+            <button (click)="onCancel.emit(movement)" title="Anular este traslado por error de digitación"
+                    class="py-1.5 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-semibold rounded-lg border border-rose-200/70 transition-all flex items-center justify-center gap-1">
+              <span>🚫</span> Anular
             </button>
           }
-        }
-        <button (click)="onViewRoute.emit(movement)"
-                class="px-4 py-2 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-200 transition-all flex items-center justify-center">
-          Ver Ruta
-        </button>
+        </div>
       </div>
     </div>
   `,
@@ -136,6 +153,8 @@ export class MovementItemComponent {
   @Output() onReceive = new EventEmitter<Movement>();
   @Output() onViewRoute = new EventEmitter<Movement>();
   @Output() onCopyMagicLink = new EventEmitter<Movement>();
+  @Output() onGenerateDocument = new EventEmitter<Movement>();
+  @Output() onCancel = new EventEmitter<Movement>();
 
   get typeBadgeClass(): string {
     if (this.movement.type === MovementType.RETURN_BY_REJECTION || this.movement.type === MovementType.DISPOSAL || this.movement.type === MovementType.THEFT_LOSS || this.movement.type === 'HURTO_PERDIDA') {
@@ -147,9 +166,9 @@ export class MovementItemComponent {
   get statusLabel(): string {
     const labels: Record<string, string> = {
       [MovementStatus.PENDING]: 'Pendiente',
-      [MovementStatus.EN_TRANSIT]: 'Transito',
+      [MovementStatus.EN_TRANSIT]: 'En Tránsito',
       [MovementStatus.RECEIVED]: 'Recibido',
-      [MovementStatus.CANCELLED]: 'Cancelado',
+      [MovementStatus.CANCELLED]: 'Anulado',
     };
     return labels[this.movement.status] ?? this.movement.status;
   }
@@ -157,10 +176,10 @@ export class MovementItemComponent {
   get statusClass(): string {
     const base = 'text-[10px] font-bold px-2 py-0.5 rounded-full ';
     const classes: Record<string, string> = {
-      [MovementStatus.PENDING]: base + 'bg-amber-100 text-amber-700',
-      [MovementStatus.EN_TRANSIT]: base + 'bg-blue-100 text-blue-700',
-      [MovementStatus.RECEIVED]: base + 'bg-emerald-100 text-emerald-700',
-      [MovementStatus.CANCELLED]: base + 'bg-slate-100 text-slate-500',
+      [MovementStatus.PENDING]: base + 'bg-amber-100 text-amber-700 border border-amber-200',
+      [MovementStatus.EN_TRANSIT]: base + 'bg-blue-100 text-blue-700 border border-blue-200',
+      [MovementStatus.RECEIVED]: base + 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+      [MovementStatus.CANCELLED]: base + 'bg-rose-100 text-rose-700 border border-rose-200',
     };
     return classes[this.movement.status] ?? base + 'bg-slate-100 text-slate-500';
   }
