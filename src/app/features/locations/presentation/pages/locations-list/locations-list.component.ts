@@ -114,7 +114,12 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
                     </div>
                   </td>
                   <td class="px-6 py-4">
-                    <span class="font-medium text-slate-600 block">{{ location.nombre }}</span>
+                    <span class="font-medium text-slate-700 block">{{ location.nombre }}</span>
+                    @if (location.ciudad) {
+                      <span class="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 bg-indigo-50/70 px-2 py-0.5 rounded-md mt-1">
+                        <span>📍</span> {{ location.ciudad }}
+                      </span>
+                    }
                   </td>
                   <td class="px-6 py-4">
                     <span [class]="typeBadgeClass(location.tipo)">{{ formatType(location.tipo) }}</span>
@@ -145,6 +150,16 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                           <!-- Col 1: Geocoding & Additional Details -->
                           <div class="space-y-4">
+                            @if (location.ciudad) {
+                              <div>
+                                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Ciudad / Municipio Registrado</h4>
+                                <p class="text-xs font-bold text-indigo-800 mt-1.5 bg-indigo-50/80 px-3 py-2 rounded-lg border border-indigo-100/80 flex items-center gap-2 inline-flex">
+                                  <span>🏛️</span>
+                                  <span>{{ location.ciudad }}</span>
+                                </p>
+                              </div>
+                            }
+
                             <div>
                               <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Dirección Física Estimada</h4>
                               @if (resolvedAddresses()[location.id]; as addrState) {
@@ -210,6 +225,16 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
                         </div>
                       } @else {
                         <div class="space-y-4">
+                          @if (location.ciudad) {
+                            <div>
+                              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Ciudad / Municipio Registrado</h4>
+                              <p class="text-xs font-bold text-indigo-800 mt-1.5 bg-indigo-50/80 px-3 py-2 rounded-lg border border-indigo-100/80 flex items-center gap-2 inline-flex">
+                                <span>🏛️</span>
+                                <span>{{ location.ciudad }}</span>
+                              </p>
+                            </div>
+                          }
+
                           @if (location.observaciones) {
                             <div>
                               <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Observaciones / Detalles Adicionales</h4>
@@ -313,7 +338,9 @@ export class LocationsListComponent implements OnInit {
     const type = this.typeFilter();
 
     return this.locations().filter(loc => {
-      const matchesSearch = loc.code.toLowerCase().includes(term) || loc.nombre.toLowerCase().includes(term);
+      const matchesSearch = loc.code.toLowerCase().includes(term) || 
+                            loc.nombre.toLowerCase().includes(term) ||
+                            (!!loc.ciudad && loc.ciudad.toLowerCase().includes(term));
       const matchesStatus = status === '' || loc.estado === status;
       const locType = loc.tipo || 'OFICINA_PROPIA';
       const matchesType = type === '' || locType === type;
@@ -438,10 +465,10 @@ export class LocationsListComponent implements OnInit {
     }));
 
     this.reverseGeocodeUseCase.execute(lat, lon).subscribe({
-      next: (addressName) => {
+      next: (result) => {
         this.resolvedAddresses.update(prev => ({
           ...prev,
-          [locationId]: { address: addressName, loading: false }
+          [locationId]: { address: result.address, loading: false }
         }));
       },
       error: (err) => {

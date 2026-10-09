@@ -6,6 +6,7 @@ export interface Location {
   id: string;
   code: string;
   nombre: string;
+  ciudad?: string | null;
   coordenadas?: string | null;
   tipo?: LocationTipo;
   responsibleIds: string[];

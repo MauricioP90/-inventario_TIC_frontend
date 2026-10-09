@@ -8,6 +8,7 @@ import { UpdateLocationUseCase } from '../../../../features/locations/applicatio
 import { Location } from '../../../../features/locations/domain/models/location.model';
 import { Area } from '../../../../features/responsables/domain/models/area.model';
 import { GetAllAreasUseCase } from '../../../../features/responsables/application/use-cases/get-all-areas.use-case';
+import { ReverseGeocodeUseCase } from '../../../../features/locations/application/use-cases/reverse-geocode.use-case';
 
 @Component({
   selector: 'app-add-location-drawer',
@@ -66,7 +67,33 @@ import { GetAllAreasUseCase } from '../../../../features/responsables/applicatio
               <input 
                 type="text" 
                 formControlName="coordenadas"
+                (blur)="onCoordinatesBlur()"
                 placeholder="Ej: 4.653827,-74.1164715"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm">
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">Ciudad / Municipio</label>
+                @if (detectingCity()) {
+                  <span class="text-[11px] text-indigo-600 flex items-center gap-1 font-medium">
+                    <span class="animate-spin h-3 w-3 border-2 border-indigo-600 border-t-transparent rounded-full"></span>
+                    Detectando...
+                  </span>
+                } @else {
+                  <button 
+                    type="button" 
+                    (click)="autoDetectCity()"
+                    title="Detectar ciudad automáticamente a partir de las coordenadas"
+                    class="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 hover:underline">
+                    <span>📍</span> Auto-detectar
+                  </button>
+                }
+              </div>
+              <input 
+                type="text" 
+                formControlName="ciudad"
+                placeholder="Ej: Bogotá, Villavicencio, Villeta..."
                 class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm">
             </div>
 
@@ -183,6 +210,7 @@ import { GetAllAreasUseCase } from '../../../../features/responsables/applicatio
 export class AddLocationDrawerComponent implements OnInit {
   isOpen = signal(false);
   saving = signal(false);
+  detectingCity = signal(false);
   responsables = signal<Responsable[]>([]);
   selectedLocation = signal<Location | null>(null);
   selectedResponsibleIds = signal<string[]>([]);
@@ -226,11 +254,13 @@ export class AddLocationDrawerComponent implements OnInit {
     private createLocation: CreateLocationUseCase,
     private getAllResponsables: GetAllResponsablesUseCase,
     private updateLocation: UpdateLocationUseCase,
-    private getAllAreas: GetAllAreasUseCase
+    private getAllAreas: GetAllAreasUseCase,
+    private reverseGeocodeUseCase: ReverseGeocodeUseCase
   ) {
     this.locationForm = this.fb.group({
       code: ['', [Validators.required]],
       nombre: ['', [Validators.required]],
+      ciudad: [''],
       coordenadas: [''],
       tipo: ['OFICINA_PROPIA', [Validators.required]],
       observaciones: [''],
@@ -269,6 +299,33 @@ export class AddLocationDrawerComponent implements OnInit {
     }
   }
 
+  autoDetectCity() {
+    const coordsVal = this.locationForm.get('coordenadas')?.value?.trim();
+    if (!coordsVal) return;
+    const parts = coordsVal.split(',').map((p: string) => parseFloat(p.trim()));
+    if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      this.detectingCity.set(true);
+      this.reverseGeocodeUseCase.execute(parts[0], parts[1]).subscribe({
+        next: (res) => {
+          this.detectingCity.set(false);
+          if (res.city) {
+            this.locationForm.patchValue({ ciudad: res.city });
+          }
+        },
+        error: () => {
+          this.detectingCity.set(false);
+        }
+      });
+    }
+  }
+
+  onCoordinatesBlur() {
+    const currentCity = this.locationForm.get('ciudad')?.value?.trim();
+    if (!currentCity) {
+      this.autoDetectCity();
+    }
+  }
+
   open(location?: Location) {
     this.selectedLocation.set(location || null);
     this.searchResponsableTerm.set('');
@@ -279,7 +336,7 @@ export class AddLocationDrawerComponent implements OnInit {
       this.selectedResponsibleIds.set(location.responsibleIds || []);
       this.selectedAreaIds.set(location.areas?.map(a => a.id) || []);
     } else {
-      this.locationForm.reset({ estado: 'ACTIVO', tipo: 'OFICINA_PROPIA', observaciones: '' });
+      this.locationForm.reset({ estado: 'ACTIVO', tipo: 'OFICINA_PROPIA', observaciones: '', ciudad: '' });
       this.selectedResponsibleIds.set([]);
       this.selectedAreaIds.set([]);
     }
@@ -288,7 +345,8 @@ export class AddLocationDrawerComponent implements OnInit {
 
   close() {
     this.isOpen.set(false);
-    this.locationForm.reset({ estado: 'ACTIVO', tipo: 'OFICINA_PROPIA', observaciones: '' });
+    this.detectingCity.set(false);
+    this.locationForm.reset({ estado: 'ACTIVO', tipo: 'OFICINA_PROPIA', observaciones: '', ciudad: '' });
     this.selectedResponsibleIds.set([]);
     this.selectedAreaIds.set([]);
     this.searchResponsableTerm.set('');
