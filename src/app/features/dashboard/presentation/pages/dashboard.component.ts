@@ -1,12 +1,13 @@
 import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { GetDashboardMetricsUseCase } from '../../application/use-cases/get-dashboard-metrics.use-case';
 import { DashboardMetrics, StateDistribution } from '../../domain/models/dashboard.model';
 
 @Component({
   selector: 'app-dashboard-page',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   template: `
     <div class="space-y-6">
 
@@ -183,7 +184,9 @@ import { DashboardMetrics, StateDistribution } from '../../domain/models/dashboa
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-6">
           
           <!-- KPI 1: Tasa de Utilización -->
-          <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md transition-all duration-300 border-l-4 border-l-blue-600 flex flex-col justify-between">
+          <a [routerLink]="['/products']"
+             [queryParams]="getKpiQueryParams('OPERACION')"
+             class="group bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md hover:border-blue-300 transition-all duration-300 border-l-4 border-l-blue-600 flex flex-col justify-between cursor-pointer block">
             <div>
               <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tasa de Utilización</span>
@@ -207,10 +210,16 @@ import { DashboardMetrics, StateDistribution } from '../../domain/models/dashboa
                 </div>
               </div>
             </div>
-          </div>
+            <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-400 group-hover:text-blue-600 transition-colors">
+              <span>Ver en Activos</span>
+              <span class="transition-transform group-hover:translate-x-0.5">→</span>
+            </div>
+          </a>
 
           <!-- KPI 2: Disponibles -->
-          <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md transition-all duration-300 border-l-4 border-l-emerald-500 flex flex-col justify-between">
+          <a [routerLink]="['/products']"
+             [queryParams]="getKpiQueryParams('DISPONIBLE')"
+             class="group bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md hover:border-emerald-300 transition-all duration-300 border-l-4 border-l-emerald-500 flex flex-col justify-between cursor-pointer block">
             <div>
               <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Disponibles</span>
@@ -221,10 +230,16 @@ import { DashboardMetrics, StateDistribution } from '../../domain/models/dashboa
                 <p class="text-[10px] text-slate-500 font-bold mt-1 leading-tight">Equipos {{ activeFilterName() ? activeFilterName() + ' ' : '' }}listos en bodega</p>
               </div>
             </div>
-          </div>
+            <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-400 group-hover:text-emerald-600 transition-colors">
+              <span>Ver en Activos</span>
+              <span class="transition-transform group-hover:translate-x-0.5">→</span>
+            </div>
+          </a>
  
           <!-- KPI 3: En Mantenimiento -->
-          <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md transition-all duration-300 border-l-4 border-l-amber-500 flex flex-col justify-between">
+          <a [routerLink]="['/products']"
+             [queryParams]="getKpiQueryParams('MANTENIMIENTO')"
+             class="group bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md hover:border-amber-300 transition-all duration-300 border-l-4 border-l-amber-500 flex flex-col justify-between cursor-pointer block">
             <div>
               <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">En Mantenimiento</span>
@@ -235,10 +250,16 @@ import { DashboardMetrics, StateDistribution } from '../../domain/models/dashboa
                 <p class="text-[10px] text-slate-500 font-bold mt-1 leading-tight">{{ activeFilterName() ? activeFilterName() + ' en' : 'Dispositivos en' }} reparación técnica</p>
               </div>
             </div>
-          </div>
+            <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-400 group-hover:text-amber-600 transition-colors">
+              <span>Ver en Activos</span>
+              <span class="transition-transform group-hover:translate-x-0.5">→</span>
+            </div>
+          </a>
  
           <!-- KPI 4: Dados de Baja -->
-          <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md transition-all duration-300 border-l-4 border-l-slate-400 flex flex-col justify-between">
+          <a [routerLink]="['/products']"
+             [queryParams]="getKpiQueryParams('BAJA')"
+             class="group bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md hover:border-slate-400 transition-all duration-300 border-l-4 border-l-slate-400 flex flex-col justify-between cursor-pointer block">
             <div>
               <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Dados de Baja</span>
@@ -249,10 +270,16 @@ import { DashboardMetrics, StateDistribution } from '../../domain/models/dashboa
                 <p class="text-[10px] text-slate-500 font-bold mt-1 leading-tight">{{ activeFilterName() ? activeFilterName() + ' descartados' : 'Historial total de equipos dados de baja' }}</p>
               </div>
             </div>
-          </div>
+            <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-400 group-hover:text-slate-700 transition-colors">
+              <span>Ver en Activos</span>
+              <span class="transition-transform group-hover:translate-x-0.5">→</span>
+            </div>
+          </a>
  
           <!-- KPI 5: Rechazado / Novedad -->
-          <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md transition-all duration-300 border-l-4 border-l-red-500 flex flex-col justify-between">
+          <a [routerLink]="['/products']"
+             [queryParams]="getKpiQueryParams('RECHAZADO')"
+             class="group bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md hover:border-red-300 transition-all duration-300 border-l-4 border-l-red-500 flex flex-col justify-between cursor-pointer block">
             <div>
               <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Rechazado / Novedad</span>
@@ -263,10 +290,16 @@ import { DashboardMetrics, StateDistribution } from '../../domain/models/dashboa
                 <p class="text-[10px] text-slate-500 font-bold mt-1 leading-tight">{{ activeFilterName() ? activeFilterName() + ' con reporte' : 'Equipos rechazados o con novedades reportadas' }}</p>
               </div>
             </div>
-          </div>
+            <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-400 group-hover:text-red-600 transition-colors">
+              <span>Ver en Activos</span>
+              <span class="transition-transform group-hover:translate-x-0.5">→</span>
+            </div>
+          </a>
  
           <!-- KPI 6: En Tránsito -->
-          <div class="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md transition-all duration-300 border-l-4 border-l-indigo-500 flex flex-col justify-between">
+          <a [routerLink]="['/products']"
+             [queryParams]="getKpiQueryParams('EN_TRANSITO')"
+             class="group bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 hover:shadow-md hover:border-indigo-300 transition-all duration-300 border-l-4 border-l-indigo-500 flex flex-col justify-between cursor-pointer block">
             <div>
               <div class="flex items-center justify-between">
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">En Tránsito</span>
@@ -277,7 +310,11 @@ import { DashboardMetrics, StateDistribution } from '../../domain/models/dashboa
                 <p class="text-[10px] text-slate-500 font-bold mt-1 leading-tight">{{ activeFilterName() ? activeFilterName() + ' en traslado' : 'Equipos en traslado y pendientes por recibir' }}</p>
               </div>
             </div>
-          </div>
+            <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-400 group-hover:text-indigo-600 transition-colors">
+              <span>Ver en Activos</span>
+              <span class="transition-transform group-hover:translate-x-0.5">→</span>
+            </div>
+          </a>
  
         </div>
 
@@ -543,6 +580,13 @@ import { DashboardMetrics, StateDistribution } from '../../domain/models/dashboa
         transform: translateX(0);
       }
     }
+    .animate-fadeIn {
+      animation: fadeIn 0.25s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   `]
 })
 export class DashboardComponent implements OnInit {
@@ -716,6 +760,20 @@ export class DashboardComponent implements OnInit {
     if (total <= 0) return 0;
     return Math.round((this.asignadoCount() / total) * 100);
   });
+
+  // ── Parámetros de navegación a Activos (/products) desde KPIs ──
+  getKpiQueryParams(estado: string): Record<string, string> {
+    const params: Record<string, string> = { estado };
+    const type = this.bannerTypeFilter();
+    const model = this.bannerModelFilter();
+    if (type) {
+      params['tipo'] = type;
+    }
+    if (model) {
+      params['modelo'] = model;
+    }
+    return params;
+  }
 
   // ─────────────────────────────────────────────────
   // Gráfico principal: Disponible vs Asignado

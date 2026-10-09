@@ -1,6 +1,7 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { Activo } from '../../../domain/models/activo.model';
 import { SearchActivosUseCase } from '../../../application/use-cases/search-activos.use-case';
@@ -14,7 +15,7 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
 @Component({
   selector: 'app-inventory-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, AddActivoDrawerComponent],
+  imports: [CommonModule, FormsModule, RouterModule, AddActivoDrawerComponent],
   template: `
     <div class="space-y-6">
       <!-- Header -->
@@ -86,6 +87,59 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
         </select>
       </div>
 
+      <!-- Barra de Filtros Activos / Breadcrumb Contextual -->
+      @if (selectedStatus() || selectedModel() || selectedType() || selectedLocation() || searchTerm()) {
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-50 border border-slate-200/80 px-4 py-2.5 rounded-xl text-xs">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Filtros aplicados:</span>
+            
+            @if (selectedStatus()) {
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-white shadow-2xs"
+                    [style.backgroundColor]="getStatusColor(selectedStatus())">
+                <span>Estado: {{ getStatusLabel(selectedStatus()) }}</span>
+                <button (click)="clearStatusFilter()" class="hover:opacity-75 cursor-pointer font-black ml-1" title="Quitar filtro de estado">✕</button>
+              </span>
+            }
+
+            @if (selectedModel()) {
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-2xs">
+                <span>Modelo: {{ selectedModel() }}</span>
+                <button (click)="clearModelFilter()" class="hover:text-indigo-950 cursor-pointer font-black ml-1" title="Quitar filtro de modelo">✕</button>
+              </span>
+            }
+
+            @if (selectedType()) {
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold bg-slate-200 text-slate-800 shadow-2xs">
+                <span>Tipo: {{ typeMap()[selectedType()]?.label || selectedType() }}</span>
+                <button (click)="clearTypeFilter()" class="hover:opacity-75 cursor-pointer font-black ml-1" title="Quitar filtro de tipo">✕</button>
+              </span>
+            }
+
+            @if (selectedLocation()) {
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold bg-slate-200 text-slate-800 shadow-2xs">
+                <span>Ubicación: {{ locationMap()[selectedLocation()]?.nombre || selectedLocation() }}</span>
+                <button (click)="clearLocationFilter()" class="hover:opacity-75 cursor-pointer font-black ml-1" title="Quitar filtro de ubicación">✕</button>
+              </span>
+            }
+
+            @if (searchTerm()) {
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold bg-slate-200 text-slate-700 shadow-2xs">
+                <span>Texto: "{{ searchTerm() }}"</span>
+                <button (click)="searchTerm.set(''); onSearchInput('');" class="hover:opacity-75 cursor-pointer font-black ml-1" title="Quitar filtro de búsqueda">✕</button>
+              </span>
+            }
+
+            <button (click)="clearAllFilters()" class="text-indigo-600 hover:text-indigo-800 font-bold text-[11px] underline ml-2 cursor-pointer">
+              Limpiar todos
+            </button>
+          </div>
+
+          <a routerLink="/" class="inline-flex items-center gap-1.5 font-bold text-slate-500 hover:text-indigo-600 transition-colors text-[11px] ml-auto">
+            <span>← Volver al Dashboard</span>
+          </a>
+        </div>
+      }
+
       <!-- Table -->
       @if (loading()) {
         <div class="flex justify-center py-12">
@@ -147,11 +201,34 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
                     </div>
                   </td>
                   <td class="px-6 py-4">
-                    <span 
-                      [style.backgroundColor]="getStatusColor(activo.estado)"
-                      class="text-[10px] font-bold px-2.5 py-1 rounded-lg text-white shadow-sm inline-block">
-                      {{ getStatusLabel(activo.estado) }}
-                    </span>
+                    @if (activo.estado === 'EN_TRANSITO') {
+                      <a [routerLink]="['/movements']"
+                         [queryParams]="{ search: activo.placa, tab: 'PENDING' }"
+                         title="Ver traslado de este equipo en Movimientos →"
+                         class="inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded-lg text-white shadow-sm bg-indigo-600 hover:bg-indigo-700 hover:ring-2 hover:ring-indigo-300 hover:scale-105 transition-all cursor-pointer">
+                        {{ getStatusLabel(activo.estado) }}
+                      </a>
+                    } @else if (activo.estado === 'RECHAZADO') {
+                      <a [routerLink]="['/movements']"
+                         [queryParams]="{ search: activo.placa, tab: 'HISTORY' }"
+                         title="Ver novedad o motivo de rechazo en Movimientos →"
+                         class="inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded-lg text-white shadow-sm bg-red-600 hover:bg-red-700 hover:ring-2 hover:ring-red-300 hover:scale-105 transition-all cursor-pointer">
+                        {{ getStatusLabel(activo.estado) }}
+                      </a>
+                    } @else if (activo.estado === 'MANTENIMIENTO') {
+                      <a [routerLink]="['/maintenance']"
+                         [queryParams]="{ search: activo.placa }"
+                         title="Ver orden de mantenimiento →"
+                         class="inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded-lg text-white shadow-sm bg-amber-500 hover:bg-amber-600 hover:ring-2 hover:ring-amber-300 hover:scale-105 transition-all cursor-pointer">
+                        {{ getStatusLabel(activo.estado) }}
+                      </a>
+                    } @else {
+                      <span 
+                        [style.backgroundColor]="getStatusColor(activo.estado)"
+                        class="text-[10px] font-bold px-2.5 py-1 rounded-lg text-white shadow-sm inline-block">
+                        {{ getStatusLabel(activo.estado) }}
+                      </span>
+                    }
                   </td>
                   @if (isAdmin()) {
                     <td class="px-6 py-4 font-medium text-indigo-600">
@@ -252,6 +329,8 @@ export class InventoryPageComponent implements OnInit {
   selectedType = signal('');
   selectedLocation = signal('');
   selectedStatus = signal('');
+  selectedModel = signal('');
+  pendingTipoName: string = '';
   private searchSubject = new Subject<string>();
 
   // Señales de Paginación
@@ -295,6 +374,8 @@ export class InventoryPageComponent implements OnInit {
   });
 
   newlyCreatedPlaca = signal<string | null>(null);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   constructor(
     private searchActivosUC: SearchActivosUseCase,
@@ -307,12 +388,33 @@ export class InventoryPageComponent implements OnInit {
     ).subscribe((term) => {
       this.searchTerm.set(term);
       this.currentPage.set(1);
+      this.updateUrl();
       this.fetchActivos();
     });
   }
 
   ngOnInit() {
-    this.fetchData();
+    this.route.queryParams.subscribe(params => {
+      if (params['estado']) {
+        this.selectedStatus.set(params['estado']);
+      }
+      if (params['modelo']) {
+        this.selectedModel.set(params['modelo']);
+      }
+      if (params['tipoActivoId']) {
+        this.selectedType.set(params['tipoActivoId']);
+      }
+      if (params['tipo']) {
+        this.pendingTipoName = params['tipo'];
+      }
+      if (params['locationId']) {
+        this.selectedLocation.set(params['locationId']);
+      }
+      if (params['search']) {
+        this.searchTerm.set(params['search']);
+      }
+      this.fetchData();
+    });
   }
 
   abrirNuevo() {
@@ -338,19 +440,23 @@ export class InventoryPageComponent implements OnInit {
 
   onTypeChange(val: string) {
     this.selectedType.set(val);
+    this.pendingTipoName = '';
     this.currentPage.set(1);
+    this.updateUrl();
     this.fetchActivos();
   }
 
   onLocationChange(val: string) {
     this.selectedLocation.set(val);
     this.currentPage.set(1);
+    this.updateUrl();
     this.fetchActivos();
   }
 
   onStatusChange(val: string) {
     this.selectedStatus.set(val);
     this.currentPage.set(1);
+    this.updateUrl();
     this.fetchActivos();
   }
 
@@ -374,6 +480,63 @@ export class InventoryPageComponent implements OnInit {
     }
   }
 
+  clearStatusFilter() {
+    this.selectedStatus.set('');
+    this.currentPage.set(1);
+    this.updateUrl();
+    this.fetchActivos();
+  }
+
+  clearModelFilter() {
+    this.selectedModel.set('');
+    this.currentPage.set(1);
+    this.updateUrl();
+    this.fetchActivos();
+  }
+
+  clearTypeFilter() {
+    this.selectedType.set('');
+    this.pendingTipoName = '';
+    this.currentPage.set(1);
+    this.updateUrl();
+    this.fetchActivos();
+  }
+
+  clearLocationFilter() {
+    this.selectedLocation.set('');
+    this.currentPage.set(1);
+    this.updateUrl();
+    this.fetchActivos();
+  }
+
+  clearAllFilters() {
+    this.selectedStatus.set('');
+    this.selectedModel.set('');
+    this.selectedType.set('');
+    this.selectedLocation.set('');
+    this.searchTerm.set('');
+    this.pendingTipoName = '';
+    this.currentPage.set(1);
+    this.updateUrl();
+    this.fetchActivos();
+  }
+
+  private updateUrl() {
+    const queryParams: Record<string, string | null> = {
+      estado: this.selectedStatus() || null,
+      modelo: this.selectedModel() || null,
+      tipoActivoId: this.selectedType() || null,
+      locationId: this.selectedLocation() || null,
+      search: this.searchTerm() || null,
+      tipo: null
+    };
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams,
+      queryParamsHandling: 'merge'
+    });
+  }
+
   handleSaved(placa: string) {
     this.fetchActivos();
     if (placa) {
@@ -387,7 +550,20 @@ export class InventoryPageComponent implements OnInit {
   fetchData() {
     // 1. Cargamos la Metadata (Filtros dinámicos de tipos y estados)
     this.getMetadataUC.execute().subscribe({
-      next: (meta) => this.metadata.set(meta),
+      next: (meta) => {
+        this.metadata.set(meta);
+        if (this.pendingTipoName) {
+          const matched = meta.types.find(t => 
+            t.label.toLowerCase() === this.pendingTipoName.toLowerCase() ||
+            t.id.toLowerCase() === this.pendingTipoName.toLowerCase()
+          );
+          if (matched) {
+            this.selectedType.set(matched.id);
+          }
+          this.pendingTipoName = '';
+          this.fetchActivos();
+        }
+      },
       error: (err) => console.error("Error cargando metadata", err)
     });
 
@@ -397,8 +573,10 @@ export class InventoryPageComponent implements OnInit {
       error: (err) => console.error("Error cargando ubicaciones", err)
     });
 
-    // 3. Cargamos los Activos mediante Search
-    this.fetchActivos();
+    // 3. Cargamos los Activos mediante Search si no hay pendingTipoName pendiente de resolver
+    if (!this.pendingTipoName) {
+      this.fetchActivos();
+    }
   }
 
   fetchActivos() {
@@ -408,6 +586,7 @@ export class InventoryPageComponent implements OnInit {
       tipoActivoId: this.selectedType() || undefined,
       locationId: this.selectedLocation() || undefined,
       estado: this.selectedStatus() || undefined,
+      modelo: this.selectedModel().trim() || undefined,
       page: this.currentPage(),
       limit: this.pageSize()
     }).subscribe({
@@ -430,7 +609,9 @@ export class InventoryPageComponent implements OnInit {
       'OPERACION': '#2563eb',
       'MANTENIMIENTO': '#f59e0b',
       'BAJA': '#dc2626',
-      'RECHAZADO': '#f43f5e'
+      'RECHAZADO': '#ef4444',
+      'EN_TRANSITO': '#6366f1',
+      'EN_TRANSIT': '#6366f1'
     };
     return colors[estado?.toUpperCase()] || '#64748b';
   }
@@ -442,7 +623,9 @@ export class InventoryPageComponent implements OnInit {
       'OPERACION': 'OPERACIÓN',
       'MANTENIMIENTO': 'MANTENIMIENTO',
       'BAJA': 'INACTIVO',
-      'RECHAZADO': 'RECHAZADO / NOVEDAD'
+      'RECHAZADO': 'RECHAZADO / NOVEDAD',
+      'EN_TRANSITO': 'EN TRÁNSITO',
+      'EN_TRANSIT': 'EN TRÁNSITO'
     };
     return labels[estado?.toUpperCase()] || estado;
   }

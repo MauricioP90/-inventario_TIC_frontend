@@ -42,6 +42,9 @@ export class HttpActivoRepository implements ActivoRepository {
     if (filters.estado) {
       params = params.set('estado', filters.estado);
     }
+    if (filters.modelo && filters.modelo.trim()) {
+      params = params.set('modelo', filters.modelo.trim());
+    }
     if (filters.page) {
       params = params.set('page', filters.page.toString());
     }

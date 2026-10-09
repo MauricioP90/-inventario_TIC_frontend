@@ -1,6 +1,7 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { MaintenanceReport, ModalidadMantenimiento, EstadoFicha, ESTADO_FICHA_LABELS } from '../../../domain/models/maintenance.model';
 import { MaintenanceUseCases } from '../../../application/use-cases/maintenance.use-cases';
 import { MaintenanceDrawerComponent } from './maintenance-drawer.component';
@@ -432,7 +433,14 @@ export class MaintenanceListComponent implements OnInit {
     });
   });
 
+  private route = inject(ActivatedRoute);
+
   ngOnInit() {
+    this.route.queryParams.subscribe(params => {
+      if (params['search']) {
+        this.searchTerm.set(params['search']);
+      }
+    });
     this.cargarDatos();
   }
 

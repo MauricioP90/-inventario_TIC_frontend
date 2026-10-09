@@ -71,5 +71,5 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/movements/presentation/pages/magic-link/magic-link-receive.component').then(m => m.MagicLinkReceiveComponent)
   },
-  { path: '**', redirectTo: 'login' }
+  { path: '**', redirectTo: '' }
 ];

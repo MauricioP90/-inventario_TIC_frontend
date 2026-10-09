@@ -46,6 +46,7 @@ export interface SearchActivosFilters {
   locationId?: string;
   responsibleId?: string;
   estado?: string;
+  modelo?: string;
   page?: number;
   limit?: number;
 }
