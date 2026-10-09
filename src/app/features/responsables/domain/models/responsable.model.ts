@@ -9,6 +9,10 @@ export interface Responsable {
   role?: any;
   area?: Area | null;
   cargo?: Cargo | null;
+  tipoDocumento?: string;
+  numeroDocumento?: string;
+  fechaExpedicionDocumento?: string | null;
+  direccion?: string;
   estado: 'ACTIVO' | 'INACTIVO';
   locationIds: string[];
   // Campos visuales opcionales (mapeados desde el adapter)

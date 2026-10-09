@@ -175,6 +175,11 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
                       <div>
                         <p class="font-bold text-slate-700 truncate">{{ resp.nombre }}</p>
                         <p class="text-[10px] text-slate-400">{{ resp.email }}</p>
+                        @if (resp.numeroDocumento) {
+                          <span class="text-[9px] font-mono font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 mt-1 inline-block">
+                            🪪 {{ resp.tipoDocumento || 'CC' }} {{ resp.numeroDocumento }}
+                          </span>
+                        }
                       </div>
                     </div>
                   </td>
@@ -412,6 +417,7 @@ export class ResponsablesPageComponent implements OnInit {
     return this.responsables().filter(resp => {
       const matchesSearch = resp.nombre.toLowerCase().includes(term) ||
         resp.email.toLowerCase().includes(term) ||
+        (resp.numeroDocumento ? resp.numeroDocumento.toLowerCase().includes(term) : false) ||
         (resp.cargo?.nombre ? resp.cargo.nombre.toLowerCase().includes(term) : false);
 
       // La magia: Si no hay filtro, pasan todos. Si hay, verificamos si el responsable tiene alguna de las sedes seleccionadas.

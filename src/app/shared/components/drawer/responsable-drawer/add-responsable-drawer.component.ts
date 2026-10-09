@@ -89,16 +89,86 @@ import { RoleService } from '../../../../core/auth/services/role.service';
                 </select>
               </div>
               <div>
-                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Cargo / Puesto</label>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Cargo / Puesto <span class="text-rose-500 font-bold">*</span>
+                </label>
                 <select 
                   formControlName="cargo"
-                  class="w-full px-3.5 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white"
+                  class="w-full px-3.5 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm bg-white font-medium"
                   id="select-cargo-responsable">
-                  <option [value]="null">-- Sin Cargo --</option>
+                  <option [value]="null">-- Seleccionar Cargo (Obligatorio) --</option>
                   @for (cargo of cargos(); track cargo.id) {
                     <option [value]="cargo.id">{{ cargo.nombre }}</option>
                   }
                 </select>
+              </div>
+            </div>
+
+            <!-- BLOQUE DE IDENTIFICACIÓN Y DIRECCIÓN (Auto-llenado de actas y comodatos) -->
+            <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  🪪 Identificación y Ubicación
+                </span>
+                @if (isContractor()) {
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                    Obligatorio para Contratista
+                  </span>
+                }
+              </div>
+
+              <div class="grid grid-cols-12 gap-3">
+                <!-- Tipo de Documento -->
+                <div class="col-span-5">
+                  <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    Tipo @if (isContractor()) { <span class="text-rose-500">*</span> }
+                  </label>
+                  <select 
+                    formControlName="tipoDocumento"
+                    class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-xs bg-white font-medium">
+                    <option value="CC">CC (Cédula)</option>
+                    <option value="CE">CE (Extranjería)</option>
+                    <option value="NIT">NIT</option>
+                    <option value="PASAPORTE">Pasaporte</option>
+                  </select>
+                </div>
+
+                <!-- Número de Documento -->
+                <div class="col-span-7">
+                  <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    No. Documento @if (isContractor()) { <span class="text-rose-500">*</span> }
+                  </label>
+                  <input 
+                    type="text" 
+                    formControlName="numeroDocumento"
+                    placeholder="Ej: 1023456789"
+                    class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-xs font-mono">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-12 gap-3">
+                <!-- Fecha Expedición Documento -->
+                <div class="col-span-12 sm:col-span-6">
+                  <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    Fecha Expedición @if (isContractor()) { <span class="text-rose-500">*</span> }
+                  </label>
+                  <input 
+                    type="date" 
+                    formControlName="fechaExpedicionDocumento"
+                    class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-xs bg-white">
+                </div>
+
+                <!-- Dirección -->
+                <div class="col-span-12 sm:col-span-6">
+                  <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    Dirección @if (isContractor()) { <span class="text-rose-500">*</span> }
+                  </label>
+                  <input 
+                    type="text" 
+                    formControlName="direccion"
+                    placeholder="Ej: Calle 26 # 69-76"
+                    class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-xs">
+                </div>
               </div>
             </div>
 
@@ -217,8 +287,7 @@ export class AddResponsableDrawerComponent implements OnInit {
     return all.filter(loc => selectedIds.includes(loc.id));;
   });
 
-
-
+  readonly isContractor = signal(false);
 
   @Output() onSave = new EventEmitter<string>();
 
@@ -238,7 +307,11 @@ export class AddResponsableDrawerComponent implements OnInit {
       email: ['', [Validators.required, Validators.email]],
       telefono: ['', [Validators.required]],
       area: [null],
-      cargo: [null],
+      cargo: [null, [Validators.required]],
+      tipoDocumento: ['CC'],
+      numeroDocumento: [''],
+      fechaExpedicionDocumento: [''],
+      direccion: [''],
       estado: ['ACTIVO']
     });
   }
@@ -247,6 +320,38 @@ export class AddResponsableDrawerComponent implements OnInit {
     this.fetchLocations();
     this.getAllAreas.execute().subscribe(res => this.areas.set(res));
     this.getAllCargos.execute().subscribe(res => this.cargos.set(res.filter(c => c.estado === 'ACTIVO')));
+
+    this.responsibleForm.get('cargo')?.valueChanges.subscribe(cargoId => {
+      this.onCargoChange(cargoId);
+    });
+  }
+
+  onCargoChange(cargoId: string | null) {
+    const selected = this.cargos().find(c => c.id === cargoId);
+    const esContratista = (selected?.nombre || '').trim().toUpperCase() === 'CONTRATISTA';
+    this.isContractor.set(esContratista);
+
+    const docCtrl = this.responsibleForm.get('numeroDocumento');
+    const tipoCtrl = this.responsibleForm.get('tipoDocumento');
+    const fechaCtrl = this.responsibleForm.get('fechaExpedicionDocumento');
+    const dirCtrl = this.responsibleForm.get('direccion');
+
+    if (esContratista) {
+      docCtrl?.setValidators([Validators.required]);
+      tipoCtrl?.setValidators([Validators.required]);
+      fechaCtrl?.setValidators([Validators.required]);
+      dirCtrl?.setValidators([Validators.required]);
+    } else {
+      docCtrl?.clearValidators();
+      tipoCtrl?.clearValidators();
+      fechaCtrl?.clearValidators();
+      dirCtrl?.clearValidators();
+    }
+
+    docCtrl?.updateValueAndValidity();
+    tipoCtrl?.updateValueAndValidity();
+    fechaCtrl?.updateValueAndValidity();
+    dirCtrl?.updateValueAndValidity();
   }
 
   fetchLocations() {
@@ -283,22 +388,29 @@ export class AddResponsableDrawerComponent implements OnInit {
       this.responsibleForm.patchValue({
         ...responsable,
         area: responsable.area?.id || null,
-        cargo: responsable.cargo?.id || null
+        cargo: responsable.cargo?.id || null,
+        tipoDocumento: responsable.tipoDocumento || 'CC',
+        numeroDocumento: responsable.numeroDocumento || '',
+        fechaExpedicionDocumento: responsable.fechaExpedicionDocumento || '',
+        direccion: responsable.direccion || ''
       });
       this.selectedLocationIds.set(responsable.locationIds || []);
+      this.onCargoChange(responsable.cargo?.id || null);
     } else {
-      this.responsibleForm.reset({ area: null, cargo: null, estado: 'ACTIVO' });
+      this.responsibleForm.reset({ area: null, cargo: null, tipoDocumento: 'CC', estado: 'ACTIVO' });
       this.selectedLocationIds.set([]);
       this.searchLocationTerm.set('');
+      this.onCargoChange(null);
     }
     this.isOpen.set(true);
   }
 
   close() {
     this.isOpen.set(false);
-    this.responsibleForm.reset({ area: null, cargo: null, estado: 'ACTIVO' });
+    this.responsibleForm.reset({ area: null, cargo: null, tipoDocumento: 'CC', estado: 'ACTIVO' });
     this.selectedLocationIds.set([]);
     this.searchLocationTerm.set('');
+    this.onCargoChange(null);
   }
 
   save() {
