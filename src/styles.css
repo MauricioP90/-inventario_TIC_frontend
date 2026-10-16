@@ -9,6 +9,13 @@ html, body {
   overflow: hidden;
 }
 
+@media print {
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+  }
+}
+
 app-root {
   display: block;
   height: 100%;

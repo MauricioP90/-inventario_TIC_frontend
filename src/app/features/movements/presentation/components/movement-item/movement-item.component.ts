@@ -101,47 +101,83 @@ import { MovementTypePipe } from '../../../../../shared/pipes/movement-type.pipe
         </div>
       }
 
-      <!-- Acciones: 2 Niveles Ordenados (Primario y Secundario) -->
-      <div class="space-y-2 pt-2 border-t border-slate-100">
+      <!-- Alerta si fue recibido pero aún no cuenta con soporte firmado -->
+      @if (movement.status === 'RECEIVED' && !movement.receivedEvidenceUrl && !movement.documentUrl) {
+        <div class="mb-3 px-3 py-1.5 bg-amber-50 border border-amber-200/90 rounded-xl flex items-center justify-between text-xs shadow-2xs">
+          <span class="text-[11px] text-amber-800 font-bold flex items-center gap-1.5">
+            <span>⚠️</span> Sin soporte firmado
+          </span>
+          <button (click)="onAttachDocument.emit(movement)" class="text-[10.5px] font-bold text-amber-900 underline hover:text-amber-950 cursor-pointer">
+            Adjuntar ahora
+          </button>
+        </div>
+      }
+
+      <!-- Acciones: 2 Niveles Ordenados (Operativa y Utilidades) -->
+      <div class="space-y-2.5 pt-2 border-t border-slate-100">
         <!-- Fila 1: Acción Operativa Principal -->
         @if (movement.status === 'PENDING') {
           <button (click)="onDispatch.emit(movement)"
-                  class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-indigo-200/50 flex items-center justify-center gap-2">
+                  class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-indigo-200/50 flex items-center justify-center gap-2 cursor-pointer">
             <span>🚛</span> Despachar Traslado
           </button>
         }
         @if (movement.status === 'EN_TRANSIT') {
-          <div class="flex gap-2">
-            <button (click)="onReceive.emit(movement)"
-                    class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-emerald-200/50 flex items-center justify-center gap-2">
-              <span>📦</span> Confirmar Recepción
+          <button (click)="onReceive.emit(movement)"
+                  class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-emerald-200/50 flex items-center justify-center gap-2 cursor-pointer">
+            <span>📦</span> Confirmar Recepción
+          </button>
+        }
+
+        <!-- Barra Destacada de Link Mágico / Recepción Externa (para compartir si no llega notificación) -->
+        @if (movement.magicLinkToken && movement.status !== 'RECEIVED' && movement.status !== 'CANCELLED') {
+          <div class="px-3 py-2 bg-indigo-50/80 border border-indigo-200/90 rounded-xl flex items-center justify-between gap-2 shadow-2xs animate-in fade-in duration-150">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="text-sm shrink-0">✨</span>
+              <div class="truncate">
+                <p class="text-[10px] font-black text-indigo-950 uppercase tracking-wider">Link de Recepción</p>
+                <p class="text-[10px] text-indigo-700 truncate font-medium">Para firma y soporte externo</p>
+              </div>
+            </div>
+            <button (click)="onCopyMagicLink.emit(movement)" title="Copiar enlace o ver QR para el receptor"
+                    class="px-2.5 py-1 bg-white hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 text-xs font-bold rounded-lg transition-all shadow-2xs flex items-center gap-1 shrink-0 cursor-pointer">
+              <span>🔗</span> Copiar Link
             </button>
-            @if (movement.magicLinkToken) {
-              <button (click)="onCopyMagicLink.emit(movement)" title="Copiar Enlace de recepción externa (Magic Link)"
-                      class="px-3.5 py-2.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-xl hover:bg-indigo-100 transition-all flex items-center justify-center border border-indigo-200">
-                🔗
-              </button>
-            }
           </div>
         }
 
-        <!-- Fila 2: Utilidades y Acciones Secundarias -->
-        <div class="flex items-center gap-2">
-          <button (click)="onGenerateDocument.emit(movement)" title="Ver o Imprimir Formato Oficial (Acta, Comodato, Paz y Salvo)"
-                  class="flex-1 py-1.5 px-2.5 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold rounded-lg border border-indigo-200/60 transition-all flex items-center justify-center gap-1.5">
-            <span>📄</span> Formato / Acta
-          </button>
-          <button (click)="onViewRoute.emit(movement)" title="Ver trazabilidad de ruta"
-                  class="py-1.5 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold rounded-lg transition-all flex items-center justify-center gap-1">
-            <span>🗺️</span> Ruta
-          </button>
-          @if (movement.status === 'PENDING') {
+        <!-- Fila 2: Utilidades y Acciones Secundarias (Grid simétrico sin desbordamiento) -->
+        @if (movement.status === 'PENDING') {
+          <div class="grid grid-cols-3 gap-1.5">
+            <button (click)="onGenerateDocument.emit(movement)" title="Ver o Imprimir Formato Oficial (Acta, Comodato, Paz y Salvo)"
+                    class="py-2 px-1 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold rounded-xl border border-indigo-200/60 transition-all flex items-center justify-center gap-1 cursor-pointer truncate">
+              <span>📄</span> Formato
+            </button>
+            <button (click)="onViewRoute.emit(movement)" title="Ver trazabilidad de ruta"
+                    class="py-2 px-1 bg-slate-50 hover:bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-1 cursor-pointer truncate">
+              <span>🗺️</span> Ruta
+            </button>
             <button (click)="onCancel.emit(movement)" title="Anular este traslado por error de digitación"
-                    class="py-1.5 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-semibold rounded-lg border border-rose-200/70 transition-all flex items-center justify-center gap-1">
+                    class="py-2 px-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-semibold rounded-xl border border-rose-200/70 transition-all flex items-center justify-center gap-1 cursor-pointer truncate">
               <span>🚫</span> Anular
             </button>
-          }
-        </div>
+          </div>
+        } @else {
+          <div class="grid grid-cols-3 gap-1.5">
+            <button (click)="onGenerateDocument.emit(movement)" title="Ver o Imprimir Formato Oficial (Acta, Comodato, Paz y Salvo)"
+                    class="py-2 px-1 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold rounded-xl border border-indigo-200/60 transition-all flex items-center justify-center gap-1 cursor-pointer truncate">
+              <span>📄</span> Formato
+            </button>
+            <button (click)="onAttachDocument.emit(movement)" title="Adjuntar o actualizar comodato o soporte firmado"
+                    class="py-2 px-1 bg-slate-50 hover:bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-1 shadow-2xs cursor-pointer truncate">
+              <span>📎</span> Soporte
+            </button>
+            <button (click)="onViewRoute.emit(movement)" title="Ver trazabilidad de ruta"
+                    class="py-2 px-1 bg-slate-50 hover:bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-1 cursor-pointer truncate">
+              <span>🗺️</span> Ruta
+            </button>
+          </div>
+        }
       </div>
     </div>
   `,
@@ -155,6 +191,7 @@ export class MovementItemComponent {
   @Output() onCopyMagicLink = new EventEmitter<Movement>();
   @Output() onGenerateDocument = new EventEmitter<Movement>();
   @Output() onCancel = new EventEmitter<Movement>();
+  @Output() onAttachDocument = new EventEmitter<Movement>();
 
   get typeBadgeClass(): string {
     if (this.movement.type === MovementType.RETURN_BY_REJECTION || this.movement.type === MovementType.DISPOSAL || this.movement.type === MovementType.THEFT_LOSS || this.movement.type === 'HURTO_PERDIDA') {

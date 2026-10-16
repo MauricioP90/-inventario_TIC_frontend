@@ -67,6 +67,10 @@ export const routes: Routes = [
     ]
   },
   {
+    path: 'magic-link/:token',
+    redirectTo: 'public/receive/:token'
+  },
+  {
     path: 'public/receive/:token',
     loadComponent: () =>
       import('./features/movements/presentation/pages/magic-link/magic-link-receive.component').then(m => m.MagicLinkReceiveComponent)

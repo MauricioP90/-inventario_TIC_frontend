@@ -41,4 +41,8 @@ export class HttpMovementRepository implements MovementRepository {
   cancel(id: string, reason: string): Observable<Movement> {
     return this.http.patch<Movement>(`${this.apiUrl}/${id}/cancel`, { reason });
   }
+
+  attachDocuments(id: string, data: { documentUrl?: string; receivedEvidenceUrl?: string; notes?: string }): Observable<Movement> {
+    return this.http.patch<Movement>(`${this.apiUrl}/${id}/documents`, data);
+  }
 }

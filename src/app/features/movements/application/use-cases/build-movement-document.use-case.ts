@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Movement } from '../../domain/models/movement.model';
 import { Location } from '../../../locations/domain/models/location.model';
-import { OfficialDocumentData, TipoDocumentoOficial, PrestamoDispositivoData } from '../../domain/models/document-template.model';
+import { OfficialDocumentData, TipoDocumentoOficial, PrestamoDispositivoData, ReintegroDispositivoData, MemorandoDispositivoData, ComodatoDispositivoData } from '../../domain/models/document-template.model';
 import { OFFICIAL_DOCUMENT_TEMPLATES } from '../../domain/models/document-templates.config';
 import { DocumentPolicyService } from '../../domain/services/document-policy.service';
 import { RoleService } from '../../../../core/auth/services/role.service';
@@ -19,7 +19,10 @@ export class BuildMovementDocumentUseCase {
     customObservaciones?: string,
     destinationLocation?: Location | null,
     receiverIdentificacion?: string,
-    prestamoData?: PrestamoDispositivoData
+    prestamoData?: PrestamoDispositivoData,
+    reintegroData?: ReintegroDispositivoData,
+    memorandoData?: MemorandoDispositivoData,
+    comodatoData?: ComodatoDispositivoData
   ): OfficialDocumentData {
     // 1. Determinar el tipo de documento (sugerido por el dominio o forzado por el usuario)
     const tipo = tipoOverride || this.policy.sugerirTipoDocumento(movement, destinationLocation);
@@ -34,7 +37,7 @@ export class BuildMovementDocumentUseCase {
     };
 
     // 3. Mapear el receptor (colaborador, contratista o taller)
-    const targetPerson = movement.responsible || movement.receiver;
+    const targetPerson = movement.receiver || movement.responsible;
     let autoDoc = '';
     if (targetPerson?.numeroDocumento) {
       autoDoc = targetPerson.tipoDocumento ? `${targetPerson.tipoDocumento} ${targetPerson.numeroDocumento}` : targetPerson.numeroDocumento;
@@ -69,7 +72,8 @@ export class BuildMovementDocumentUseCase {
         modelo: a.modelo || 'N/A',
         serial: a.serial || 'S/N',
         estado: a.estado || 'OPERACION',
-        simCard: simCardStr
+        simCard: simCardStr,
+        precioCompra: a.precioCompra ? Number(a.precioCompra) : undefined
       };
     });
 
@@ -96,7 +100,10 @@ export class BuildMovementDocumentUseCase {
       simCards,
       observacionesGenerales: customObservaciones !== undefined ? customObservaciones : (movement.notes || ''),
       movementId: movement.id,
-      prestamoData
+      prestamoData,
+      reintegroData,
+      memorandoData,
+      comodatoData
     };
   }
 }

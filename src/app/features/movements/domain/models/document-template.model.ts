@@ -1,9 +1,11 @@
 export type TipoDocumentoOficial = 
   | 'ACTA_ENTREGA' 
-  | 'COMODATO' 
-  | 'PAZ_Y_SALVO' 
   | 'GUIA_REMISION'
-  | 'PRESTAMO_DISPOSITIVO';
+  | 'PRESTAMO_DISPOSITIVO'
+  | 'REINTEGRO_DISPOSITIVO'
+  | 'MEMORANDO_REINTEGRO'
+  | 'MEMORANDO_PRESTAMO'
+  | 'COMODATO';
 
 export interface DocumentClausula {
   num: number;
@@ -46,6 +48,7 @@ export interface DocumentActivoItem {
   serial: string;
   estado: string;
   simCard?: string | null;
+  precioCompra?: number;
 }
 
 export interface DocumentSIMCardItem {
@@ -57,11 +60,45 @@ export interface DocumentSIMCardItem {
 
 export interface PrestamoDispositivoData {
   fechaContrato: string;
-  modeloAveriado: string;
+  modeloAveriado?: string;
   serialAveriado?: string;
   placaAveriada?: string;
   cargador: string;
   forro: string;
+}
+
+export interface ReintegroDispositivoData {
+  fechaContrato: string;
+  cargador: string;
+  forro: string;
+  incluyeDevolucionPrestamo: boolean;
+  modeloPrestado?: string;
+  serialPrestado?: string;
+  placaPrestada?: string;
+  fechaEntregaPrestamo?: string;
+}
+
+export interface MemorandoDispositivoData {
+  modeloAveriado?: string;
+  serialAveriado?: string;
+  placaAveriada?: string;
+  cargador: string;
+  forro: string;
+}
+
+export interface ComodatoDispositivoData {
+  fechaContratoColaboracion: string;
+  lugarFecha?: string;
+  direccionComodatario?: string;
+  ciudadComodatario?: string;
+  emailComodatario?: string;
+  operadorSim?: string;
+  numeroSim?: string;
+  valorReposicion?: string;
+  valorReposicionLetras?: string;
+  estadoBien?: string;
+  bienEntregado?: string;
+  precioCompra?: number;
 }
 
 export interface OfficialDocumentData {
@@ -75,4 +112,9 @@ export interface OfficialDocumentData {
   observacionesGenerales?: string;
   movementId: string;
   prestamoData?: PrestamoDispositivoData;
+  reintegroData?: ReintegroDispositivoData;
+  memorandoData?: MemorandoDispositivoData;
+  comodatoData?: ComodatoDispositivoData;
 }
+
+

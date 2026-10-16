@@ -10,4 +10,5 @@ export abstract class MovementRepository {
   abstract reject(id: string, rejectionReason: string): Observable<Movement>;
   abstract updateNotes(id: string, notes: string): Observable<Movement>;
   abstract cancel(id: string, reason: string): Observable<Movement>;
+  abstract attachDocuments(id: string, data: { documentUrl?: string; receivedEvidenceUrl?: string; notes?: string }): Observable<Movement>;
 }

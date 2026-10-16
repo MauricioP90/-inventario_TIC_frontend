@@ -26,6 +26,8 @@ export class MagicLinkReceiveComponent implements OnInit {
   
   physicalReceiverName = '';
   rejectionReason = '';
+  selectedFile = signal<{ file: File; base64: string; name: string; sizeFormatted: string } | null>(null);
+  fileError = signal<string>('');
 
   ngOnInit() {
     this.token = this.route.snapshot.paramMap.get('token') || '';
@@ -51,15 +53,73 @@ export class MagicLinkReceiveComponent implements OnInit {
       });
   }
 
+  onFileSelected(event: Event) {
+    this.fileError.set('');
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    const allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'webp'];
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+
+    if (!allowedExtensions.includes(ext)) {
+      this.fileError.set('Formato no permitido. Solo se aceptan archivos PDF, PNG o JPG.');
+      input.value = '';
+      return;
+    }
+
+    const maxSize = 5 * 1024 * 1024; // 5 MB
+    if (file.size > maxSize) {
+      this.fileError.set('El archivo excede el tamaño máximo permitido de 5 MB.');
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      const sizeKB = Math.round(file.size / 1024);
+      const sizeFormatted = sizeKB > 1024 
+        ? `${(sizeKB / 1024).toFixed(1)} MB` 
+        : `${sizeKB} KB`;
+
+      this.selectedFile.set({
+        file,
+        base64,
+        name: file.name,
+        sizeFormatted
+      });
+    };
+    reader.onerror = () => {
+      this.fileError.set('No se pudo leer el archivo seleccionado.');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removeSelectedFile() {
+    this.selectedFile.set(null);
+    this.fileError.set('');
+  }
+
   confirmReception() {
     if (!this.physicalReceiverName.trim()) {
       alert('Por favor, ingresa tu nombre para confirmar la recepción.');
       return;
     }
     this.loading.set(true);
-    this.http.post(`${environment.apiUrl}/movements/public/magic-link/${this.token}/receive`, {
-      physicalReceiverName: this.physicalReceiverName
-    }).subscribe({
+
+    const payload: any = {
+      physicalReceiverName: this.physicalReceiverName.trim()
+    };
+
+    if (this.selectedFile()) {
+      payload.evidenceFile = {
+        base64: this.selectedFile()!.base64,
+        fileName: this.selectedFile()!.name
+      };
+    }
+
+    this.http.post(`${environment.apiUrl}/movements/public/magic-link/${this.token}/receive`, payload).subscribe({
       next: () => {
         this.success.set(true);
         this.loading.set(false);

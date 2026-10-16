@@ -21,17 +21,22 @@ export class DocumentPolicyService {
       return 'GUIA_REMISION';
     }
 
-    // 2. Si va hacia una Agencia Tercerizada / Contratista -> Contrato de Comodato
-    if (destTipo === 'CONTRATISTA') {
+    // 2. Si es una operación de Reintegro de dispositivo reparado -> Reintegro y/o Devolución
+    if (movType.includes('REINTEGRO')) {
+      return 'REINTEGRO_DISPOSITIVO';
+    }
+
+    // 3. Si es comodato de CS-30 / dispositivo
+    if (movType.includes('COMODATO') || movType.includes('CS30') || movType.includes('CS-30')) {
       return 'COMODATO';
     }
 
-    // 3. Si va hacia un Punto TI (Retorno, baja, reintegro o salida de custodia) -> Paz y Salvo / Devolución
-    if (destTipo === 'PUNTO_TI' || destTipo === 'BODEGA' || movType.includes('RETORNO') || movType.includes('BAJA')) {
-      return 'PAZ_Y_SALVO';
+    // 4. Si es una entrega temporal de préstamo -> Préstamo de Dispositivo
+    if (movType.includes('PRESTAMO')) {
+      return 'PRESTAMO_DISPOSITIVO';
     }
 
-    // 4. Por defecto para colaboradores y sedes propias directas -> Acta de Entrega Laboral
+    // 5. Por defecto para colaboradores y sedes propias directas -> Acta de Entrega Laboral
     return 'ACTA_ENTREGA';
   }
 
@@ -41,13 +46,21 @@ export class DocumentPolicyService {
    */
   generarConsecutivo(tipo: TipoDocumentoOficial, movementId: string): string {
     const year = new Date().getFullYear();
+    const shortYear = year.toString().slice(-2);
     const shortId = (movementId || 'TEMP').slice(-6).toUpperCase();
+
+    if (tipo === 'MEMORANDO_REINTEGRO' || tipo === 'MEMORANDO_PRESTAMO') {
+      return `GR-MEM-${shortYear}-${shortId}`;
+    }
+
     const prefijos: Record<TipoDocumentoOficial, string> = {
       ACTA_ENTREGA: 'ACT',
-      COMODATO: 'COM',
-      PAZ_Y_SALVO: 'PYS',
       GUIA_REMISION: 'GUI',
-      PRESTAMO_DISPOSITIVO: 'PRE'
+      PRESTAMO_DISPOSITIVO: 'PRE',
+      REINTEGRO_DISPOSITIVO: 'REI',
+      MEMORANDO_REINTEGRO: 'GR-MEM',
+      MEMORANDO_PRESTAMO: 'GR-MEM',
+      COMODATO: 'COM'
     };
     return `${prefijos[tipo] || 'DOC'}-${year}-${shortId}`;
   }
