@@ -7,7 +7,7 @@ import { MovementRepository } from '../../domain/repositories/movement.repositor
 export class DispatchMovementUseCase {
   constructor(private repository: MovementRepository) { }
 
-  execute(id: string, evidenceUrl?: string, documentUrl?: string, recipients?: string[]): Observable<Movement> {
-    return this.repository.dispatch(id, evidenceUrl, documentUrl, recipients);
+  execute(id: string, evidenceUrl?: string, documentUrl?: string, recipients?: string[], notifyWhatsApp?: boolean): Observable<Movement> {
+    return this.repository.dispatch(id, evidenceUrl, documentUrl, recipients, notifyWhatsApp);
   }
 }

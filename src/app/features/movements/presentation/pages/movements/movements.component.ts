@@ -1295,6 +1295,61 @@ interface PickItem {
                           </div>
                         }
                       </div>
+
+                      <!-- 3. NOTIFICACIÓN POR WHATSAPP (Wasapi) -->
+                      <div class="p-4 rounded-2xl border transition-all"
+                           [class.bg-emerald-50/70]="modalNotifyWhatsApp()"
+                           [class.border-emerald-200]="modalNotifyWhatsApp()"
+                           [class.bg-slate-50/80]="!modalNotifyWhatsApp()"
+                           [class.border-slate-200/90]="!modalNotifyWhatsApp()">
+                        <div class="flex items-start justify-between gap-3">
+                          <div class="flex items-start gap-2.5">
+                            <div class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors shadow-2xs"
+                                 [class.bg-emerald-500]="modalNotifyWhatsApp()"
+                                 [class.text-white]="modalNotifyWhatsApp()"
+                                 [class.bg-slate-200]="!modalNotifyWhatsApp()"
+                                 [class.text-slate-500]="!modalNotifyWhatsApp()">
+                              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                            </div>
+                            <div>
+                              <p class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                Notificación por WhatsApp
+                                @if (modalRecipientPhone()) {
+                                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                                        [class.bg-emerald-100]="modalNotifyWhatsApp()"
+                                        [class.text-emerald-800]="modalNotifyWhatsApp()"
+                                        [class.bg-slate-200]="!modalNotifyWhatsApp()"
+                                        [class.text-slate-600]="!modalNotifyWhatsApp()">
+                                    {{ modalNotifyWhatsApp() ? 'Activada' : 'Omitida' }}
+                                  </span>
+                                }
+                              </p>
+                              @if (modalRecipientPhone()) {
+                                <p class="text-[11px] text-slate-500 mt-0.5">
+                                  Enviar enlace de recepción al receptor: <strong class="text-slate-700 font-mono">+{{ modalRecipientPhone() }}</strong>
+                                  @if (modalRecipientName()) {
+                                    <span class="text-slate-600">({{ modalRecipientName() }})</span>
+                                  }
+                                </p>
+                              } @else {
+                                <p class="text-[11px] text-amber-700 mt-0.5">
+                                  ⚠️ El receptor no tiene celular registrado. La notificación se enviará únicamente por correo corporativo.
+                                </p>
+                              }
+                            </div>
+                          </div>
+
+                          @if (modalRecipientPhone()) {
+                            <label class="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+                              <input type="checkbox"
+                                     [checked]="modalNotifyWhatsApp()"
+                                     (change)="modalNotifyWhatsApp.set(!modalNotifyWhatsApp())"
+                                     class="sr-only peer">
+                              <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                            </label>
+                          }
+                        </div>
+                      </div>
                     </div>
                   }
 
@@ -2344,6 +2399,9 @@ export class MovementsPageComponent implements OnInit {
   magicLinkUrl = signal<string | null>(null);
   qrCodeDataUrl = signal<string | null>(null);
   magicLinkTab = signal<'link' | 'qr'>('link');
+  modalNotifyWhatsApp = signal<boolean>(true);
+  modalRecipientPhone = signal<string | null>(null);
+  modalRecipientName = signal<string | null>(null);
 
   // Cancel Movement Modal State (Auditoría)
   cancelMovementTarget = signal<Movement | null>(null);
@@ -2790,6 +2848,19 @@ export class MovementsPageComponent implements OnInit {
     this.modalFileName = movement.evidenceUrl ? '🚚 Guía de envío existente' : '';
     this.modalDocumentUrl = movement.documentUrl || '';
     this.modalDocFileName = movement.documentUrl ? '📋 Comodato / Acta existente' : '';
+
+    // Detectar si el responsable/receptor tiene número de celular registrado
+    const resp = this.responsables().find(r => r.id === movement.responsibleId) || movement.responsible;
+    const phone = resp?.telefono?.trim();
+    if (phone) {
+      this.modalRecipientPhone.set(phone);
+      this.modalRecipientName.set(resp?.nombre || 'Receptor');
+      this.modalNotifyWhatsApp.set(true);
+    } else {
+      this.modalRecipientPhone.set(null);
+      this.modalRecipientName.set(resp?.nombre || null);
+      this.modalNotifyWhatsApp.set(false);
+    }
   }
   openReceiveModal(movement: Movement) {
     this.selectedMovementForAction = movement;
@@ -2825,7 +2896,15 @@ export class MovementsPageComponent implements OnInit {
         return alert('Por favor, adjunta al menos la Guía de Envío o el Comodato/Acta firmado para despachar.');
       }
       const recipientsToSend = this.selectedEmails().length > 0 ? this.selectedEmails() : undefined;
-      this.dispatchMovement.execute(id, this.modalEvidenceUrl || undefined, this.modalDocumentUrl || undefined, recipientsToSend).subscribe({
+      const shouldNotifyWhatsApp = this.modalRecipientPhone() ? this.modalNotifyWhatsApp() : false;
+
+      this.dispatchMovement.execute(
+        id, 
+        this.modalEvidenceUrl || undefined, 
+        this.modalDocumentUrl || undefined, 
+        recipientsToSend,
+        shouldNotifyWhatsApp
+      ).subscribe({
         next: () => { this.loadMovements(); this.closeModal(); },
         error: (err) => alert(err.error?.message || err.message || 'Error al procesar el despacho')
       });

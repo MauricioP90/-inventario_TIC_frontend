@@ -22,8 +22,8 @@ export class HttpMovementRepository implements MovementRepository {
     return this.http.post<Movement>(this.apiUrl, movement);
   }
 
-  dispatch(id: string, evidenceUrl?: string, documentUrl?: string, recipients?: string[]): Observable<Movement> {
-    return this.http.patch<Movement>(`${this.apiUrl}/${id}/dispatch`, { evidenceUrl, documentUrl, recipients });
+  dispatch(id: string, evidenceUrl?: string, documentUrl?: string, recipients?: string[], notifyWhatsApp?: boolean): Observable<Movement> {
+    return this.http.patch<Movement>(`${this.apiUrl}/${id}/dispatch`, { evidenceUrl, documentUrl, recipients, notifyWhatsApp });
   }
 
   receive(id: string, receiverId: string, receiverEvidenceUrl: string, destinationLocationId?: string): Observable<Movement> {
