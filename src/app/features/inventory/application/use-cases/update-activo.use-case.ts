@@ -1,18 +1,15 @@
-import { Injectable } from "@angular/core";
-import { HttpClient } from "@angular/common/http";
-import { Observable } from "rxjs";
-import { Activo } from "../../domain/models/activo.model";
-import { environment } from "../../../../../environments/environment";
-
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import { Activo, UpdateActivoDto } from '../../domain/models/activo.model';
+import { ActivoRepository } from '../../domain/repositories/activo.repository';
 
 @Injectable({
-    providedIn: 'root'
+  providedIn: 'root'
 })
 export class UpdateActivoUseCase {
-    constructor(private readonly http: HttpClient) { }
+  constructor(private readonly activoRepository: ActivoRepository) { }
 
-    execute(placa: string, data: Partial<Activo>): Observable<Activo> {
-        // El backend espera un PUT a /api/activos/:placa
-        return this.http.put<Activo>(`${environment.apiUrl}/activos/${placa}`, data);
-    }
+  execute(placa: string, data: UpdateActivoDto): Observable<Activo> {
+    return this.activoRepository.update(placa, data);
+  }
 }

@@ -1,8 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../../../../environments/environment';
+import { FileUploadService } from '../../../../../core/services/file-upload.service';
 import { Movement } from '../../../domain/models/movement.model';
 import { MovementRepository } from '../../../domain/repositories/movement.repository';
 
@@ -182,7 +181,7 @@ import { MovementRepository } from '../../../domain/repositories/movement.reposi
   `
 })
 export class MovementAttachDocModalComponent {
-  private http = inject(HttpClient);
+  private fileUploadService = inject(FileUploadService);
   private movementRepo = inject(MovementRepository);
 
   @Input() isOpen = false;
@@ -225,10 +224,7 @@ export class MovementAttachDocModalComponent {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      this.attachModalError.set('El archivo no puede superar los 5MB.');
-      return;
-    }
+
     if (type === 'document') {
       this.uploadingAttachDoc.set(true);
       this.attachDocFileName.set(file.name);
@@ -236,31 +232,23 @@ export class MovementAttachDocModalComponent {
       this.uploadingAttachEvidence.set(true);
       this.attachReceivedFileName.set(file.name);
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = reader.result as string;
-      this.http.post<{ url: string }>(`${environment.apiUrl}/files/upload`, {
-        base64,
-        fileName: file.name,
-        folder: 'soportes'
-      }).subscribe({
-        next: (res) => {
-          if (type === 'document') {
-            this.attachDocUrl.set(res.url);
-            this.uploadingAttachDoc.set(false);
-          } else {
-            this.attachReceivedEvidenceUrl.set(res.url);
-            this.uploadingAttachEvidence.set(false);
-          }
-        },
-        error: () => {
-          if (type === 'document') this.uploadingAttachDoc.set(false);
-          else this.uploadingAttachEvidence.set(false);
-          this.attachModalError.set('Error al subir el archivo soporte.');
+
+    this.fileUploadService.upload(file, 'soportes').subscribe({
+      next: (res) => {
+        if (type === 'document') {
+          this.attachDocUrl.set(res.url);
+          this.uploadingAttachDoc.set(false);
+        } else {
+          this.attachReceivedEvidenceUrl.set(res.url);
+          this.uploadingAttachEvidence.set(false);
         }
-      });
-    };
-    reader.readAsDataURL(file);
+      },
+      error: (err: any) => {
+        if (type === 'document') this.uploadingAttachDoc.set(false);
+        else this.uploadingAttachEvidence.set(false);
+        this.attachModalError.set(err.message || 'Error al subir el archivo soporte.');
+      }
+    });
   }
 
   removeFile(type: 'document' | 'evidence') {

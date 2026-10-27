@@ -24,6 +24,10 @@ import { GeocodingRepository } from './features/locations/domain/repositories/ge
 import { NominatimGeocodingRepository } from './features/locations/infrastructure/adapters/nominatim-geocoding.repository';
 import { DashboardRepository } from './features/dashboard/domain/repositories/dashboard.repository';
 import { HttpDashboardRepository } from './features/dashboard/infrastructure/adapters/http-dashboard.repository';
+import { MaintenanceRepository } from './features/maintenance/domain/repositories/maintenance.repository';
+import { HttpMaintenanceRepository } from './features/maintenance/infrastructure/adapters/http-maintenance.repository';
+import { CargoRepository } from './features/responsables/domain/repositories/cargo.repository';
+import { HttpCargoRepository } from './features/responsables/infrastructure/adapters/http-cargo.repository';
 
 // Condición para incluir el token en las peticiones al backend
 const urlCondition = createInterceptorCondition<IncludeBearerTokenCondition>({
@@ -57,6 +61,8 @@ export const appConfig: ApplicationConfig = {
     { provide: MovementRepository, useClass: HttpMovementRepository },
     { provide: ResponsableRepository, useClass: HttpResponsableRepository },
     { provide: GeocodingRepository, useClass: NominatimGeocodingRepository },
-    { provide: DashboardRepository, useClass: HttpDashboardRepository }
+    { provide: DashboardRepository, useClass: HttpDashboardRepository },
+    { provide: MaintenanceRepository, useClass: HttpMaintenanceRepository },
+    { provide: CargoRepository, useClass: HttpCargoRepository }
   ],
 };

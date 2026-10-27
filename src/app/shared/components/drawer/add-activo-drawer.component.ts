@@ -15,12 +15,21 @@ import { UpdateActivoUseCase } from '../../../features/inventory/application/use
 import { RoleService } from '../../../core/auth/services/role.service';
 import { Area } from '../../../features/responsables/domain/models/area.model';
 import { GetAllAreasUseCase } from '../../../features/responsables/application/use-cases/get-all-areas.use-case';
+import { ActivoFacturaSectionComponent } from './activo-components/activo-factura-section.component';
+import { ActivoMaintenanceTriggerComponent } from './activo-components/activo-maintenance-trigger.component';
+import { ActivoHistorySectionComponent } from './activo-components/activo-history-section.component';
 
 @Component({
   selector: 'app-add-activo-drawer',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
-
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    ActivoFacturaSectionComponent,
+    ActivoMaintenanceTriggerComponent,
+    ActivoHistorySectionComponent
+  ],
   template: `
     <!-- Backdrop -->
     @if (open) {
@@ -60,7 +69,7 @@ import { GetAllAreasUseCase } from '../../../features/responsables/application/u
         </div>
       }
 
-      <!-- Form -->
+      <!-- Form Content -->
       <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
         <!-- Tipo de Dispositivo -->
@@ -108,7 +117,6 @@ import { GetAllAreasUseCase } from '../../../features/responsables/application/u
             class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400 font-mono" />
           <p class="text-[11px] text-slate-400">Formato requerido: <span class="font-mono">0000-000000</span> (4 números - 6 números).</p>
         </div>
-
 
         <!-- Bodega de ingreso -->
         <div class="space-y-1.5">
@@ -188,7 +196,7 @@ import { GetAllAreasUseCase } from '../../../features/responsables/application/u
             class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" />
         </div>
 
-        <!-- Precio Compra (Sólo visible para ADMIN) -->
+        <!-- Precio Compra (Admin only) -->
         @if (isAdmin()) {
           <div class="space-y-1.5">
             <label class="block text-sm font-medium text-slate-700">Precio de Compra <span class="text-slate-400 text-xs font-normal">(opcional)</span></label>
@@ -201,224 +209,41 @@ import { GetAllAreasUseCase } from '../../../features/responsables/application/u
           </div>
         }
 
-        <!-- Factura / Soporte -->
-        <div class="space-y-1.5">
-          <label class="block text-sm font-medium text-slate-700">Factura / Soporte <span class="text-slate-400 text-xs font-normal">(opcional)</span></label>
-          
-          @if (facturaUrl()) {
-            <div class="flex items-center justify-between p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl transition-all shadow-sm">
-              <div class="flex items-center gap-3 overflow-hidden">
-                <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                  </svg>
-                </div>
-                <div class="truncate">
-                  <p class="text-xs font-bold text-slate-800 truncate">{{ fileName || 'Factura cargada' }}</p>
-                  <a [href]="facturaUrl()" target="_blank" class="text-[11px] text-emerald-700 hover:underline font-semibold flex items-center gap-1 mt-0.5">
-                    Ver / Descargar archivo
-                    <svg class="w-3 h-3 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                    </svg>
-                  </a>
-                </div>
-              </div>
-              
-              <div class="flex items-center gap-1.5 shrink-0">
-                <label class="px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 border border-indigo-200 rounded-lg cursor-pointer transition-colors bg-white shadow-2xs" title="Cambiar por otro archivo">
-                  Reemplazar
-                  <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="onFileChange($event)" />
-                </label>
-                @if (!activo) {
-                  <button type="button" (click)="removeFactura()" class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors" title="Quitar archivo adjunto">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.562.621c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                    </svg>
-                  </button>
-                }
-              </div>
-            </div>
-          } @else {
-            <label class="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-colors">
-              @if (uploadingFile()) {
-                <div class="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
-                <span class="text-sm text-slate-500 font-medium">Subiendo archivo...</span>
-              } @else {
-                <svg class="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 0l-3 3m3-3l3 3M6.5 20h11A2.5 2.5 0 0020 17.5V7.914a2.5 2.5 0 00-.732-1.768l-3.414-3.414A2.5 2.5 0 0014.086 2H6.5A2.5 2.5 0 004 4.5v13A2.5 2.5 0 006.5 20z"/>
-                </svg>
-                <span class="text-sm text-slate-600 font-medium">Arrastra o haz clic para subir factura/soporte</span>
-                <span class="text-xs text-slate-400">PDF, JPG, PNG (máx. 5MB)</span>
-              }
-              <input type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx" (change)="onFileChange($event)" />
-            </label>
-          }
+        <!-- Factura y Justificación de Auditoría -->
+        <app-activo-factura-section
+          [activo]="activo"
+          [facturaUrl]="facturaUrl()"
+          (facturaUrlChange)="facturaUrl.set($event)"
+          [fileName]="fileName"
+          (fileNameChange)="fileName = $event"
+          [precioCompra]="precioCompra"
+          [justification]="justification"
+          (justificationChange)="justification = $event"
+          (uploadError)="toast.set({ type: 'error', message: $event })"
+        />
 
-          <!-- Justificación Obligatoria de Auditoría -->
-          @if (activo && (facturaUrl() !== (activo.facturaUrl || null) || (precioCompra ?? null) !== (activo.precioCompra ?? null))) {
-            <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1.5 mt-2 animate-fade-in">
-              <label class="block text-xs font-bold text-amber-900">
-                Justificación de Auditoría <span class="text-red-500">*</span>
-              </label>
-              <p class="text-[11px] text-amber-700">Por seguridad contable, ingresa el motivo del cambio o reemplazo de la factura o valor de compra.</p>
-              <textarea 
-                [(ngModel)]="justification" 
-                rows="2" 
-                placeholder="Ej: Corrección de soporte emitido por proveedor o actualización de factura..." 
-                class="w-full p-2 text-xs border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white placeholder:text-amber-400/80"></textarea>
-            </div>
-          }
-        </div>
-
-        <!-- Datos de Entrada a Mantenimiento (Dynamic form section) -->
+        <!-- Apertura de Mantenimiento Dinámico -->
         @if (activo?.estado !== 'MANTENIMIENTO' && estado === 'MANTENIMIENTO') {
-          <div class="border-t border-slate-200 pt-4 space-y-4">
-            <h4 class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Apertura de Mantenimiento</h4>
-            
-            <div class="space-y-1.5">
-              <label class="block text-sm font-medium text-slate-700">Modalidad <span class="text-red-500">*</span></label>
-              <select [(ngModel)]="maintModalidad" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                <option value="INTERNO">Interno (Bodega / Taller)</option>
-                <option value="EXTERNO">Externo (Proveedor Directo)</option>
-              </select>
-            </div>
-
-            <div class="space-y-1.5">
-              <label class="block text-sm font-medium text-slate-700">Tipo de Mantenimiento <span class="text-red-500">*</span></label>
-              <select [(ngModel)]="maintTipo" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                <option value="PREVENTIVO">Preventivo</option>
-                <option value="CORRECTIVO">Correctivo</option>
-              </select>
-            </div>
-
-            <div class="space-y-1.5">
-              <label class="block text-sm font-medium text-slate-700">Costo Estimado <span class="text-slate-400 text-xs font-normal">(opcional)</span></label>
-              <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-                <input type="number" [(ngModel)]="maintCostoEstimado" placeholder="Ej: 150000"
-                  class="w-full pl-7 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" />
-              </div>
-            </div>
-
-            <div class="space-y-1.5">
-              <label class="block text-sm font-medium text-slate-700">Técnico Responsable / Proveedor <span class="text-slate-400 text-xs font-normal">(opcional)</span></label>
-              <input type="text" [(ngModel)]="maintTecnicoResponsable" placeholder="Ej: Juan Pérez o Service Center"
-                class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" />
-            </div>
-          </div>
+          <app-activo-maintenance-trigger
+            [modalidad]="maintModalidad"
+            (modalidadChange)="maintModalidad = $event"
+            [tipo]="maintTipo"
+            (tipoChange)="maintTipo = $event"
+            [costoEstimado]="maintCostoEstimado"
+            (costoEstimadoChange)="maintCostoEstimado = $event"
+            [tecnicoResponsable]="maintTecnicoResponsable"
+            (tecnicoResponsableChange)="maintTecnicoResponsable = $event"
+          />
         }
 
-        <!-- Historial de Mantenimientos -->
+        <!-- Historiales de Mantenimiento y Auditoría -->
         @if (activo) {
-          <div class="border-t border-slate-200 pt-5 space-y-4">
-            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Historial de Mantenimientos</h4>
-            
-            @if (maintHistory().length === 0) {
-              <p class="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-lg p-3 text-center">
-                Este activo no registra mantenimientos anteriores.
-              </p>
-            } @else {
-              <div class="space-y-3 max-h-60 overflow-y-auto pr-1">
-                @for (hist of maintHistory(); track hist.id) {
-                  <div class="bg-slate-50/50 border border-slate-150 rounded-xl p-3 text-xs space-y-2 hover:bg-slate-50 transition-colors">
-                    <div class="flex items-center justify-between">
-                      <span class="font-bold text-slate-700 font-mono">#{{ hist.id.substring(0, 8) }}</span>
-                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-white" 
-                        [class]="hist.estado === 'CERRADO' ? 'text-emerald-600 border-emerald-100 bg-emerald-50' : 'text-amber-600 border-amber-100 bg-amber-50'">
-                        {{ hist.estado }}
-                      </span>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-y-1 gap-x-2 text-[11px] text-slate-500">
-                      <div><span class="font-medium text-slate-400">Tipo:</span> {{ hist.tipoMantenimiento }}</div>
-                      <div><span class="font-medium text-slate-400">Modalidad:</span> {{ hist.modalidad }}</div>
-                      @if (hist.tecnicoResponsable || hist.proveedorServicio) {
-                        <div class="col-span-2">
-                          <span class="font-medium text-slate-400">Resp/Téc:</span> {{ hist.tecnicoResponsable || hist.proveedorServicio }}
-                        </div>
-                      }
-                      @if (hist.fechaApertura) {
-                        <div class="col-span-2 text-[10px] text-slate-400">
-                          Abierto el: {{ hist.fechaApertura | date:'dd/MM/yyyy HH:mm' }}
-                        </div>
-                      }
-                    </div>
-
-                    @if (hist.diagnostico) {
-                      <div class="bg-white border border-slate-100 rounded-lg p-2 mt-1">
-                        <span class="font-bold text-slate-400 text-[10px] block uppercase">Diagnóstico</span>
-                        <p class="text-slate-600 italic text-[11px] leading-relaxed mt-0.5">{{ hist.diagnostico }}</p>
-                      </div>
-                    }
-
-                    @if (hist.accionesRealizadas) {
-                      <div class="bg-white border border-slate-100 rounded-lg p-2 mt-1">
-                        <span class="font-bold text-slate-400 text-[10px] block uppercase">Acciones Realizadas</span>
-                        <p class="text-slate-600 text-[11px] leading-relaxed mt-0.5">{{ hist.accionesRealizadas }}</p>
-                      </div>
-                    }
-
-                    @if (hist.resultadoFinal) {
-                      <div class="flex items-center justify-between text-[11px] font-semibold pt-1 border-t border-slate-100 mt-2">
-                        <span class="text-slate-400">Resultado Final:</span>
-                        <span [class]="hist.resultadoFinal === 'REPARADO' ? 'text-emerald-600' : 'text-rose-600'">
-                          {{ hist.resultadoFinal }}
-                        </span>
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-            }
-          </div>
+          <app-activo-history-section
+            [maintHistory]="maintHistory()"
+            [auditHistory]="auditHistory()"
+          />
         }
 
-        <!-- Historial de Auditoría de Facturas/Soportes -->
-        @if (activo) {
-          <div class="border-t border-slate-200 pt-5 space-y-4">
-            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
-              <span>📜 Traza de Auditoría de Facturas</span>
-              <span class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-extrabold">{{ auditHistory().length }}</span>
-            </h4>
-            
-            @if (auditHistory().length === 0) {
-              <p class="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-lg p-3 text-center">
-                No hay modificaciones de factura o precio registradas para este activo.
-              </p>
-            } @else {
-              <div class="space-y-2.5 max-h-56 overflow-y-auto pr-1">
-                @for (audit of auditHistory(); track audit.id) {
-                  <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-2">
-                    <div class="flex items-center justify-between text-[11px]">
-                      <span class="font-bold text-slate-700">{{ audit.changedByUser || 'Usuario' }}</span>
-                      <span class="text-slate-400 font-mono text-[10px]">{{ audit.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
-                    </div>
-                    
-                    <div class="text-[11px] text-slate-600 bg-white p-2 rounded-lg border border-slate-100">
-                      <span class="font-bold text-slate-400 text-[10px] uppercase block">Motivo Registrado</span>
-                      <p class="italic text-slate-700 mt-0.5">{{ audit.justification }}</p>
-                    </div>
-
-                    <div class="flex items-center justify-between text-[10px] pt-1 border-t border-slate-100">
-                      @if (audit.previousFacturaUrl) {
-                        <a [href]="audit.previousFacturaUrl" target="_blank" class="text-indigo-600 font-bold hover:underline inline-flex items-center gap-1">
-                          📄 Ver Factura Anterior ↗
-                        </a>
-                      } @else {
-                        <span class="text-slate-400">Sin factura previa</span>
-                      }
-                      @if (audit.previousPrecioCompra !== undefined && audit.previousPrecioCompra !== null && audit.previousPrecioCompra !== audit.newPrecioCompra) {
-                        <span class="text-slate-500">
-                          <s>{{ audit.previousPrecioCompra | currency:'USD':'symbol':'1.0-0' }}</s> → <strong>{{ audit.newPrecioCompra | currency:'USD':'symbol':'1.0-0' }}</strong>
-                        </span>
-                      }
-                    </div>
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        }
       </div>
 
       <!-- Footer -->
@@ -507,7 +332,6 @@ export class AddActivoDrawerComponent implements OnInit {
   });
 
   saving = signal(false);
-  uploadingFile = signal(false);
   facturaUrl = signal<string | null>(null);
 
   tipo = '';
@@ -577,42 +401,6 @@ export class AddActivoDrawerComponent implements OnInit {
     if (!this.activo) {
       this.resetForm();
     }
-  }
-
-  onFileChange(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      this.toast.set({ type: 'error', message: 'El archivo no puede superar los 5MB.' });
-      return;
-    }
-    this.fileName = file.name;
-    this.uploadingFile.set(true);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = reader.result as string;
-      this.http.post<{ url: string }>(`${environment.apiUrl}/files/upload`, {
-        base64,
-        fileName: file.name,
-        folder: 'facturas'
-      }).subscribe({
-        next: (res) => {
-          this.facturaUrl.set(res.url);
-          this.uploadingFile.set(false);
-        },
-        error: () => {
-          this.uploadingFile.set(false);
-          this.toast.set({ type: 'error', message: 'Error al subir el archivo.' });
-        }
-      });
-    };
-    reader.readAsDataURL(file);
-  }
-
-  removeFactura() {
-    this.facturaUrl.set(null);
-    this.fileName = '';
   }
 
   handleSave() {

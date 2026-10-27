@@ -2,10 +2,11 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { MaintenanceReport, CreateMaintenanceReportDto, UpdateMaintenanceReportDto } from '../../domain/models/maintenance.model';
+import { MaintenanceRepository } from '../../domain/repositories/maintenance.repository';
 import { environment } from '../../../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
-export class HttpMaintenanceRepository {
+export class HttpMaintenanceRepository implements MaintenanceRepository {
   private apiUrl = `${environment.apiUrl}/maintenance`;
 
   constructor(private http: HttpClient) { }

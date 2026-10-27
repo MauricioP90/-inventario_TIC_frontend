@@ -1,122 +1,50 @@
 import { Component, OnInit, signal, computed, inject, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { GetAllActivosUseCase } from '../../../../inventory/application/use-cases/get-all-activos.use-case';
 import { GetAllMovementsUseCase } from '../../../../movements/application/use-cases/get-all-movements.use-case';
 import { GetAllLocationsUseCase } from '../../../../locations/application/use-cases/get-all-locations.use-case';
-import { GetAllSimCardsUseCase } from '../../../../sim-cards/application/use-cases/get-all-sim-cards.use-case';
 import { GetActivoMetadataUseCase } from '../../../../inventory/application/use-cases/get-activo-metadata.use-case';
 import { MaintenanceUseCases } from '../../../../maintenance/application/use-cases/maintenance.use-cases';
 import { Activo, ActivoMetadata } from '../../../../inventory/domain/models/activo.model';
-import { Movement, MOVEMENT_TYPE_LABELS, MovementStatus } from '../../../../movements/domain/models/movement.model';
+import { Movement } from '../../../../movements/domain/models/movement.model';
 import { Location } from '../../../../locations/domain/models/location.model';
 import { MaintenanceReport } from '../../../../maintenance/domain/models/maintenance.model';
 import { RoleService } from '../../../../../core/auth/services/role.service';
+import { ReportsExportService } from '../../services/reports-export.service';
+import { ReportsFilterBarComponent } from './components/reports-filter-bar.component';
+import { ReportsPaginationComponent } from './components/reports-pagination.component';
+import { ReportsMovementsTableComponent } from './components/reports-movements-table.component';
+import { ReportsAltasTableComponent } from './components/reports-altas-table.component';
+import { ReportsMantenimientosTableComponent } from './components/reports-mantenimientos-table.component';
 
 @Component({
   selector: 'app-reports-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    ReportsFilterBarComponent,
+    ReportsPaginationComponent,
+    ReportsMovementsTableComponent,
+    ReportsAltasTableComponent,
+    ReportsMantenimientosTableComponent
+  ],
   template: `
     <div class="p-4 md:p-6 space-y-6">
       
-      <!-- Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <div class="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center">
-            <svg class="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </div>
-          <div>
-            <h1 class="text-2xl font-bold text-slate-800">Centro de Auditoría e Historial</h1>
-            <p class="text-sm text-slate-500">Búsqueda, auditoría detallada y exportación contable</p>
-          </div>
-        </div>
-
-        <!-- Export CSV Button -->
-        <button
-          (click)="exportToCSV()"
-          class="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-md shadow-indigo-100"
-        >
-          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-          </svg>
-          Exportar CSV
-        </button>
-      </div>
-
-      <!-- Advanced Filtering Bar -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 pt-1 items-end">
-          
-          <!-- Search input -->
-          <div class="lg:col-span-4 space-y-1.5">
-            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Buscar por Texto</label>
-            <div class="relative">
-              <input
-                type="text"
-                [ngModel]="searchTerm()"
-                (ngModelChange)="searchTerm.set($event)"
-                placeholder="Buscar placa, modelo, responsable..."
-                class="w-full pl-9 pr-4 h-10 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-sm transition-all"
-              />
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
-            </div>
-          </div>
-
-          <!-- Sede/Location select -->
-          <div class="lg:col-span-3 space-y-1.5">
-            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filtrar por Sede</label>
-            <select
-              [ngModel]="selectedLocationId()"
-              (ngModelChange)="selectedLocationId.set($event)"
-              class="w-full h-10 bg-slate-50 border border-slate-200 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none appearance-none cursor-pointer"
-            >
-              <option value="">Todas las Sedes</option>
-              @for (loc of locations(); track loc.id) {
-                <option [value]="loc.id">{{ loc.nombre }}</option>
-              }
-            </select>
-          </div>
-
-          <!-- Start date -->
-          <div class="lg:col-span-2 space-y-1.5">
-            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fecha Inicio</label>
-            <input
-              type="date"
-              [ngModel]="startDate()"
-              (ngModelChange)="startDate.set($event)"
-              class="w-full h-10 bg-slate-50 border border-slate-200 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-            />
-          </div>
-
-          <!-- End date -->
-          <div class="lg:col-span-2 space-y-1.5">
-            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fecha Fin</label>
-            <input
-              type="date"
-              [ngModel]="endDate()"
-              (ngModelChange)="endDate.set($event)"
-              class="w-full h-10 bg-slate-50 border border-slate-200 rounded-lg px-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-            />
-          </div>
-
-          <!-- Reset button -->
-          <div class="lg:col-span-1 flex justify-end">
-            <button
-              (click)="resetFilters()"
-              title="Limpiar Filtros"
-              class="h-10 w-full flex items-center justify-center bg-red-50 text-red-600 rounded-lg border border-red-100 hover:bg-red-100 transition-all font-bold"
-            >
-              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-        </div>
-      </div>
+      <!-- Filter and Action Bar -->
+      <app-reports-filter-bar
+        [searchTerm]="searchTerm()"
+        (searchTermChange)="searchTerm.set($event)"
+        [selectedLocationId]="selectedLocationId()"
+        (selectedLocationIdChange)="selectedLocationId.set($event)"
+        [startDate]="startDate()"
+        (startDateChange)="startDate.set($event)"
+        [endDate]="endDate()"
+        (endDateChange)="endDate.set($event)"
+        [locations]="locations()"
+        (resetFilters)="resetFilters()"
+        (exportCsv)="exportToCSV()"
+      />
 
       <!-- Segmented Control (Tabs) -->
       <div class="flex items-center gap-2 p-1 bg-slate-100 rounded-xl w-fit">
@@ -161,309 +89,39 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
       <div *ngIf="!loading()" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         
         <!-- PESTAÑA 1: Auditoría de Traslados -->
-        <div *ngIf="activeTab() === 'movimientos'" class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-slate-600 divide-y divide-slate-200">
-            <thead class="bg-slate-50/50 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-              <tr>
-                <th class="px-6 py-4">Fecha</th>
-                <th class="px-6 py-4">ID Traslado</th>
-                <th class="px-6 py-4">Tipo Movimiento</th>
-                <th class="px-6 py-4">Equipos / SIM Cards</th>
-                <th class="px-6 py-4">Origen</th>
-                <th class="px-6 py-4">Destino</th>
-                <th class="px-6 py-4">Responsable</th>
-                <th class="px-6 py-4">Notas</th>
-                <th class="px-6 py-4">Soportes</th>
-                <th class="px-6 py-4 text-center">Estado</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100 bg-white">
-              @for (m of paginatedMovements(); track m.id) {
-                <tr class="hover:bg-slate-50/50 transition-colors">
-                  <!-- Fecha -->
-                  <td class="px-6 py-4 whitespace-nowrap font-medium text-slate-500">
-                    {{ m.createdAt | date: 'dd/MM/yyyy HH:mm' }}
-                  </td>
-                  <!-- ID -->
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="font-mono text-slate-700 bg-slate-100 px-2 py-1 rounded text-[11px] font-semibold border border-slate-200">
-                      {{ m.id.slice(-8) }}
-                    </span>
-                  </td>
-                  <!-- Tipo -->
-                  <td class="px-6 py-4 font-semibold"
-                      [class.text-rose-600]="m.type === 'BAJA_ACTIVO'"
-                      [class.text-slate-700]="m.type !== 'BAJA_ACTIVO'">
-                    {{ getMovementTypeLabel(m.type) }}
-                  </td>
-                  <!-- Items -->
-                  <td class="px-6 py-4 max-w-xs">
-                    <div class="flex flex-col gap-1">
-                      <!-- Activos -->
-                      <div class="flex flex-wrap gap-1" *ngIf="m.activos && m.activos.length > 0">
-                        @for (a of m.activos; track a.id) {
-                          <span class="text-[10px] font-extrabold bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100" title="{{ a.marca }} {{ a.modelo }}">
-                            💻 {{ a.placa }}
-                          </span>
-                        }
-                      </div>
-                      <!-- SIM Cards -->
-                      <div class="flex flex-wrap gap-1" *ngIf="m.simCards && m.simCards.length > 0">
-                        @for (s of m.simCards; track s.id) {
-                          <span class="text-[10px] font-extrabold bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-100" title="{{ s.operador }}">
-                            📶 {{ s.numero }}
-                          </span>
-                        }
-                      </div>
-                    </div>
-                  </td>
-                  <!-- Origen -->
-                  <td class="px-6 py-4 font-medium text-slate-600">
-                    {{ m.originLocation?.nombre || 'Bodega/Disponible' }}
-                  </td>
-                  <!-- Destino -->
-                  <td class="px-6 py-4 font-medium text-slate-600">
-                    {{ m.destinationLocation?.nombre || 'N/A' }}
-                  </td>
-                  <!-- Responsable -->
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-2" *ngIf="m.responsible">
-                      <div class="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0">
-                        {{ getInitials(m.responsible.nombre) }}
-                      </div>
-                      <span class="font-medium text-slate-700 truncate max-w-[120px]">{{ m.responsible.nombre }}</span>
-                    </div>
-                    <span *ngIf="!m.responsible" class="text-slate-400 italic">No asignado</span>
-                  </td>
-                  <!-- Notas -->
-                  <td class="px-6 py-4 max-w-[200px] truncate" [title]="m.notes || ''">
-                    <span class="text-slate-500 italic text-xs leading-tight block truncate">{{ m.notes || '-' }}</span>
-                  </td>
-                  <!-- Soportes -->
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    @if (m.documentUrl || m.evidenceUrl || m.receivedEvidenceUrl) {
-                      <div class="flex flex-col gap-1">
-                        @if (m.documentUrl) {
-                          <a [href]="m.documentUrl" target="_blank" title="Ver Comodato / Acta de Soporte"
-                             class="inline-flex items-center gap-1 text-[10px] font-bold bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 px-2 py-0.5 rounded transition-all">
-                            📋 Comodato ↗
-                          </a>
-                        }
-                        @if (m.evidenceUrl) {
-                          <a [href]="m.evidenceUrl" target="_blank" title="Ver Soporte Envío"
-                             class="inline-flex items-center gap-1 text-[10px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded transition-all">
-                            🚚 Envío ↗
-                          </a>
-                        }
-                        @if (m.receivedEvidenceUrl) {
-                          <a [href]="m.receivedEvidenceUrl" target="_blank" title="Ver Soporte Recepción"
-                             class="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded transition-all">
-                            📦 Recepción ↗
-                          </a>
-                        }
-                      </div>
-                    } @else {
-                      <span class="text-slate-300 font-mono text-[11px]">—</span>
-                    }
-                  </td>
-                  <!-- Estado -->
-                  <td class="px-6 py-4 text-center whitespace-nowrap">
-                    <span [class]="getMovementStatusClass(m.status)">
-                      {{ getMovementStatusLabel(m.status) }}
-                    </span>
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="9" class="px-6 py-12 text-center text-slate-400 font-medium">
-                    No se encontraron movimientos con los filtros aplicados.
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+        <app-reports-movements-table
+          *ngIf="activeTab() === 'movimientos'"
+          [movements]="paginatedMovements()"
+        />
 
         <!-- PESTAÑA 2: Altas e Ingresos -->
-        <div *ngIf="activeTab() === 'altas'" class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-slate-600 divide-y divide-slate-200">
-            <thead class="bg-slate-50/50 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-              <tr>
-                <th class="px-6 py-4">Fecha Ingreso</th>
-                <th class="px-6 py-4">Placa / Identificador</th>
-                <th class="px-6 py-4">Tipo</th>
-                <th class="px-6 py-4">Marca / Modelo</th>
-                <th class="px-6 py-4">Serial / Número</th>
-                <th class="px-6 py-4">Ubicación Inicial</th>
-                <th class="px-6 py-4">Factura Adjunta</th>
-                <th class="px-6 py-4" *ngIf="isAdmin()">Valor Compra</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100 bg-white">
-              @for (a of paginatedAltas(); track a.id) {
-                <tr class="hover:bg-slate-50/50 transition-colors">
-                  <!-- Fecha Ingreso -->
-                  <td class="px-6 py-4 whitespace-nowrap font-medium text-slate-500">
-                    {{ a.fechaIngreso | date: 'dd/MM/yyyy' }}
-                  </td>
-                  <!-- Placa -->
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="font-mono text-indigo-600 font-bold bg-indigo-50/30 px-2 py-0.5 rounded border border-indigo-100/50">
-                      {{ a.placa }}
-                    </span>
-                  </td>
-                  <!-- Tipo -->
-                  <td class="px-6 py-4 font-semibold text-slate-700">
-                    {{ typeMap()[a.tipoActivoId]?.label || a.tipoActivoId }}
-                  </td>
-                  <!-- Marca / Modelo -->
-                  <td class="px-6 py-4 font-medium text-slate-700">
-                    {{ a.marca }} <span class="text-slate-400 font-normal">{{ a.modelo }}</span>
-                  </td>
-                  <!-- Serial -->
-                  <td class="px-6 py-4 font-mono text-slate-500">
-                    {{ a.serial || 'N/A' }}
-                  </td>
-                  <!-- Ubicación -->
-                  <td class="px-6 py-4 font-semibold text-slate-600">
-                    {{ a.location?.nombre || 'Bodega Principal' }}
-                  </td>
-                  <!-- Factura -->
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    @if (a.facturaUrl) {
-                      <a [href]="a.facturaUrl" target="_blank" title="Ver Factura"
-                         class="inline-flex items-center gap-1 text-[10px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded transition-all">
-                        📄 Factura ↗
-                      </a>
-                    } @else {
-                      <span class="text-slate-300 font-mono text-[11px]">—</span>
-                    }
-                  </td>
-                  <!-- Valor de Compra (Admin only) -->
-                  <td class="px-6 py-4 font-bold text-slate-800 whitespace-nowrap" *ngIf="isAdmin()">
-                    {{ (a.precioCompra || 0) | currency: 'USD': 'symbol': '1.0-0' }}
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td [attr.colspan]="isAdmin() ? 7 : 6" class="px-6 py-12 text-center text-slate-400 font-medium">
-                    No se encontraron registros de altas con los filtros aplicados.
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+        <app-reports-altas-table
+          *ngIf="activeTab() === 'altas'"
+          [altas]="paginatedAltas()"
+          [typeMap]="typeMap()"
+          [isAdmin]="isAdmin()"
+        />
 
         <!-- PESTAÑA 3: Costos de Mantenimiento -->
-        <div *ngIf="activeTab() === 'mantenimientos'" class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-slate-600 divide-y divide-slate-200">
-            <thead class="bg-slate-50/50 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-              <tr>
-                <th class="px-6 py-4">Fecha Cierre</th>
-                <th class="px-6 py-4">Placa</th>
-                <th class="px-6 py-4">Equipo</th>
-                <th class="px-6 py-4">Falla Reportada / Diagnóstico</th>
-                <th class="px-6 py-4">Modalidad</th>
-                <th class="px-6 py-4">Técnico / Proveedor</th>
-                <th class="px-6 py-4 text-right">Costo Estimado</th>
-                <th class="px-6 py-4 text-right">Costo Final</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100 bg-white">
-              @for (rep of paginatedMantenimientos(); track rep.id) {
-                <tr class="hover:bg-slate-50/50 transition-colors">
-                  <!-- Fecha Cierre -->
-                  <td class="px-6 py-4 whitespace-nowrap font-medium text-slate-500">
-                    {{ rep.fechaCierre | date: 'dd/MM/yyyy' }}
-                  </td>
-                  <!-- Placa -->
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="font-mono text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 font-bold">
-                      {{ getActivoPlate(rep.activoId) }}
-                    </span>
-                  </td>
-                  <!-- Equipo -->
-                  <td class="px-6 py-4 font-semibold text-slate-700">
-                    {{ getActivoDetails(rep.activoId) }}
-                  </td>
-                  <!-- Falla / Diagnostico -->
-                  <td class="px-6 py-4 max-w-sm">
-                    <div class="line-clamp-2" [title]="rep.diagnostico || 'Sin diagnóstico registrado'">
-                      <span class="font-medium text-slate-500">Diag:</span> {{ rep.diagnostico || 'Sin detalles' }}
-                    </div>
-                  </td>
-                  <!-- Modalidad -->
-                  <td class="px-6 py-4">
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                      {{ rep.modalidad }}
-                    </span>
-                  </td>
-                  <!-- Tecnico -->
-                  <td class="px-6 py-4 font-medium text-slate-700">
-                    {{ rep.tecnicoResponsable || rep.proveedorServicio || 'No asignado' }}
-                  </td>
-                  <!-- Costo Estimado -->
-                  <td class="px-6 py-4 text-right font-semibold text-slate-500">
-                    {{ (rep.costoEstimado || 0) | currency: 'USD': 'symbol': '1.0-0' }}
-                  </td>
-                  <!-- Costo Final -->
-                  <td class="px-6 py-4 text-right font-bold text-slate-900">
-                    {{ (rep.costoFinal || 0) | currency: 'USD': 'symbol': '1.0-0' }}
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="8" class="px-6 py-12 text-center text-slate-400 font-medium">
-                    No se encontraron reportes cerrados de mantenimiento con los filtros aplicados.
-                  </td>
-                </tr>
-              }
-            </tbody>
-            
-            <!-- Summary Footer -->
-            <tfoot class="bg-slate-50 border-t border-slate-200 font-bold" *ngIf="filteredMantenimientos().length > 0">
-              <tr>
-                <td colspan="7" class="px-6 py-4 text-right text-slate-500 uppercase tracking-wider text-[10px]">
-                  Costo Total Acumulado en Soporte:
-                </td>
-                <td class="px-6 py-4 text-right text-base text-indigo-700 font-extrabold whitespace-nowrap border-l border-slate-200 bg-indigo-50/35">
-                  {{ totalMantenimientosCost() | currency: 'USD': 'symbol': '1.0-0' }}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        <app-reports-mantenimientos-table
+          *ngIf="activeTab() === 'mantenimientos'"
+          [mantenimientos]="paginatedMantenimientos()"
+          [activos]="activos()"
+          [totalCost]="totalMantenimientosCost()"
+        />
 
         <!-- Pagination Footer -->
-        <div class="flex items-center justify-between px-6 py-3 border-t border-slate-100 bg-slate-50/50" *ngIf="currentListLength() > 0">
-          <div class="flex items-center gap-3 text-xs text-slate-500">
-            <span>Mostrando <strong>{{ startIndex() }}</strong> a <strong>{{ endIndex() }}</strong> de <strong>{{ currentListLength() }}</strong> registros</span>
-            <select
-              [ngModel]="pageSize()"
-              (ngModelChange)="onPageSizeChange($event)"
-              class="px-2 py-1 border border-slate-200 rounded-lg bg-white text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-            >
-              <option [value]="5">5 por página</option>
-              <option [value]="10">10 por página</option>
-              <option [value]="25">25 por página</option>
-              <option [value]="50">50 por página</option>
-            </select>
-          </div>
-          <div class="flex items-center gap-1">
-            <button
-              (click)="prevPage()"
-              [disabled]="currentPage() === 1"
-              class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors border border-slate-200 bg-white font-medium"
-            >← Anterior</button>
-            <span class="px-3 py-1.5 text-xs font-bold text-indigo-600">{{ currentPage() }} / {{ totalPages() }}</span>
-            <button
-              (click)="nextPage()"
-              [disabled]="currentPage() === totalPages()"
-              class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors border border-slate-200 bg-white font-medium"
-            >Siguiente →</button>
-          </div>
-        </div>
+        <app-reports-pagination
+          [currentListLength]="currentListLength()"
+          [startIndex]="startIndex()"
+          [endIndex]="endIndex()"
+          [pageSize]="pageSize()"
+          [currentPage]="currentPage()"
+          [totalPages]="totalPages()"
+          (pageSizeChange)="onPageSizeChange($event)"
+          (prevPage)="prevPage()"
+          (nextPage)="nextPage()"
+        />
 
       </div>
 
@@ -478,6 +136,7 @@ export class ReportsPageComponent implements OnInit {
   private getAllLocations = inject(GetAllLocationsUseCase);
   private getMetadataUC = inject(GetActivoMetadataUseCase);
   private maintenanceUC = inject(MaintenanceUseCases);
+  private exportService = inject(ReportsExportService);
   public roleService = inject(RoleService);
 
   // States
@@ -558,7 +217,6 @@ export class ReportsPageComponent implements OnInit {
     const end = this.endDate() ? new Date(this.endDate() + 'T23:59:59') : null;
 
     return list.filter(m => {
-      // Search term
       let matchesSearch = true;
       if (term) {
         const idShort = m.id.slice(-8).toLowerCase();
@@ -580,10 +238,8 @@ export class ReportsPageComponent implements OnInit {
           simMatch;
       }
 
-      // Location filter
       const matchesLocation = !locId || m.originLocationId === locId || m.destinationLocationId === locId;
 
-      // Date range filter
       let matchesDate = true;
       if (m.createdAt) {
         const dateVal = new Date(m.createdAt);
@@ -606,7 +262,6 @@ export class ReportsPageComponent implements OnInit {
     const end = this.endDate() ? new Date(this.endDate() + 'T23:59:59') : null;
 
     return list.filter(a => {
-      // Search term
       let matchesSearch = true;
       if (term) {
         const placa = a.placa.toLowerCase();
@@ -624,10 +279,8 @@ export class ReportsPageComponent implements OnInit {
           tipoName.includes(term);
       }
 
-      // Location filter
       const matchesLocation = !locId || a.locationId === locId;
 
-      // Date range filter
       let matchesDate = true;
       if (a.fechaIngreso) {
         const dateVal = new Date(a.fechaIngreso);
@@ -643,7 +296,6 @@ export class ReportsPageComponent implements OnInit {
 
   // 3. Filtered Maintenance Closed Reports
   filteredMantenimientos = computed(() => {
-    // We only want closed reports in the audit log
     let list = this.mantenimientos().filter(r => r.estado === 'CERRADO');
     const term = this.searchTerm().toLowerCase().trim();
     const locId = this.selectedLocationId();
@@ -651,9 +303,8 @@ export class ReportsPageComponent implements OnInit {
     const end = this.endDate() ? new Date(this.endDate() + 'T23:59:59') : null;
 
     return list.filter(rep => {
-      const act = this.getActivoByReportId(rep.activoId);
+      const act = this.activos().find(a => a.id === rep.activoId);
 
-      // Search term
       let matchesSearch = true;
       if (term) {
         const placa = (act?.placa || '').toLowerCase();
@@ -673,10 +324,8 @@ export class ReportsPageComponent implements OnInit {
           prov.includes(term);
       }
 
-      // Location filter
       const matchesLocation = !locId || act?.locationId === locId;
 
-      // Date range filter
       let matchesDate = true;
       if (rep.fechaCierre) {
         const dateVal = new Date(rep.fechaCierre);
@@ -715,31 +364,26 @@ export class ReportsPageComponent implements OnInit {
   fetchData() {
     this.loading.set(true);
     
-    // Load metadata for asset type mapping
     this.getMetadataUC.execute().subscribe({
       next: (meta) => this.metadata.set(meta),
       error: (err) => console.error("Error loading asset metadata in reports:", err)
     });
 
-    // Load locations
     this.getAllLocations.execute().subscribe({
       next: (locs) => this.locations.set(locs),
       error: (err) => console.error("Error loading locations in reports:", err)
     });
 
-    // Load assets
     this.getAllActivos.execute().subscribe({
       next: (acts) => this.activos.set(acts),
       error: (err) => console.error("Error loading assets in reports:", err)
     });
 
-    // Load movements
     this.getAllMovements.execute().subscribe({
       next: (movs) => this.movements.set(movs),
       error: (err) => console.error("Error loading movements in reports:", err)
     });
 
-    // Load closed/history maintenances
     this.maintenanceUC.getHistory().subscribe({
       next: (mants) => {
         this.mantenimientos.set(mants);
@@ -752,8 +396,8 @@ export class ReportsPageComponent implements OnInit {
     });
   }
 
-  onPageSizeChange(size: any) {
-    this.pageSize.set(Number(size));
+  onPageSizeChange(size: number) {
+    this.pageSize.set(size);
     this.currentPage.set(1);
   }
 
@@ -769,7 +413,6 @@ export class ReportsPageComponent implements OnInit {
     }
   }
 
-  // Filter resets
   resetFilters() {
     this.searchTerm.set('');
     this.startDate.set('');
@@ -777,159 +420,24 @@ export class ReportsPageComponent implements OnInit {
     this.selectedLocationId.set('');
   }
 
-  // Helper selectors
-  getActivoByReportId(activoId: string): Activo | undefined {
-    return this.activos().find(a => a.id === activoId);
-  }
-
-  getActivoPlate(activoId: string): string {
-    const act = this.getActivoByReportId(activoId);
-    return act ? act.placa : '...';
-  }
-
-  getActivoDetails(activoId: string): string {
-    const act = this.getActivoByReportId(activoId);
-    return act ? `${act.marca} ${act.modelo}` : 'Cargando equipo...';
-  }
-
-  getInitials(name?: string): string {
-    if (!name) return 'U';
-    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-  }
-
-  getMovementTypeLabel(type: string): string {
-    return MOVEMENT_TYPE_LABELS[type] || type;
-  }
-
-  getMovementStatusLabel(status: MovementStatus): string {
-    const labels: Record<MovementStatus, string> = {
-      [MovementStatus.PENDING]: 'En Curso',
-      [MovementStatus.EN_TRANSIT]: 'En Tránsito',
-      [MovementStatus.RECEIVED]: 'Recibido',
-      [MovementStatus.CANCELLED]: 'Cancelado'
-    };
-    return labels[status] || status;
-  }
-
-  getMovementStatusClass(status: MovementStatus): string {
-    const base = 'text-[10px] font-extrabold px-2 py-0.5 rounded-full border ';
-    switch (status) {
-      case MovementStatus.PENDING:
-        return base + 'bg-amber-50 text-amber-600 border-amber-100';
-      case MovementStatus.EN_TRANSIT:
-        return base + 'bg-blue-50 text-blue-600 border-blue-100';
-      case MovementStatus.RECEIVED:
-        return base + 'bg-emerald-50 text-emerald-600 border-emerald-100';
-      case MovementStatus.CANCELLED:
-        return base + 'bg-rose-50 text-rose-600 border-rose-100';
-      default:
-        return base + 'bg-slate-50 text-slate-600 border-slate-100';
-    }
-  }
-
-  // Clean date and time format helpers for CSV to prevent spreadsheet errors
-  formatDateTimeForCSV(dateVal: any): string {
-    if (!dateVal) return 'N/A';
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return 'N/A';
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
-  }
-
-  formatDateOnlyForCSV(dateVal: any): string {
-    if (!dateVal) return 'N/A';
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return 'N/A';
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  // Export dynamically to CSV
   exportToCSV() {
     const tab = this.activeTab();
-    let csvContent = '\uFEFF'; // Add BOM for UTF-8 compatibility in Excel
-    let filename = '';
-
     if (tab === 'movimientos') {
-      filename = `auditoria_traslados_${new Date().toISOString().split('T')[0]}.csv`;
-      const headers = ['Fecha', 'ID Traslado', 'Tipo Movimiento', 'Activos', 'SIM Cards', 'Origen', 'Destino', 'Estado', 'Notas', 'Comodato/Acta URL', 'Soporte Envío URL', 'Soporte Recepción URL'];
-      csvContent += headers.join(';') + '\n';
-
-      this.filteredMovements().forEach(m => {
-        const date = this.formatDateTimeForCSV(m.createdAt);
-        const id = m.id.slice(-8);
-        const type = this.getMovementTypeLabel(m.type);
-        const activos = (m.activos || []).map(a => `${a.placa} (${a.marca} ${a.modelo})`).join(', ');
-        const sims = (m.simCards || []).map(s => `${s.numero} (${s.operador})`).join(', ');
-        const origin = m.originLocation?.nombre || 'N/A';
-        const dest = m.destinationLocation?.nombre || 'N/A';
-        const status = this.getMovementStatusLabel(m.status);
-        const notes = m.notes || '';
-        const documentUrl = m.documentUrl || '';
-        const evidenceUrl = m.evidenceUrl || '';
-        const receivedEvidenceUrl = m.receivedEvidenceUrl || '';
-
-        const row = [date, id, type, activos, sims, origin, dest, status, notes, documentUrl, evidenceUrl, receivedEvidenceUrl]
-          .map(val => `"${val.replace(/"/g, '""')}"`);
-        csvContent += row.join(';') + '\n';
-      });
+      this.exportService.exportMovementsToCSV(this.filteredMovements());
     } else if (tab === 'altas') {
-      filename = `historial_altas_${new Date().toISOString().split('T')[0]}.csv`;
-      const headers = ['Fecha Ingreso', 'Placa', 'Tipo Activo', 'Marca', 'Modelo', 'Serial', 'Ubicación', 'URL Factura', 'Valor Compra'];
-      csvContent += headers.join(';') + '\n';
-
-      this.filteredAltas().forEach(a => {
-        const date = this.formatDateOnlyForCSV(a.fechaIngreso);
-        const placa = a.placa;
-        const type = this.typeMap()[a.tipoActivoId]?.label || a.tipoActivoId;
-        const marca = a.marca || '';
-        const modelo = a.modelo || '';
-        const serial = a.serial || '';
-        const location = a.location?.nombre || 'Bodega/Disponible';
-        const facturaUrl = a.facturaUrl || '';
-        const valCompra = this.isAdmin() ? (a.precioCompra || 0) : 'RESTRINGIDO';
-
-        const row = [date, placa, type, marca, modelo, serial, location, facturaUrl, valCompra]
-          .map(val => `"${String(val).replace(/"/g, '""')}"`);
-        csvContent += row.join(';') + '\n';
-      });
+      this.exportService.exportAltasToCSV(this.filteredAltas(), this.typeMap(), this.isAdmin());
     } else if (tab === 'mantenimientos') {
-      filename = `costos_mantenimiento_${new Date().toISOString().split('T')[0]}.csv`;
-      const headers = ['Fecha Cierre', 'Placa', 'Equipo', 'Diagnóstico/Acciones', 'Modalidad', 'Técnico/Proveedor', 'Costo Estimado', 'Costo Final'];
-      csvContent += headers.join(';') + '\n';
-
-      this.filteredMantenimientos().forEach(rep => {
-        const date = this.formatDateOnlyForCSV(rep.fechaCierre);
-        const placa = this.getActivoPlate(rep.activoId);
-        const equipo = this.getActivoDetails(rep.activoId);
-        const diag = rep.diagnostico || '';
-        const mod = rep.modalidad || '';
-        const tech = rep.tecnicoResponsable || rep.proveedorServicio || 'No asignado';
-        const costoEst = rep.costoEstimado || 0;
-        const costoFin = rep.costoFinal || 0;
-
-        const row = [date, placa, equipo, diag, mod, tech, costoEst, costoFin]
-          .map(val => `"${String(val).replace(/"/g, '""')}"`);
-        csvContent += row.join(';') + '\n';
-      });
-    }
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      this.exportService.exportMantenimientosToCSV(
+        this.filteredMantenimientos(),
+        (id) => {
+          const a = this.activos().find(x => x.id === id);
+          return a ? a.placa : '...';
+        },
+        (id) => {
+          const a = this.activos().find(x => x.id === id);
+          return a ? `${a.marca} ${a.modelo}` : 'Cargando equipo...';
+        }
+      );
     }
   }
 }

@@ -33,11 +33,21 @@ export interface Activo {
   location?: Location;
   responsible?: Responsable;
   area?: Area;
+  tipo?: string;
+  tipoActivo?: { id: string; nombre: string; estado?: string };
   simCards?: any[];
+  simCard?: any;
   precioCompra?: number;
 }
 
-export type CreateActivoDto = Omit<Activo, 'id' | 'tipoActivo' | 'location' | 'responsible'>;
+export type CreateActivoDto = Omit<Activo, 'id' | 'location' | 'responsible' | 'area' | 'simCards'> & {
+  justification?: string;
+  changedByUser?: string;
+  maintenanceModalidad?: string;
+  maintenanceTipo?: string;
+  maintenanceCostoEstimado?: number;
+  maintenanceTecnicoResponsable?: string;
+};
 export type UpdateActivoDto = Partial<CreateActivoDto>;
 
 export interface SearchActivosFilters {

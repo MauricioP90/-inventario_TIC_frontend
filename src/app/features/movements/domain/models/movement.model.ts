@@ -1,3 +1,8 @@
+import { Location } from '../../../locations/domain/models/location.model';
+import { Responsable } from '../../../responsables/domain/models/responsable.model';
+import { Activo } from '../../../inventory/domain/models/activo.model';
+import { SimCard } from '../../../sim-cards/domain/models/sim-card.model';
+
 export enum MovementStatus {
   PENDING = 'PENDING',
   EN_TRANSIT = 'EN_TRANSIT',
@@ -48,12 +53,12 @@ export interface Movement {
   receivedAt?: Date;
   magicLinkToken?: string;
   physicalReceiverName?: string;
-  originLocation?: any;
-  destinationLocation?: any;
-  responsible?: any;
-  receiver?: any;
-  activos?: any[];
-  simCards?: any[];
+  originLocation?: Location;
+  destinationLocation?: Location;
+  responsible?: Responsable;
+  receiver?: Responsable;
+  activos?: Activo[];
+  simCards?: SimCard[];
 }
 
 export interface CreateMovementDto {
