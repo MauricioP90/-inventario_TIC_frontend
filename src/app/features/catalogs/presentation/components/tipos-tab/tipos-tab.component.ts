@@ -6,20 +6,16 @@ import { FormsModule } from '@angular/forms';
 import { GetAllTiposUseCase } from '../../../application/use-cases/get-all-tipos.use-case';
 import { CreateTipoUseCase } from '../../../application/use-cases/create-tipo.use-case';
 import { UpdateTipoUseCase } from '../../../application/use-cases/update-tipo.use-case';
-import { CatalogsRepository } from '../../../domain/repositories/catalogs.repository';
-import { HttpCatalogsRepository } from '../../../infrastructure/adapters/http-catalogs.repository';
+import { GetAllModelosUseCase } from '../../../application/use-cases/get-all-modelos.use-case';
+import { CreateModeloUseCase } from '../../../application/use-cases/create-modelo.use-case';
 import { TipoActivo } from '../../../domain/models/tipo-activo.model';
+import { ModeloActivo } from '../../../domain/models/modelo-activo.model';
+import { TipoModelosModalComponent } from '../tipo-modelos-modal/tipo-modelos-modal.component';
 
 @Component({
   selector: 'app-tipos-tab',
   standalone: true,
-  imports: [CommonModule, FormsModule],
-  providers: [
-    { provide: CatalogsRepository, useClass: HttpCatalogsRepository },
-    GetAllTiposUseCase,
-    CreateTipoUseCase,
-    UpdateTipoUseCase
-  ],
+  imports: [CommonModule, FormsModule, TipoModelosModalComponent],
   template: `
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-fade-in">
 
@@ -57,36 +53,74 @@ import { TipoActivo } from '../../../domain/models/tipo-activo.model';
       @if (showForm()) {
         <div class="px-6 py-4 bg-indigo-50/60 border-b border-indigo-100 animate-fade-in">
           <p class="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-3">Nuevo Tipo de Activo</p>
-          <div class="flex items-start gap-3">
-            <div class="flex-1 space-y-1.5">
-              <input
-                type="text"
-                [(ngModel)]="newNombre"
-                placeholder="Ej: Monitor, Laptop, Tablet..."
-                class="w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                [class.border-red-300]="formError()"
-                [class.border-slate-300]="!formError()"
-                (keydown.enter)="saveNew()"
-                id="input-nombre-tipo"
-                autofocus
-              />
+          <div class="flex flex-col lg:flex-row lg:items-start gap-4">
+            <div class="flex-1 space-y-3">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-600 mb-1">Nombre del Tipo <span class="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    [(ngModel)]="newNombre"
+                    placeholder="Ej: Monitor, Laptop, Terminal POS..."
+                    class="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    [class.border-red-300]="formError()"
+                    [class.border-slate-300]="!formError()"
+                    (keydown.enter)="saveNew()"
+                    id="input-nombre-tipo"
+                    autofocus
+                  />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-600 mb-1">Marca Inicial <span class="text-slate-400 font-normal">(Opcional)</span></label>
+                  <input
+                    type="text"
+                    [(ngModel)]="newMarcaInicial"
+                    placeholder="Ej: Sunmi, Newland, Dell..."
+                    class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    (keydown.enter)="saveNew()"
+                    id="input-marca-inicial"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-600 mb-1">Modelo Inicial <span class="text-slate-400 font-normal">(Opcional)</span></label>
+                  <input
+                    type="text"
+                    [(ngModel)]="newModeloInicial"
+                    placeholder="Ej: V2 Pro, CS10, Latitude..."
+                    class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    (keydown.enter)="saveNew()"
+                    id="input-modelo-inicial"
+                  />
+                </div>
+              </div>
               @if (formError()) {
                 <p class="text-xs text-red-600">{{ formError() }}</p>
               }
-              <p class="text-[11px] text-slate-400">El nombre se normalizará automáticamente a formato Título (ej: "laptop" → "Laptop").</p>
+              <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <p class="text-[11px] text-slate-400">Normalizado a formato Título (ej: "laptop" → "Laptop"). Al guardar podrás seguir gestionando sus marcas y modelos.</p>
+                <label class="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-slate-700 font-medium">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="newAdmiteSoftware"
+                    class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+                    id="checkbox-admite-software"
+                  />
+                  <span>¿Admite instalación de aplicativos y software?</span>
+                </label>
+              </div>
             </div>
-            <div class="flex gap-2 pt-0.5">
+            <div class="flex gap-2 lg:pt-6">
               <button
                 (click)="saveNew()"
                 [disabled]="saving()"
-                class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                 id="btn-guardar-tipo"
               >
                 {{ saving() ? 'Guardando...' : 'Guardar' }}
               </button>
               <button
                 (click)="cancelNew()"
-                class="px-3 py-2.5 text-xs text-slate-600 hover:text-slate-900 font-medium hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                class="px-3 py-2 text-xs text-slate-600 hover:text-slate-900 font-medium hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
@@ -101,6 +135,8 @@ import { TipoActivo } from '../../../domain/models/tipo-activo.model';
           <thead class="text-xs text-slate-500 uppercase bg-slate-50/80 border-b border-slate-100">
             <tr>
               <th class="px-6 py-3 font-semibold">Nombre del Tipo</th>
+              <th class="px-6 py-3 font-semibold text-center w-48">Marcas y Modelos</th>
+              <th class="px-6 py-3 font-semibold text-center w-40">Soporte Software</th>
               <th class="px-6 py-3 font-semibold text-center w-36">Estado</th>
               <th class="px-6 py-3 font-semibold text-right w-28">Acciones</th>
             </tr>
@@ -108,7 +144,7 @@ import { TipoActivo } from '../../../domain/models/tipo-activo.model';
           <tbody class="divide-y divide-slate-100">
             @if (loadingTipos()) {
               <tr>
-                <td colspan="3" class="px-6 py-12 text-center text-slate-400">
+                <td colspan="5" class="px-6 py-12 text-center text-slate-400">
                   <div class="flex items-center justify-center gap-2">
                     <div class="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                     <span>Cargando tipos de activo...</span>
@@ -117,7 +153,7 @@ import { TipoActivo } from '../../../domain/models/tipo-activo.model';
               </tr>
             } @else if (filteredTipos().length === 0) {
               <tr>
-                <td colspan="3" class="px-6 py-12 text-center text-slate-400">
+                <td colspan="5" class="px-6 py-12 text-center text-slate-400">
                   @if (searchTiposTerm) {
                     No se encontraron tipos que coincidan con "{{ searchTiposTerm }}".
                   } @else {
@@ -173,6 +209,50 @@ import { TipoActivo } from '../../../domain/models/tipo-activo.model';
                         }
                       </div>
                     }
+                  </td>
+
+                  <td class="px-6 py-3.5 text-center">
+                    <button
+                      (click)="openModelosModal(tipo)"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold rounded-lg border border-purple-200 transition-colors cursor-pointer"
+                      title="Gestionar marcas y modelos de este tipo"
+                    >
+                      <svg class="w-3.5 h-3.5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+                      </svg>
+                      <span>Marcas y Modelos</span>
+                      <span
+                        class="px-1.5 py-0.5 text-[10px] font-bold rounded-full"
+                        [class.bg-purple-200]="(modelosCountByTipo()[tipo.id] || 0) > 0"
+                        [class.text-purple-800]="(modelosCountByTipo()[tipo.id] || 0) > 0"
+                        [class.bg-amber-100]="(modelosCountByTipo()[tipo.id] || 0) === 0"
+                        [class.text-amber-700]="(modelosCountByTipo()[tipo.id] || 0) === 0"
+                      >
+                        {{ modelosCountByTipo()[tipo.id] || 0 }}
+                      </span>
+                    </button>
+                  </td>
+
+                  <td class="px-6 py-3.5 text-center">
+                    <button
+                      (click)="toggleAdmiteSoftware(tipo)"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer"
+                      [class.bg-purple-50]="tipo.admiteSoftware"
+                      [class.text-purple-700]="tipo.admiteSoftware"
+                      [class.hover:bg-purple-100]="tipo.admiteSoftware"
+                      [class.bg-slate-100]="!tipo.admiteSoftware"
+                      [class.text-slate-500]="!tipo.admiteSoftware"
+                      [class.hover:bg-slate-200]="!tipo.admiteSoftware"
+                      [title]="'Click para ' + (tipo.admiteSoftware ? 'desactivar soporte de software' : 'activar soporte de software')"
+                      [id]="'btn-toggle-software-' + tipo.id"
+                    >
+                      <span
+                        class="w-1.5 h-1.5 rounded-full"
+                        [class.bg-purple-500]="tipo.admiteSoftware"
+                        [class.bg-slate-400]="!tipo.admiteSoftware"
+                      ></span>
+                      {{ tipo.admiteSoftware ? 'Admite Software' : 'No Aplica' }}
+                    </button>
                   </td>
 
                   <td class="px-6 py-3.5 text-center">
@@ -241,6 +321,13 @@ import { TipoActivo } from '../../../domain/models/tipo-activo.model';
           </div>
         </div>
       }
+
+      <app-tipo-modelos-modal
+        [tipo]="selectedTipoParaModelos()"
+        [isOpen]="isModelosModalOpen()"
+        (close)="closeModelosModal()"
+        (changed)="onModelosChanged()"
+      />
     </div>
   `
 })
@@ -248,22 +335,41 @@ export class TiposTabComponent implements OnInit {
   private getAllTiposUC = inject(GetAllTiposUseCase);
   private createTipoUC = inject(CreateTipoUseCase);
   private updateTipoUC = inject(UpdateTipoUseCase);
+  private getAllModelosUC = inject(GetAllModelosUseCase);
+  private createModeloUC = inject(CreateModeloUseCase);
 
   @Output() countChanged = new EventEmitter<number>();
   @Output() showToast = new EventEmitter<{ type: 'success' | 'error'; message: string }>();
 
   tipos = signal<TipoActivo[]>([]);
+  allModelos = signal<ModeloActivo[]>([]);
   loadingTipos = signal(false);
   saving = signal(false);
   updatingTipo = signal(false);
   showForm = signal(false);
   newNombre = '';
+  newMarcaInicial = '';
+  newModeloInicial = '';
+  newAdmiteSoftware = false;
   formError = signal<string | null>(null);
   editingTipoId = signal<string | null>(null);
   editNombre = '';
   editError = signal<string | null>(null);
   newlyCreatedId = signal<string | null>(null);
   searchTiposTerm = '';
+
+  selectedTipoParaModelos = signal<TipoActivo | null>(null);
+  isModelosModalOpen = signal(false);
+
+  modelosCountByTipo = computed<Record<string, number>>(() => {
+    const counts: Record<string, number> = {};
+    for (const m of this.allModelos()) {
+      if (m.estado === 'ACTIVO') {
+        counts[m.tipoActivoId] = (counts[m.tipoActivoId] || 0) + 1;
+      }
+    }
+    return counts;
+  });
 
   currentTiposPage = signal(1);
   pageSize = 10;
@@ -303,6 +409,7 @@ export class TiposTabComponent implements OnInit {
 
   ngOnInit() {
     this.loadTipos();
+    this.loadModelos();
   }
 
   loadTipos() {
@@ -317,33 +424,75 @@ export class TiposTabComponent implements OnInit {
     });
   }
 
+  loadModelos() {
+    this.getAllModelosUC.execute().subscribe({
+      next: (modelos) => this.allModelos.set(modelos),
+      error: () => {}
+    });
+  }
+
   openNewForm() {
     this.showForm.set(true);
     this.newNombre = '';
+    this.newMarcaInicial = '';
+    this.newModeloInicial = '';
+    this.newAdmiteSoftware = false;
     this.formError.set(null);
   }
 
   cancelNew() {
     this.showForm.set(false);
     this.newNombre = '';
+    this.newMarcaInicial = '';
+    this.newModeloInicial = '';
+    this.newAdmiteSoftware = false;
     this.formError.set(null);
   }
 
   saveNew() {
     const nombre = this.newNombre.trim();
+    const marcaIni = this.newMarcaInicial.trim();
+    const modeloIni = this.newModeloInicial.trim();
     if (!nombre) { this.formError.set('El nombre es obligatorio.'); return; }
     if (nombre.length < 3) { this.formError.set('Mínimo 3 caracteres.'); return; }
+    if ((marcaIni && !modeloIni) || (!marcaIni && modeloIni)) {
+      this.formError.set('Si indicas una marca o modelo inicial, debes completar ambos campos.');
+      return;
+    }
     this.formError.set(null);
     this.saving.set(true);
-    this.createTipoUC.execute({ nombre }).subscribe({
+    this.createTipoUC.execute({ nombre, admiteSoftware: this.newAdmiteSoftware }).subscribe({
       next: (created) => {
-        this.saving.set(false);
-        this.showForm.set(false);
-        this.newNombre = '';
-        this.loadTipos();
-        this.newlyCreatedId.set(created.id);
-        this.showToast.emit({ type: 'success', message: `Tipo "${created.nombre}" creado exitosamente.` });
-        setTimeout(() => this.newlyCreatedId.set(null), 3000);
+        const finalizeCreation = (extraMsg = '') => {
+          this.saving.set(false);
+          this.showForm.set(false);
+          this.newNombre = '';
+          this.newMarcaInicial = '';
+          this.newModeloInicial = '';
+          this.newAdmiteSoftware = false;
+          this.loadTipos();
+          this.loadModelos();
+          this.newlyCreatedId.set(created.id);
+          this.showToast.emit({
+            type: 'success',
+            message: `Tipo "${created.nombre}" creado exitosamente.${extraMsg}`
+          });
+          setTimeout(() => this.newlyCreatedId.set(null), 3000);
+          this.openModelosModal(created);
+        };
+
+        if (marcaIni && modeloIni) {
+          this.createModeloUC.execute({
+            tipoActivoId: created.id,
+            marca: marcaIni,
+            modelo: modeloIni
+          }).subscribe({
+            next: () => finalizeCreation(` Se registró el modelo inicial ${marcaIni} ${modeloIni}.`),
+            error: () => finalizeCreation()
+          });
+        } else {
+          finalizeCreation();
+        }
       },
       error: (err) => {
         this.saving.set(false);
@@ -400,6 +549,39 @@ export class TiposTabComponent implements OnInit {
     });
   }
 
+  toggleAdmiteSoftware(tipo: TipoActivo) {
+    const newAdmite = !tipo.admiteSoftware;
+    this.updatingTipo.set(true);
+    this.updateTipoUC.execute(tipo.id, { admiteSoftware: newAdmite }).subscribe({
+      next: () => {
+        this.updatingTipo.set(false);
+        this.loadTipos();
+        this.showToast.emit({
+          type: 'success',
+          message: `"${tipo.nombre}" ahora ${newAdmite ? 'admite aplicativos' : 'no admite aplicativos'}.`
+        });
+      },
+      error: (err) => {
+        this.updatingTipo.set(false);
+        this.showToast.emit({ type: 'error', message: err.error?.message || 'Error al actualizar soporte de software.' });
+      }
+    });
+  }
+
   prevTiposPage() { if (this.currentTiposPage() > 1) this.currentTiposPage.update(p => p - 1); }
   nextTiposPage() { if (this.currentTiposPage() < this.totalTiposPages()) this.currentTiposPage.update(p => p + 1); }
+
+  openModelosModal(tipo: TipoActivo) {
+    this.selectedTipoParaModelos.set(tipo);
+    this.isModelosModalOpen.set(true);
+  }
+
+  closeModelosModal() {
+    this.isModelosModalOpen.set(false);
+    this.selectedTipoParaModelos.set(null);
+  }
+
+  onModelosChanged() {
+    this.loadModelos();
+  }
 }

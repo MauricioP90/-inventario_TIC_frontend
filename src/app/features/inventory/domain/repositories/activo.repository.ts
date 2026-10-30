@@ -17,4 +17,5 @@ export abstract class ActivoRepository {
   abstract delete(placa: string): Observable<void>;
   abstract getMetadata(): Observable<ActivoMetadata>;
   abstract createTipoActivo(nombre: string): Observable<any>;
+  abstract getAuditHistory(activoId: string): Observable<any[]>;
 }

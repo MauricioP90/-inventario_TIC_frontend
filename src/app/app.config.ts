@@ -28,6 +28,16 @@ import { MaintenanceRepository } from './features/maintenance/domain/repositorie
 import { HttpMaintenanceRepository } from './features/maintenance/infrastructure/adapters/http-maintenance.repository';
 import { CargoRepository } from './features/responsables/domain/repositories/cargo.repository';
 import { HttpCargoRepository } from './features/responsables/infrastructure/adapters/http-cargo.repository';
+import { ModeloActivoRepository } from './features/catalogs/domain/repositories/modelo-activo.repository';
+import { HttpModeloActivoRepository } from './features/catalogs/infrastructure/adapters/http-modelo-activo.repository';
+import { SoftwareRepository } from './features/catalogs/domain/repositories/software.repository';
+import { HttpSoftwareRepository } from './features/catalogs/infrastructure/adapters/http-software.repository';
+import { CatalogsRepository } from './features/catalogs/domain/repositories/catalogs.repository';
+import { HttpCatalogsRepository } from './features/catalogs/infrastructure/adapters/http-catalogs.repository';
+import { NotificationRecipientRepository } from './features/catalogs/domain/repositories/notification-recipient.repository';
+import { HttpNotificationRecipientRepository } from './features/catalogs/infrastructure/adapters/http-notification-recipient.repository';
+import { TelemetryRepository } from './features/inventory/domain/repositories/telemetry.repository';
+import { HttpTelemetryRepository } from './features/inventory/infrastructure/adapters/http-telemetry.repository';
 
 // Condición para incluir el token en las peticiones al backend
 const urlCondition = createInterceptorCondition<IncludeBearerTokenCondition>({
@@ -63,6 +73,11 @@ export const appConfig: ApplicationConfig = {
     { provide: GeocodingRepository, useClass: NominatimGeocodingRepository },
     { provide: DashboardRepository, useClass: HttpDashboardRepository },
     { provide: MaintenanceRepository, useClass: HttpMaintenanceRepository },
-    { provide: CargoRepository, useClass: HttpCargoRepository }
+    { provide: CargoRepository, useClass: HttpCargoRepository },
+    { provide: ModeloActivoRepository, useClass: HttpModeloActivoRepository },
+    { provide: SoftwareRepository, useClass: HttpSoftwareRepository },
+    { provide: CatalogsRepository, useClass: HttpCatalogsRepository },
+    { provide: NotificationRecipientRepository, useClass: HttpNotificationRecipientRepository },
+    { provide: TelemetryRepository, useClass: HttpTelemetryRepository }
   ],
 };

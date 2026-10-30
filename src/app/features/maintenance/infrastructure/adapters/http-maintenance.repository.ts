@@ -12,12 +12,12 @@ export class HttpMaintenanceRepository implements MaintenanceRepository {
   constructor(private http: HttpClient) { }
 
   getActive(): Observable<MaintenanceReport[]> {
-    return this.http.get<MaintenanceReport[]>(`${this.apiUrl}/active`);
+    return this.http.get<MaintenanceReport[]>(`${this.apiUrl}?scope=active`);
   }
 
   getHistory(activoId?: string): Observable<MaintenanceReport[]> {
-    const params = activoId ? `?activoId=${activoId}` : '';
-    return this.http.get<MaintenanceReport[]>(`${this.apiUrl}/history${params}`);
+    const params = activoId ? `?scope=history&activoId=${activoId}` : '?scope=history';
+    return this.http.get<MaintenanceReport[]>(`${this.apiUrl}${params}`);
   }
 
   create(dto: CreateMaintenanceReportDto): Observable<MaintenanceReport> {

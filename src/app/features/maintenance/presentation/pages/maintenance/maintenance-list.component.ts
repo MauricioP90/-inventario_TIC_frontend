@@ -6,7 +6,7 @@ import { MaintenanceReport, ModalidadMantenimiento, EstadoFicha, ESTADO_FICHA_LA
 import { MaintenanceUseCases } from '../../../application/use-cases/maintenance.use-cases';
 import { MaintenanceDrawerComponent } from './maintenance-drawer.component';
 import { Activo } from '../../../../inventory/domain/models/activo.model';
-import { HttpActivoRepository } from '../../../../inventory/infrastructure/adapters/http-activo.repository';
+import { GetAllActivosUseCase } from '../../../../inventory/application/use-cases/get-all-activos.use-case';
 import { RoleService } from '../../../../../core/auth/services/role.service';
 
 @Component({
@@ -291,7 +291,7 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
 })
 export class MaintenanceListComponent implements OnInit {
   private usecases = inject(MaintenanceUseCases);
-  private activoRepo = inject(HttpActivoRepository);
+  private getAllActivosUC = inject(GetAllActivosUseCase);
   public roleService = inject(RoleService);
 
   // States
@@ -447,7 +447,7 @@ export class MaintenanceListComponent implements OnInit {
   cargarDatos() {
     this.loading.set(true);
     // Cargar Activos para mapear placas e info
-    this.activoRepo.getAll().subscribe((acts: Activo[]) => {
+    this.getAllActivosUC.execute().subscribe((acts: Activo[]) => {
       this.activos.set(acts || []);
       
       // Cargar reportes según el tab

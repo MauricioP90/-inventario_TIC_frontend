@@ -13,7 +13,7 @@ export enum EstadoActivo {
 
 export interface ActivoMetadata {
   statuses: { id: EstadoActivo; label: string }[];
-  types: { id: string; label: string }[];
+  types: { id: string; label: string; admiteSoftware?: boolean; admiteTelemetria?: boolean }[];
   bodegas: { id: string; nombre: string }[];
 }
 
@@ -34,7 +34,7 @@ export interface Activo {
   responsible?: Responsable;
   area?: Area;
   tipo?: string;
-  tipoActivo?: { id: string; nombre: string; estado?: string };
+  tipoActivo?: { id: string; nombre: string; estado?: string; admiteSoftware?: boolean; admiteTelemetria?: boolean };
   simCards?: any[];
   simCard?: any;
   precioCompra?: number;

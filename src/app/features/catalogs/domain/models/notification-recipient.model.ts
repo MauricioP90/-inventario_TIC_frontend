@@ -61,6 +61,14 @@ export const NOTIFICATION_EVENTS_CATALOG: NotificationEventDefinition[] = [
     badgeClass: 'bg-indigo-100 text-indigo-800 border-indigo-200'
   },
   {
+    id: 'MOVIMIENTO_NO_AUTORIZADO',
+    label: 'Alerta de Ubicación No Autorizada (Telemetría GPS)',
+    shortLabel: 'Alerta GPS',
+    description: 'Controversia detectada al encender un equipo fuera de su sede sin traslado activo',
+    colorClass: 'text-red-700 bg-red-50 border-red-200',
+    badgeClass: 'bg-red-100 text-red-800 border-red-200'
+  },
+  {
     id: 'TODOS',
     label: 'Todos los Eventos (Auditoría Global)',
     shortLabel: 'Todos los Eventos',

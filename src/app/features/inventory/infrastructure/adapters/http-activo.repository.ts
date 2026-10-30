@@ -78,4 +78,8 @@ export class HttpActivoRepository implements ActivoRepository {
   createTipoActivo(nombre: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/types`, { nombre, estado: 'ACTIVO' });
   }
+
+  getAuditHistory(activoId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/${activoId}/audit-history`);
+  }
 }

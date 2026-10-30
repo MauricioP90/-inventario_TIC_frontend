@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { TiposTabComponent } from '../../components/tipos-tab/tipos-tab.component';
 import { NotificacionesTabComponent } from '../../components/notificaciones-tab/notificaciones-tab.component';
 import { CargosTabComponent } from '../../components/cargos-tab/cargos-tab.component';
+import { SoftwareTabComponent } from '../../components/software-tab/software-tab.component';
+import { TelemetriaTabComponent } from '../../components/telemetria-tab/telemetria-tab.component';
 
 @Component({
   selector: 'app-catalogs',
@@ -11,7 +13,9 @@ import { CargosTabComponent } from '../../components/cargos-tab/cargos-tab.compo
     CommonModule,
     TiposTabComponent,
     NotificacionesTabComponent,
-    CargosTabComponent
+    CargosTabComponent,
+    SoftwareTabComponent,
+    TelemetriaTabComponent
   ],
   template: `
     <div class="min-h-screen bg-slate-50 p-6 space-y-6">
@@ -47,7 +51,7 @@ import { CargosTabComponent } from '../../components/cargos-tab/cargos-tab.compo
               </svg>
               Nuevo Destinatario
             </button>
-          } @else {
+          } @else if (activeTab() === 'cargos') {
             <button
               (click)="openNewCargo()"
               [disabled]="cargosTab?.showCargoForm() === true"
@@ -64,10 +68,10 @@ import { CargosTabComponent } from '../../components/cargos-tab/cargos-tab.compo
       </div>
 
       <!-- Tabs Navigation Selector -->
-      <div class="flex border-b border-slate-200 gap-2">
+      <div class="flex border-b border-slate-200 gap-2 overflow-x-auto">
         <button
           (click)="activeTab.set('tipos')"
-          class="flex items-center gap-2.5 px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer"
+          class="flex items-center gap-2.5 px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap"
           [class.border-indigo-600]="activeTab() === 'tipos'"
           [class.text-indigo-600]="activeTab() === 'tipos'"
           [class.border-transparent]="activeTab() !== 'tipos'"
@@ -93,7 +97,7 @@ import { CargosTabComponent } from '../../components/cargos-tab/cargos-tab.compo
 
         <button
           (click)="activeTab.set('notificaciones')"
-          class="flex items-center gap-2.5 px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer"
+          class="flex items-center gap-2.5 px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap"
           [class.border-indigo-600]="activeTab() === 'notificaciones'"
           [class.text-indigo-600]="activeTab() === 'notificaciones'"
           [class.border-transparent]="activeTab() !== 'notificaciones'"
@@ -118,7 +122,7 @@ import { CargosTabComponent } from '../../components/cargos-tab/cargos-tab.compo
 
         <button
           (click)="activeTab.set('cargos')"
-          class="flex items-center gap-2.5 px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer"
+          class="flex items-center gap-2.5 px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap"
           [class.border-indigo-600]="activeTab() === 'cargos'"
           [class.text-indigo-600]="activeTab() === 'cargos'"
           [class.border-transparent]="activeTab() !== 'cargos'"
@@ -140,6 +144,36 @@ import { CargosTabComponent } from '../../components/cargos-tab/cargos-tab.compo
             >{{ cargosCount() }}</span>
           }
         </button>
+
+        <button
+          (click)="activeTab.set('software')"
+          class="flex items-center gap-2.5 px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap"
+          [class.border-indigo-600]="activeTab() === 'software'"
+          [class.text-indigo-600]="activeTab() === 'software'"
+          [class.border-transparent]="activeTab() !== 'software'"
+          [class.text-slate-500]="activeTab() !== 'software'"
+          [class.hover:text-slate-800]="activeTab() !== 'software'"
+          id="tab-software"
+        >
+          <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+          </svg>
+          Aplicativos
+        </button>
+
+        <button
+          (click)="activeTab.set('telemetria')"
+          class="flex items-center gap-2.5 px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap"
+          [class.border-indigo-600]="activeTab() === 'telemetria'"
+          [class.text-indigo-600]="activeTab() === 'telemetria'"
+          [class.border-transparent]="activeTab() !== 'telemetria'"
+          [class.text-slate-500]="activeTab() !== 'telemetria'"
+          [class.hover:text-slate-800]="activeTab() !== 'telemetria'"
+          id="tab-telemetria"
+        >
+          <span>📡</span>
+          Telemetría y Geocerca
+        </button>
       </div>
 
       <!-- Tab Contents -->
@@ -147,8 +181,12 @@ import { CargosTabComponent } from '../../components/cargos-tab/cargos-tab.compo
         <app-tipos-tab #tiposTab (countChanged)="tiposCount.set($event)" (showToast)="onShowToast($event)" />
       } @else if (activeTab() === 'notificaciones') {
         <app-notificaciones-tab #notificacionesTab (countChanged)="recipientsCount.set($event)" (showToast)="onShowToast($event)" />
-      } @else {
+      } @else if (activeTab() === 'cargos') {
         <app-cargos-tab #cargosTab (countChanged)="cargosCount.set($event)" (showToast)="onShowToast($event)" />
+      } @else if (activeTab() === 'software') {
+        <app-software-tab #softwareTab />
+      } @else if (activeTab() === 'telemetria') {
+        <app-telemetria-tab #telemetriaTab (showToast)="onShowToast($event)" />
       }
 
       <!-- Global Floating Toast Notification -->
@@ -180,8 +218,9 @@ export class CatalogsComponent {
   @ViewChild('tiposTab') tiposTab?: TiposTabComponent;
   @ViewChild('notificacionesTab') notificacionesTab?: NotificacionesTabComponent;
   @ViewChild('cargosTab') cargosTab?: CargosTabComponent;
+  @ViewChild('softwareTab') softwareTab?: SoftwareTabComponent;
 
-  activeTab = signal<'tipos' | 'notificaciones' | 'cargos'>('tipos');
+  activeTab = signal<'tipos' | 'notificaciones' | 'cargos' | 'software' | 'telemetria'>('tipos');
 
   tiposCount = signal(0);
   recipientsCount = signal(0);
@@ -199,6 +238,10 @@ export class CatalogsComponent {
 
   openNewCargo() {
     this.cargosTab?.openNewCargoForm();
+  }
+
+  openNewSoftwareApp() {
+    this.softwareTab?.openCreateAppModal();
   }
 
   onShowToast(t: { type: 'success' | 'error'; message: string }) {

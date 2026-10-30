@@ -2,7 +2,7 @@ import { Component, Input, Output, EventEmitter, inject, signal, computed } from
 import { CommonModule } from '@angular/common';
 import { MaintenanceReport } from '../../../domain/models/maintenance.model';
 import { Activo } from '../../../../inventory/domain/models/activo.model';
-import { HttpActivoRepository } from '../../../../inventory/infrastructure/adapters/http-activo.repository';
+import { GetAllActivosUseCase } from '../../../../inventory/application/use-cases/get-all-activos.use-case';
 import { RoleService } from '../../../../../core/auth/services/role.service';
 import { MaintenanceCreateFormComponent } from '../../components/maintenance-create-form.component';
 import { MaintenanceInfoCardComponent } from '../../components/maintenance-info-card.component';
@@ -96,7 +96,7 @@ import { MaintenanceTimelineComponent } from '../../components/maintenance-timel
   styles: []
 })
 export class MaintenanceDrawerComponent {
-  private activoRepo = inject(HttpActivoRepository);
+  private getAllActivosUC = inject(GetAllActivosUseCase);
   public roleService = inject(RoleService);
 
   @Input() open = false;
@@ -126,7 +126,7 @@ export class MaintenanceDrawerComponent {
   }
 
   cargarDetallesReporte(rep: MaintenanceReport) {
-    this.activoRepo.getAll().subscribe({
+    this.getAllActivosUC.execute().subscribe({
       next: (activos: Activo[]) => {
         this.activoAsociado = activos.find((a: Activo) => a.id === rep.activoId) || null;
       },

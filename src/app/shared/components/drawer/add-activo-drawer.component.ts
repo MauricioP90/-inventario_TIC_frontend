@@ -2,22 +2,27 @@ import { Component, Input, Output, EventEmitter, signal, inject, OnInit, compute
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { forkJoin } from 'rxjs';
 import { CreateActivoUseCase } from '../../../features/inventory/application/use-cases/create-activo.use-case';
 import { GetAllResponsablesUseCase } from '../../../features/responsables/application/use-cases/get-all-responsables.use-case';
 import { GetActivoMetadataUseCase } from '../../../features/inventory/application/use-cases/get-activo-metadata.use-case';
 import { Responsable } from '../../../features/responsables/domain/models/responsable.model';
 import { Activo, ActivoMetadata } from '../../../features/inventory/domain/models/activo.model';
+import { ActivoRepository } from '../../../features/inventory/domain/repositories/activo.repository';
 import { Location } from '../../../features/locations/domain/models/location.model';
 import { GetAllLocationsUseCase } from '../../../features/locations/application/use-cases/get-all-locations.use-case';
-import { environment } from '../../../../environments/environment';
 import { UpdateActivoUseCase } from '../../../features/inventory/application/use-cases/update-activo.use-case';
+import { MaintenanceUseCases } from '../../../features/maintenance/application/use-cases/maintenance.use-cases';
 import { RoleService } from '../../../core/auth/services/role.service';
 import { Area } from '../../../features/responsables/domain/models/area.model';
 import { GetAllAreasUseCase } from '../../../features/responsables/application/use-cases/get-all-areas.use-case';
+import { GetAllModelosUseCase } from '../../../features/catalogs/application/use-cases/get-all-modelos.use-case';
+import { ModeloActivo } from '../../../features/catalogs/domain/models/modelo-activo.model';
+import { InstallActivoSoftwareUseCase } from '../../../features/catalogs/application/use-cases/software.use-cases';
 import { ActivoFacturaSectionComponent } from './activo-components/activo-factura-section.component';
 import { ActivoMaintenanceTriggerComponent } from './activo-components/activo-maintenance-trigger.component';
 import { ActivoHistorySectionComponent } from './activo-components/activo-history-section.component';
+import { ActivoSoftwareSectionComponent, PreSelectedApp } from './activo-components/activo-software-section.component';
 
 @Component({
   selector: 'app-add-activo-drawer',
@@ -28,7 +33,8 @@ import { ActivoHistorySectionComponent } from './activo-components/activo-histor
     RouterLink,
     ActivoFacturaSectionComponent,
     ActivoMaintenanceTriggerComponent,
-    ActivoHistorySectionComponent
+    ActivoHistorySectionComponent,
+    ActivoSoftwareSectionComponent
   ],
   template: `
     <!-- Backdrop -->
@@ -75,7 +81,7 @@ import { ActivoHistorySectionComponent } from './activo-components/activo-histor
         <!-- Tipo de Dispositivo -->
         <div class="space-y-1.5">
           <label class="block text-sm font-medium text-slate-700">Tipo de Dispositivo <span class="text-red-500">*</span></label>
-          <select [(ngModel)]="tipo" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <select [(ngModel)]="tipo" (change)="onTipoChange()" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
             <option value="" disabled>Seleccionar tipo</option>
             @for (type of metadata()?.types; track type.id) {
               <option [value]="type.id">{{ type.label }}</option>
@@ -84,7 +90,7 @@ import { ActivoHistorySectionComponent } from './activo-components/activo-histor
 
           @if (isAdmin()) {
             <p class="text-[11px] text-slate-400 mt-1">
-              ¿No encuentras el tipo? Adminístralo en <a routerLink="/catalogs" (click)="close()" class="text-indigo-600 hover:underline font-semibold">Catálogos</a>.
+              ¿No encuentras el tipo o modelo? Adminístralo en <a routerLink="/catalogs" (click)="close()" class="text-indigo-600 hover:underline font-semibold">Catálogos</a>.
             </p>
           }
         </div>
@@ -92,15 +98,62 @@ import { ActivoHistorySectionComponent } from './activo-components/activo-histor
         <!-- Marca -->
         <div class="space-y-1.5">
           <label class="block text-sm font-medium text-slate-700">Marca <span class="text-red-500">*</span></label>
-          <input type="text" [(ngModel)]="marca" placeholder="Ej: Dell"
-            class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" />
+          @if (marcasDisponibles().length > 0) {
+            <select
+              [ngModel]="selectedMarca()"
+              (ngModelChange)="onMarcaSelected($event)"
+              class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+            >
+              <option value="" disabled>-- Seleccionar Marca --</option>
+              @for (m of marcasDisponibles(); track m) {
+                <option [value]="m">{{ m }}</option>
+              }
+              @if (activo && marca && !isMarcaEnCatalogo()) {
+                <option [value]="marca">{{ marca }} (Valor actual)</option>
+              }
+            </select>
+          } @else if (tipo) {
+            <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-1">
+              <p class="font-bold">⚠️ Sin marcas homologadas</p>
+              <p>Este tipo de activo aún no tiene marcas configuradas. Debes registrarlas en
+                <a routerLink="/catalogs" (click)="close()" class="underline font-bold text-indigo-700">Catálogos &gt; Tipos de Activo</a>.
+              </p>
+            </div>
+          } @else {
+            <div class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-400">
+              Selecciona primero un Tipo de Dispositivo
+            </div>
+          }
         </div>
 
         <!-- Modelo -->
         <div class="space-y-1.5">
           <label class="block text-sm font-medium text-slate-700">Modelo <span class="text-red-500">*</span></label>
-          <input type="text" [(ngModel)]="modelo" placeholder="Ej: Latitude 5540"
-            class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" />
+          @if (modelosDisponiblesParaMarca().length > 0) {
+            <select
+              [(ngModel)]="modelo"
+              class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+            >
+              <option value="" disabled>-- Seleccionar Modelo --</option>
+              @for (mod of modelosDisponiblesParaMarca(); track mod.id) {
+                <option [value]="mod.modelo">{{ mod.modelo }}</option>
+              }
+              @if (activo && modelo && !isModeloEnCatalogo()) {
+                <option [value]="modelo">{{ modelo }} (Valor actual)</option>
+              }
+            </select>
+          } @else if (selectedMarca()) {
+            <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-1">
+              <p class="font-bold">⚠️ Sin modelos para {{ selectedMarca() }}</p>
+              <p>No hay modelos registrados para esta marca bajo este tipo. Regístralos en
+                <a routerLink="/catalogs" (click)="close()" class="underline font-bold text-indigo-700">Catálogos &gt; Tipos de Activo</a>.
+              </p>
+            </div>
+          } @else {
+            <div class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-400">
+              Selecciona primero una Marca
+            </div>
+          }
         </div>
 
         <!-- Número de Serie -->
@@ -209,6 +262,15 @@ import { ActivoHistorySectionComponent } from './activo-components/activo-histor
           </div>
         }
 
+        <!-- Aplicativos y Software Instalado (Prioritario, condicionado a tipoActivo.admiteSoftware) -->
+        @if (admiteSoftware()) {
+          <app-activo-software-section
+            [activo]="activo"
+            [canEdit]="activo ? roleService.canEditActivo() : roleService.canCreateActivo()"
+            (preSelectedAppsChange)="preSelectedSoftware = $event"
+          />
+        }
+
         <!-- Factura y Justificación de Auditoría -->
         <app-activo-factura-section
           [activo]="activo"
@@ -243,7 +305,6 @@ import { ActivoHistorySectionComponent } from './activo-components/activo-histor
             [auditHistory]="auditHistory()"
           />
         }
-
       </div>
 
       <!-- Footer -->
@@ -270,11 +331,50 @@ export class AddActivoDrawerComponent implements OnInit {
   private getResponsablesUC = inject(GetAllResponsablesUseCase);
   private getMetadataUC = inject(GetActivoMetadataUseCase);
   private getLocationsUC = inject(GetAllLocationsUseCase);
-  private http = inject(HttpClient);
+  private activoRepo = inject(ActivoRepository);
+  private maintenanceUsecases = inject(MaintenanceUseCases);
   public roleService = inject(RoleService);
   private getAllAreasUC = inject(GetAllAreasUseCase);
+  private getAllModelosUC = inject(GetAllModelosUseCase);
 
   isAdmin = computed(() => this.roleService.isAdmin());
+  modelosDisponibles = signal<ModeloActivo[]>([]);
+  selectedMarca = signal('');
+
+  marcasDisponibles = computed<string[]>(() => {
+    const list = this.modelosDisponibles().map(m => m.marca.trim());
+    return Array.from(new Set(list)).sort((a, b) => a.localeCompare(b));
+  });
+
+  modelosDisponiblesParaMarca = computed<ModeloActivo[]>(() => {
+    const sm = this.selectedMarca().trim().toLowerCase();
+    if (!sm) return [];
+    return this.modelosDisponibles().filter(
+      m => m.marca.trim().toLowerCase() === sm
+    );
+  });
+
+  isMarcaEnCatalogo = computed<boolean>(() => {
+    if (!this.marca) return false;
+    return this.marcasDisponibles().some(m => m.toLowerCase() === this.marca.toLowerCase());
+  });
+
+  isModeloEnCatalogo = computed<boolean>(() => {
+    if (!this.modelo) return false;
+    return this.modelosDisponiblesParaMarca().some(m => m.modelo.toLowerCase() === this.modelo.toLowerCase());
+  });
+
+  selectedTipoId = signal<string>('');
+
+  admiteSoftware = computed<boolean>(() => {
+    if (this.activo?.tipoActivo?.admiteSoftware !== undefined) {
+      return !!this.activo.tipoActivo.admiteSoftware;
+    }
+    const currentTipoId = this.selectedTipoId() || this.tipo || this.activo?.tipoActivoId;
+    if (!currentTipoId) return false;
+    const match = this.metadata()?.types.find(t => t.id === currentTipoId);
+    return !!match?.admiteSoftware;
+  });
 
   // Maintenance fields for auto-creating a report
   maintModalidad = 'INTERNO';
@@ -306,14 +406,14 @@ export class AddActivoDrawerComponent implements OnInit {
   private _activo: Activo | null = null;
 
   loadMaintHistory(activoId: string) {
-    this.http.get<any[]>(`${environment.apiUrl}/maintenance/history?activoId=${activoId}`).subscribe({
+    this.maintenanceUsecases.getHistory(activoId).subscribe({
       next: (history) => this.maintHistory.set(history || []),
       error: (err) => console.error("Error loading maintenance history", err)
     });
   }
 
   loadAuditHistory(activoId: string) {
-    this.http.get<any[]>(`${environment.apiUrl}/activos/${activoId}/audit-history`).subscribe({
+    this.activoRepo.getAuditHistory(activoId).subscribe({
       next: (history) => this.auditHistory.set(history || []),
       error: (err) => console.error("Error loading audit history", err)
     });
@@ -333,6 +433,9 @@ export class AddActivoDrawerComponent implements OnInit {
 
   saving = signal(false);
   facturaUrl = signal<string | null>(null);
+
+  private installSoftwareUC = inject(InstallActivoSoftwareUseCase);
+  preSelectedSoftware: PreSelectedApp[] = [];
 
   tipo = '';
   marca = '';
@@ -378,6 +481,7 @@ export class AddActivoDrawerComponent implements OnInit {
 
   private populateForm(a: Activo) {
     this.tipo = a.tipoActivoId;
+    this.selectedTipoId.set(a.tipoActivoId);
     this.marca = a.marca;
     this.modelo = a.modelo;
     this.serial = a.serial;
@@ -393,6 +497,49 @@ export class AddActivoDrawerComponent implements OnInit {
     }
     this.facturaUrl.set(a.facturaUrl || null);
     this.fileName = a.facturaUrl ? 'Factura cargada' : '';
+    this.onTipoChange();
+  }
+
+  onTipoChange() {
+    this.selectedTipoId.set(this.tipo);
+    this.selectedMarca.set('');
+    this.marca = '';
+    this.modelo = '';
+    if (!this.admiteSoftware()) {
+      this.preSelectedSoftware = [];
+    }
+    if (this.tipo) {
+      this.getAllModelosUC.execute(this.tipo).subscribe({
+        next: (mods) => {
+          const activos = mods.filter(m => m.estado === 'ACTIVO');
+          this.modelosDisponibles.set(activos);
+          if (this.activo) {
+            this.marca = this.activo.marca || '';
+            this.selectedMarca.set(this.activo.marca || '');
+            this.modelo = this.activo.modelo || '';
+          } else {
+            const marcas = Array.from(new Set(activos.map(m => m.marca.trim()))).sort();
+            if (marcas.length === 1) {
+              this.onMarcaSelected(marcas[0]);
+            }
+          }
+        },
+        error: () => this.modelosDisponibles.set([])
+      });
+    } else {
+      this.modelosDisponibles.set([]);
+    }
+  }
+
+  onMarcaSelected(nuevaMarca: string) {
+    this.marca = nuevaMarca;
+    this.selectedMarca.set(nuevaMarca);
+    const disponibles = this.modelosDisponiblesParaMarca();
+    if (disponibles.length === 1 && !this.activo) {
+      this.modelo = disponibles[0].modelo;
+    } else if (!disponibles.some(m => m.modelo.toLowerCase() === (this.modelo || '').toLowerCase())) {
+      this.modelo = '';
+    }
   }
 
   close() {
@@ -468,17 +615,30 @@ export class AddActivoDrawerComponent implements OnInit {
       ? this.updateActivoUseCase.execute(current.placa, payload)
       : this.createActivoUseCase.execute(payload);
     request$.subscribe({
-      next: () => {
-        this.saving.set(false);
-        this.toast.set({ type: 'success', message: `Activo "${this.placa}" ${this.activo ? 'actualizado' : 'guardado'} exitosamente.` });
-        const savedPlaca = this.placa;
-        this.justification = '';
-        if (!this.activo) this.resetForm();
-        setTimeout(() => {
-          this.toast.set(null);
-          this.close();
-          this.saved.emit(savedPlaca);
-        }, 1500);
+      next: (savedActivo: Activo) => {
+        // Si fue una creación y se pre-seleccionaron aplicativos de software
+        if (!current && this.preSelectedSoftware.length > 0 && savedActivo?.id) {
+          const installObservables = this.preSelectedSoftware.map(app =>
+            this.installSoftwareUC.execute(savedActivo.id, {
+              softwareVersionId: app.versionId,
+              licencia: app.licencia,
+              observaciones: app.observaciones || 'Instalación inicial en registro de activo'
+            })
+          );
+
+          forkJoin(installObservables).subscribe({
+            next: () => {
+              this.finishSave(savedActivo.placa, `${this.preSelectedSoftware.length} aplicativo(s) instalado(s)`);
+            },
+            error: (err) => {
+              console.error('Error al vincular aplicativos iniciales:', err);
+              this.finishSave(savedActivo.placa, 'Activo creado, pero hubo un detalle al vincular algunos aplicativos');
+            }
+          });
+          return;
+        }
+
+        this.finishSave(savedActivo?.placa || this.placa);
       },
       error: (err: any) => {
         this.saving.set(false);
@@ -486,6 +646,22 @@ export class AddActivoDrawerComponent implements OnInit {
         this.toast.set({ type: 'error', message: msg });
       }
     });
+  }
+
+  private finishSave(savedPlaca: string, extraNote?: string) {
+    this.saving.set(false);
+    const baseMsg = `Activo "${savedPlaca}" ${this.activo ? 'actualizado' : 'guardado'} exitosamente.`;
+    const fullMsg = extraNote ? `${baseMsg} (${extraNote})` : baseMsg;
+    this.toast.set({ type: 'success', message: fullMsg });
+    const saved = savedPlaca;
+    this.justification = '';
+    this.preSelectedSoftware = [];
+    if (!this.activo) this.resetForm();
+    setTimeout(() => {
+      this.toast.set(null);
+      this.close();
+      this.saved.emit(saved);
+    }, 1500);
   }
 
   onPlacaInput(event: Event) {
@@ -497,6 +673,8 @@ export class AddActivoDrawerComponent implements OnInit {
 
   private resetForm() {
     this.tipo = '';
+    this.selectedTipoId.set('');
+    this.preSelectedSoftware = [];
     this.marca = '';
     this.modelo = '';
     this.serial = '';
@@ -517,5 +695,7 @@ export class AddActivoDrawerComponent implements OnInit {
     this.maintTecnicoResponsable = '';
     this.maintHistory.set([]);
     this.auditHistory.set([]);
+    this.modelosDisponibles.set([]);
+    this.selectedMarca.set('');
   }
 }

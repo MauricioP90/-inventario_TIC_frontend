@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MaintenanceReport, ModalidadMantenimiento, TipoMantenimiento } from '../../domain/models/maintenance.model';
 import { MaintenanceUseCases } from '../../application/use-cases/maintenance.use-cases';
 import { Activo } from '../../../inventory/domain/models/activo.model';
-import { HttpActivoRepository } from '../../../inventory/infrastructure/adapters/http-activo.repository';
+import { GetAllActivosUseCase } from '../../../inventory/application/use-cases/get-all-activos.use-case';
 import { RoleService } from '../../../../core/auth/services/role.service';
 
 @Component({
@@ -87,7 +87,7 @@ import { RoleService } from '../../../../core/auth/services/role.service';
 })
 export class MaintenanceCreateFormComponent implements OnInit {
   private usecases = inject(MaintenanceUseCases);
-  private activoRepo = inject(HttpActivoRepository);
+  private getAllActivosUC = inject(GetAllActivosUseCase);
   public roleService = inject(RoleService);
 
   @Output() saved = new EventEmitter<void>();
@@ -108,7 +108,7 @@ export class MaintenanceCreateFormComponent implements OnInit {
   }
 
   cargarActivosDisponibles() {
-    this.activoRepo.getAll().subscribe((activos: Activo[]) => {
+    this.getAllActivosUC.execute().subscribe((activos: Activo[]) => {
       const candidatos = activos.filter((a: Activo) => a.estado === 'MANTENIMIENTO' || a.estado === 'DISPONIBLE');
       this.usecases.getActive().subscribe((reports: MaintenanceReport[]) => {
         const idsConReporteActivo = new Set(reports.map((r: MaintenanceReport) => r.activoId));

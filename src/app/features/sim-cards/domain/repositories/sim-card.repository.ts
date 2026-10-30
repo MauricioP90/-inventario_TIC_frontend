@@ -7,8 +7,4 @@ export abstract class SimCardRepository {
   abstract create(simCard: CreateSimCardDto): Observable<SimCard>;
   abstract update(id: string, simCard: UpdateSimCardDto): Observable<SimCard>;
   abstract delete(id: string): Observable<void>;
-  abstract findByNumero(numero: string): Observable<SimCard>;
-  abstract findByIccid(iccid: string): Observable<SimCard>;
-  abstract countByResponsible(responsibleId: string): Observable<number>;
-  abstract assign(simCardId: string, placaActivo: string): Observable<any>;
 }

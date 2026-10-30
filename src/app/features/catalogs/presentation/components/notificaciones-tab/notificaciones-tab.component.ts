@@ -8,8 +8,6 @@ import {
   NOTIFICATION_EVENTS_CATALOG,
   NotificationEventDefinition
 } from '../../../domain/models/notification-recipient.model';
-import { NotificationRecipientRepository } from '../../../domain/repositories/notification-recipient.repository';
-import { HttpNotificationRecipientRepository } from '../../../infrastructure/adapters/http-notification-recipient.repository';
 import { GetAllNotificationRecipientsUseCase } from '../../../application/use-cases/get-all-notification-recipients.use-case';
 import { CreateNotificationRecipientUseCase } from '../../../application/use-cases/create-notification-recipient.use-case';
 import { UpdateNotificationRecipientUseCase } from '../../../application/use-cases/update-notification-recipient.use-case';
@@ -20,14 +18,6 @@ import { ToggleNotificationRecipientUseCase } from '../../../application/use-cas
   selector: 'app-notificaciones-tab',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  providers: [
-    { provide: NotificationRecipientRepository, useClass: HttpNotificationRecipientRepository },
-    GetAllNotificationRecipientsUseCase,
-    CreateNotificationRecipientUseCase,
-    UpdateNotificationRecipientUseCase,
-    DeleteNotificationRecipientUseCase,
-    ToggleNotificationRecipientUseCase
-  ],
   template: `
     <div class="space-y-6 animate-fade-in">
 
