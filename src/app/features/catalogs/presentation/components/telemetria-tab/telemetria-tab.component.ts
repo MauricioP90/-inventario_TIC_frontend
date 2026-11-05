@@ -7,8 +7,7 @@ import { UpdateTipoUseCase } from '../../../application/use-cases/update-tipo.us
 import { ActivoTelemetryLog } from '../../../../inventory/domain/models/telemetry.model';
 import {
   GetTelemetryOverviewUseCase,
-  UpdateTelemetrySettingsUseCase,
-  SendTelemetryTestAlertUseCase
+  UpdateTelemetrySettingsUseCase
 } from '../../../../inventory/application/use-cases/telemetry.use-cases';
 import { Cargo } from '../../../../responsables/domain/models/cargo.model';
 import { GetAllCargosUseCase } from '../../../../responsables/application/use-cases/get-all-cargos.use-case';
@@ -34,25 +33,6 @@ import { GetAllCargosUseCase } from '../../../../responsables/application/use-ca
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-2.5 text-xs shrink-0">
-          <button
-            type="button"
-            (click)="showEmailPreview.set(true)"
-            class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white font-semibold transition-all cursor-pointer flex items-center gap-1.5">
-            <span>👁️</span> Ver Plantilla de Correo
-          </button>
-          <button
-            type="button"
-            (click)="sendTestEmail()"
-            [disabled]="sendingTestEmail()"
-            class="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold transition-all shadow-sm cursor-pointer flex items-center gap-1.5">
-            @if (sendingTestEmail()) {
-              <div class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              <span>Enviando...</span>
-            } @else {
-              <span>📨</span>
-              <span>Enviar Alerta de Prueba</span>
-            }
-          </button>
           <div class="text-right px-4 py-2 bg-white/5 rounded-xl border border-white/10">
             <span class="block text-indigo-300 font-semibold">Tipos Monitoreados</span>
             <span class="text-lg font-bold text-white">{{ monitoredTypesCount() }} / {{ tipos().length }}</span>
@@ -419,130 +399,6 @@ import { GetAllCargosUseCase } from '../../../../responsables/application/use-ca
         </div>
       </div>
 
-      <!-- Modal de Vista Previa del Correo de Alerta -->
-      @if (showEmailPreview()) {
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-          <div class="bg-slate-100 rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden">
-            <!-- Cabecera del Modal Simulador de Buzón -->
-            <div class="px-6 py-4 bg-white border-b border-slate-200 flex items-center justify-between">
-              <div>
-                <span class="text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
-                  Vista Previa de Correo Automático
-                </span>
-                <h4 class="text-sm font-bold text-slate-900 mt-1">
-                  🚨 [Alerta Telemetría] Posible Movimiento No Autorizado - Placa [1528-003000] (75.4 km fuera de sede)
-                </h4>
-                <p class="text-xs text-slate-500 mt-0.5">
-                  Destinatarios: Todos los correos activos suscritos en la pestaña <strong>Notificaciones</strong>
-                </p>
-              </div>
-              <button
-                type="button"
-                (click)="showEmailPreview.set(false)"
-                class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer">
-                ✕
-              </button>
-            </div>
-
-            <!-- Cuerpo Exacto del Correo HTML -->
-            <div class="p-6 max-h-[75vh] overflow-y-auto">
-              <div class="max-w-xl mx-auto bg-white rounded-2xl overflow-hidden border border-red-200 shadow-sm">
-                <div class="bg-gradient-to-br from-red-800 to-red-600 px-7 py-6 text-white">
-                  <div class="text-[11px] font-bold uppercase tracking-widest text-red-200 mb-1">
-                    Flota La Macarena · Monitoreo Automático de Activos
-                  </div>
-                  <h2 class="text-lg font-extrabold m-0">
-                    🚨 Controversia de Ubicación Detectada (Sin Traslado Autorizado)
-                  </h2>
-                </div>
-                <div class="p-7 text-slate-800 space-y-4">
-                  <p class="text-sm leading-relaxed text-slate-700">
-                    El servicio de arranque automático del dispositivo ha reportado una ubicación física que
-                    <strong>no coincide con su sede asignada en el inventario</strong> y no registra ninguna orden de traslado ni mantenimiento externo activo.
-                  </p>
-
-                  <!-- Comparativa de Sedes -->
-                  <div class="bg-red-50/80 border border-red-200 rounded-xl p-4 grid grid-cols-11 items-center gap-2">
-                    <div class="col-span-5">
-                      <div class="text-[10px] font-bold uppercase text-slate-500">📍 Sede Oficial en Inventario</div>
-                      <div class="text-sm font-extrabold text-slate-900 mt-1">Terminal del Sur - Bogotá</div>
-                      <div class="text-[11px] text-slate-500 font-mono mt-0.5">Coords: 4.5964, -74.1628</div>
-                    </div>
-                    <div class="col-span-1 text-center text-red-600 font-bold text-lg">➔</div>
-                    <div class="col-span-5">
-                      <div class="text-[10px] font-bold uppercase text-red-600">📡 Ubicación Detectada al Encender</div>
-                      <div class="text-sm font-extrabold text-red-700 mt-1">Terminal Villavicencio (Meta)</div>
-                      <div class="text-[11px] text-red-900 font-mono mt-0.5">4.1420, -73.6266 (75.4 km de desviación)</div>
-                    </div>
-                  </div>
-
-                  <!-- Ficha Técnica -->
-                  <div class="border border-slate-200 rounded-xl overflow-hidden text-xs">
-                    <div class="grid grid-cols-2 bg-slate-50 p-2.5 border-b border-slate-100">
-                      <div><strong>Placa:</strong> 1528-003000</div>
-                      <div><strong>Tipo:</strong> Dispositivo POS Móvil</div>
-                    </div>
-                    <div class="grid grid-cols-2 p-2.5 border-b border-slate-100">
-                      <div><strong>Equipo:</strong> Ciontek Smart POS CS30</div>
-                      <div><strong>Serial:</strong> SN-CS30-994812</div>
-                    </div>
-                    <div class="grid grid-cols-2 bg-slate-50 p-2.5">
-                      <div><strong>Custodio Actual:</strong> Custodio de Prueba</div>
-                      <div><strong>IP Reportada:</strong> 181.54.112.90</div>
-                    </div>
-                  </div>
-
-                  <!-- Botón Google Maps -->
-                  <div class="text-center py-2">
-                    <a
-                      href="https://www.google.com/maps?q=4.1420,-73.6266"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="inline-block bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow-xs">
-                      🗺️ Ver Coordenada Exacta en Google Maps
-                    </a>
-                  </div>
-
-                  <p class="text-[11px] text-slate-400 text-center pt-1">
-                    Sistema de Inventario y Telemetría Flota La Macarena
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Pie del Modal -->
-            <div class="px-6 py-3.5 bg-white border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div class="flex items-center gap-2">
-                <span class="text-xs text-slate-500 shrink-0">📱 Celular WhatsApp de prueba (opcional):</span>
-                <input
-                  type="text"
-                  [ngModel]="testPhone()"
-                  (ngModelChange)="testPhone.set($event)"
-                  placeholder="Ej: 3208549090"
-                  class="px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-slate-50 w-36 font-mono focus:bg-white focus:outline-none focus:ring-1 focus:ring-rose-500"
-                />
-              </div>
-              <div class="flex items-center gap-2 justify-end">
-                <button
-                  type="button"
-                  (click)="showEmailPreview.set(false)"
-                  class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer">
-                  Cerrar
-                </button>
-                <button
-                  type="button"
-                  (click)="sendTestEmail()"
-                  [disabled]="sendingTestEmail()"
-                  class="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5">
-                  <span>📨</span>
-                  <span>{{ sendingTestEmail() ? 'Despachando prueba...' : 'Disparar Alerta (Email + WhatsApp)' }}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
-
       <!-- Modal: Selección de Cargos para Notificaciones WhatsApp -->
       @if (showCargoModal()) {
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
@@ -659,7 +515,6 @@ export class TelemetriaTabComponent implements OnInit {
   private readonly updateTipoUC = inject(UpdateTipoUseCase);
   private readonly getTelemetryOverviewUC = inject(GetTelemetryOverviewUseCase);
   private readonly updateTelemetrySettingsUC = inject(UpdateTelemetrySettingsUseCase);
-  private readonly sendTelemetryTestAlertUC = inject(SendTelemetryTestAlertUseCase);
   private readonly getAllCargosUC = inject(GetAllCargosUseCase);
 
   @Output() showToast = new EventEmitter<{ type: 'success' | 'error'; message: string }>();
@@ -670,9 +525,6 @@ export class TelemetriaTabComponent implements OnInit {
   loading = signal(true);
   savingSettings = signal(false);
   togglingTipoId = signal<string | null>(null);
-  showEmailPreview = signal(false);
-  sendingTestEmail = signal(false);
-  testPhone = signal<string>('');
 
   // Modal y Filtro de Cargos
   showCargoModal = signal(false);
@@ -801,28 +653,6 @@ export class TelemetriaTabComponent implements OnInit {
         this.showToast.emit({
           type: 'error',
           message: err?.error?.message || 'Error al actualizar el soporte de telemetría'
-        });
-      }
-    });
-  }
-
-  sendTestEmail(): void {
-    this.sendingTestEmail.set(true);
-    const phone = this.testPhone().trim() || undefined;
-    this.sendTelemetryTestAlertUC.execute(phone).subscribe({
-      next: (res) => {
-        this.sendingTestEmail.set(false);
-        this.showEmailPreview.set(true);
-        this.showToast.emit({
-          type: 'success',
-          message: res.message || 'Alerta de prueba enviada con éxito'
-        });
-      },
-      error: (err) => {
-        this.sendingTestEmail.set(false);
-        this.showToast.emit({
-          type: 'error',
-          message: err?.error?.message || 'Error al enviar la alerta de prueba'
         });
       }
     });
