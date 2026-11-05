@@ -35,8 +35,8 @@ export class HttpTelemetryRepository implements TelemetryRepository {
     return this.http.put<TelemetrySettings>(`${this.baseUrl}/settings`, settings);
   }
 
-  sendTestAlert(): Observable<{ success: boolean; uuid?: string; message: string }> {
-    return this.http.post<{ success: boolean; uuid?: string; message: string }>(`${this.baseUrl}/test-alert`, {});
+  sendTestAlert(testPhone?: string): Observable<{ success: boolean; uuid?: string; message: string }> {
+    return this.http.post<{ success: boolean; uuid?: string; message: string }>(`${this.baseUrl}/test-alert`, { testPhone });
   }
 }
 

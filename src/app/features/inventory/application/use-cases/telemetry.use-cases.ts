@@ -48,8 +48,8 @@ export class UpdateTelemetrySettingsUseCase {
 export class SendTelemetryTestAlertUseCase {
   private repo = inject(TelemetryRepository);
 
-  execute(): Observable<{ success: boolean; uuid?: string; message: string }> {
-    return this.repo.sendTestAlert();
+  execute(testPhone?: string): Observable<{ success: boolean; uuid?: string; message: string }> {
+    return this.repo.sendTestAlert(testPhone);
   }
 }
 

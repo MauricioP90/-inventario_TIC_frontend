@@ -12,6 +12,6 @@ export abstract class TelemetryRepository {
   abstract registerHeartbeat(dto: RegisterHeartbeatDto): Observable<ActivoTelemetryLog>;
   abstract getSettings(): Observable<TelemetrySettings>;
   abstract updateSettings(settings: Partial<TelemetrySettings>): Observable<TelemetrySettings>;
-  abstract sendTestAlert(): Observable<{ success: boolean; uuid?: string; message: string }>;
+  abstract sendTestAlert(testPhone?: string): Observable<{ success: boolean; uuid?: string; message: string }>;
 }
 

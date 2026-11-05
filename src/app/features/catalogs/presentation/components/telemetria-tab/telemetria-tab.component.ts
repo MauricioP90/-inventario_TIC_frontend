@@ -50,7 +50,7 @@ import { GetAllCargosUseCase } from '../../../../responsables/application/use-ca
               <span>Enviando...</span>
             } @else {
               <span>📨</span>
-              <span>Enviar Correo de Prueba</span>
+              <span>Enviar Alerta de Prueba</span>
             }
           </button>
           <div class="text-right px-4 py-2 bg-white/5 rounded-xl border border-white/10">
@@ -511,11 +511,18 @@ import { GetAllCargosUseCase } from '../../../../responsables/application/use-ca
             </div>
 
             <!-- Pie del Modal -->
-            <div class="px-6 py-3.5 bg-white border-t border-slate-200 flex items-center justify-between">
-              <span class="text-xs text-slate-500">
-                Puedes despachar este correo real a tu bandeja de entrada:
-              </span>
+            <div class="px-6 py-3.5 bg-white border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500 shrink-0">📱 Celular WhatsApp de prueba (opcional):</span>
+                <input
+                  type="text"
+                  [ngModel]="testPhone()"
+                  (ngModelChange)="testPhone.set($event)"
+                  placeholder="Ej: 3208549090"
+                  class="px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-slate-50 w-36 font-mono focus:bg-white focus:outline-none focus:ring-1 focus:ring-rose-500"
+                />
+              </div>
+              <div class="flex items-center gap-2 justify-end">
                 <button
                   type="button"
                   (click)="showEmailPreview.set(false)"
@@ -528,7 +535,7 @@ import { GetAllCargosUseCase } from '../../../../responsables/application/use-ca
                   [disabled]="sendingTestEmail()"
                   class="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5">
                   <span>📨</span>
-                  <span>{{ sendingTestEmail() ? 'Enviando al servidor de correo...' : 'Enviar Ahora a Mi Correo' }}</span>
+                  <span>{{ sendingTestEmail() ? 'Despachando prueba...' : 'Disparar Alerta (Email + WhatsApp)' }}</span>
                 </button>
               </div>
             </div>
@@ -665,6 +672,7 @@ export class TelemetriaTabComponent implements OnInit {
   togglingTipoId = signal<string | null>(null);
   showEmailPreview = signal(false);
   sendingTestEmail = signal(false);
+  testPhone = signal<string>('');
 
   // Modal y Filtro de Cargos
   showCargoModal = signal(false);
@@ -800,20 +808,21 @@ export class TelemetriaTabComponent implements OnInit {
 
   sendTestEmail(): void {
     this.sendingTestEmail.set(true);
-    this.sendTelemetryTestAlertUC.execute().subscribe({
+    const phone = this.testPhone().trim() || undefined;
+    this.sendTelemetryTestAlertUC.execute(phone).subscribe({
       next: (res) => {
         this.sendingTestEmail.set(false);
         this.showEmailPreview.set(true);
         this.showToast.emit({
           type: 'success',
-          message: res.message || 'Correo de prueba enviado a los destinatarios activos'
+          message: res.message || 'Alerta de prueba enviada con éxito'
         });
       },
       error: (err) => {
         this.sendingTestEmail.set(false);
         this.showToast.emit({
           type: 'error',
-          message: err?.error?.message || 'Error al enviar el correo de prueba'
+          message: err?.error?.message || 'Error al enviar la alerta de prueba'
         });
       }
     });
