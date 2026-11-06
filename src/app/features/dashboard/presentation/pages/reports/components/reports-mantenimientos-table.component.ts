@@ -42,26 +42,22 @@ import { Activo } from '../../../../../inventory/domain/models/activo.model';
               <!-- Falla / Diagnostico -->
               <td class="px-6 py-4 max-w-sm">
                 <div class="flex items-center gap-2">
-                  <span class="truncate block max-w-[180px] text-xs text-slate-600" [title]="rep.diagnostico || 'Sin diagnóstico'">
-                    <span class="font-medium text-slate-500">Diag:</span> {{ rep.diagnostico || 'Sin detalles' }}
-                  </span>
                   @if (rep.diagnostico || rep.accionesRealizadas || rep.repuestosUsados || rep.motivoEscalacion) {
-                    <button
+                    <!-- Botón Desplegable idéntico a Activos -->
+                    <button 
                       type="button"
                       (click)="toggleExpand(rep.id)"
-                      class="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border transition-all cursor-pointer flex items-center gap-0.5"
-                      [class.bg-amber-600]="isExpanded(rep.id)"
-                      [class.text-white]="isExpanded(rep.id)"
-                      [class.border-amber-600]="isExpanded(rep.id)"
-                      [class.bg-slate-50]="!isExpanded(rep.id)"
-                      [class.text-amber-700]="!isExpanded(rep.id)"
-                      [class.border-slate-200]="!isExpanded(rep.id)"
-                      [class.hover:bg-amber-50]="!isExpanded(rep.id)"
+                      class="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/80 transition-colors shrink-0"
                       [title]="isExpanded(rep.id) ? 'Ocultar detalles' : 'Ver ficha técnica completa'">
-                      <span>{{ isExpanded(rep.id) ? '▲' : '▼' }}</span>
-                      <span>{{ isExpanded(rep.id) ? 'Cerrar' : 'Ficha' }}</span>
+                      <span class="text-[10px] font-bold select-none">{{ isExpanded(rep.id) ? '▲' : '▼' }}</span>
                     </button>
                   }
+                  <span 
+                    (click)="toggleExpand(rep.id)"
+                    class="truncate block max-w-[200px] text-xs text-slate-600 cursor-pointer hover:text-indigo-600 transition-colors" 
+                    title="Clic para desplegar ficha técnica">
+                    <span class="font-medium text-slate-500">Diag:</span> {{ rep.diagnostico || 'Sin detalles' }}
+                  </span>
                 </div>
               </td>
               <!-- Modalidad -->

@@ -82,27 +82,23 @@ import { Movement, MOVEMENT_TYPE_LABELS, MovementStatus } from '../../../../../m
                 <span *ngIf="!m.responsible" class="text-slate-400 italic">No asignado</span>
               </td>
               <!-- Notas -->
-              <td class="px-6 py-4 max-w-[220px]">
+              <td class="px-6 py-4 max-w-[240px]">
                 @if (m.notes && m.notes.trim()) {
                   <div class="flex items-center gap-2">
-                    <span class="text-slate-500 italic text-xs leading-tight truncate block max-w-[140px]" [title]="m.notes">
-                      {{ m.notes }}
-                    </span>
-                    <button
+                    <!-- Botón Desplegable idéntico a Activos -->
+                    <button 
                       type="button"
                       (click)="toggleExpand(m.id)"
-                      class="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border transition-all cursor-pointer flex items-center gap-0.5"
-                      [class.bg-indigo-600]="isExpanded(m.id)"
-                      [class.text-white]="isExpanded(m.id)"
-                      [class.border-indigo-600]="isExpanded(m.id)"
-                      [class.bg-slate-50]="!isExpanded(m.id)"
-                      [class.text-indigo-600]="!isExpanded(m.id)"
-                      [class.border-slate-200]="!isExpanded(m.id)"
-                      [class.hover:bg-indigo-50]="!isExpanded(m.id)"
+                      class="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/80 transition-colors shrink-0"
                       [title]="isExpanded(m.id) ? 'Ocultar observación' : 'Ver observación completa'">
-                      <span>{{ isExpanded(m.id) ? '▲' : '▼' }}</span>
-                      <span>{{ isExpanded(m.id) ? 'Cerrar' : 'Nota' }}</span>
+                      <span class="text-[10px] font-bold select-none">{{ isExpanded(m.id) ? '▲' : '▼' }}</span>
                     </button>
+                    <span 
+                      (click)="toggleExpand(m.id)"
+                      class="text-slate-600 italic text-xs leading-tight truncate block cursor-pointer hover:text-indigo-600 transition-colors" 
+                      title="Clic para desplegar observación completa">
+                      {{ m.notes }}
+                    </span>
                   </div>
                 } @else {
                   <span class="text-slate-300 font-mono text-[11px]">—</span>
