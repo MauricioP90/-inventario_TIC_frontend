@@ -66,6 +66,7 @@ import { DashboardChartsComponent } from '../components/dashboard-charts.compone
         <!-- Sección de Gráficos con Drill-down -->
         <app-dashboard-charts
           [metrics]="metrics()"
+          [bannerTypeFilter]="bannerTypeFilter()"
         />
       }
     </div>

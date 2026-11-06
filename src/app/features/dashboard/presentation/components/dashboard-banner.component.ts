@@ -150,8 +150,21 @@ export class DashboardBannerComponent {
   }
   private _metrics = signal<DashboardMetrics | null>(null);
 
-  @Input() bannerTypeFilter: string | null = null;
-  @Input() bannerModelFilter: string | null = null;
+  @Input() set bannerTypeFilter(val: string | null) {
+    this._bannerTypeFilter.set(val);
+  }
+  get bannerTypeFilter(): string | null {
+    return this._bannerTypeFilter();
+  }
+  private _bannerTypeFilter = signal<string | null>(null);
+
+  @Input() set bannerModelFilter(val: string | null) {
+    this._bannerModelFilter.set(val);
+  }
+  get bannerModelFilter(): string | null {
+    return this._bannerModelFilter();
+  }
+  private _bannerModelFilter = signal<string | null>(null);
 
   @Output() typeFilterChange = new EventEmitter<string | null>();
   @Output() modelFilterChange = new EventEmitter<string | null>();
@@ -162,7 +175,7 @@ export class DashboardBannerComponent {
   });
 
   availableBannerModels = computed(() => {
-    const selectedType = this.bannerTypeFilter;
+    const selectedType = this._bannerTypeFilter();
     if (!selectedType) return [];
     const byModel = this._metrics()?.stateDistributionByModel?.[selectedType];
     return byModel ? Object.keys(byModel).sort() : [];
@@ -170,8 +183,8 @@ export class DashboardBannerComponent {
 
   activeBannerDistribution = computed<StateDistribution>(() => {
     const m = this._metrics();
-    const type = this.bannerTypeFilter;
-    const model = this.bannerModelFilter;
+    const type = this._bannerTypeFilter();
+    const model = this._bannerModelFilter();
 
     if (type && model) {
       const modelDist = m?.stateDistributionByModel?.[type]?.[model];
@@ -197,25 +210,25 @@ export class DashboardBannerComponent {
   bannerTotalCount = computed(() => this.activeBannerDistribution().total);
 
   bannerTitle = computed(() => {
-    const type = this.bannerTypeFilter;
-    const model = this.bannerModelFilter;
+    const type = this._bannerTypeFilter();
+    const model = this._bannerModelFilter();
     if (type && model) return `Total ${model}`;
     if (type) return `Total ${type}`;
     return 'Total Productos Registrados';
   });
 
   bannerSubtitle = computed(() => {
-    const type = this.bannerTypeFilter;
-    const model = this.bannerModelFilter;
+    const type = this._bannerTypeFilter();
+    const model = this._bannerModelFilter();
     if (type && model) return `Distribución operativa de ${model} (${type})`;
     if (type) return `Distribución consolidada de la categoría ${type}`;
     return 'Equipos y componentes activos registrados en la plataforma';
   });
 
   bannerDonutLabel = computed(() => {
-    const model = this.bannerModelFilter;
+    const model = this._bannerModelFilter();
     if (model) return model.length > 9 ? 'Equipos' : model;
-    const type = this.bannerTypeFilter;
+    const type = this._bannerTypeFilter();
     if (type) return 'Equipos';
     return 'Activos';
   });

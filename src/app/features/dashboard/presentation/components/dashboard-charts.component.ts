@@ -37,15 +37,27 @@ import { DashboardMetrics } from '../../domain/models/dashboard.model';
             </div>
           </div>
           
-          <!-- Leyenda de 2 colores -->
-          <div class="flex items-center gap-4 text-xs font-bold">
+          <!-- Leyenda de estados -->
+          <div class="flex flex-wrap items-center gap-3 text-xs font-bold">
             <div class="flex items-center gap-1.5">
               <div class="h-3 w-3 rounded-md bg-emerald-500"></div>
-              <span class="text-slate-600">Disponible (Bodega)</span>
+              <span class="text-slate-600">Disponible</span>
             </div>
             <div class="flex items-center gap-1.5">
               <div class="h-3 w-3 rounded-md bg-indigo-600"></div>
               <span class="text-slate-600">Asignado</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <div class="h-3 w-3 rounded-md bg-sky-500"></div>
+              <span class="text-slate-600">En Tránsito</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <div class="h-3 w-3 rounded-md bg-amber-500"></div>
+              <span class="text-slate-600">Mantenimiento</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <div class="h-3 w-3 rounded-md bg-slate-400"></div>
+              <span class="text-slate-600">Baja</span>
             </div>
           </div>
         </div>
@@ -59,10 +71,14 @@ import { DashboardMetrics } from '../../domain/models/dashboard.model';
                (click)="onBarClick(item.key)">
             
             <!-- Info popup al pasar el mouse -->
-            <div class="opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded-lg p-2 absolute mb-64 shadow-xl z-20 pointer-events-none whitespace-nowrap">
-              <p class="font-bold border-b border-slate-700 pb-1 mb-1">{{ item.key }}</p>
-              <p class="flex items-center justify-between gap-3 text-emerald-400">Bodega: <span class="font-extrabold">{{ item.disponible }}</span></p>
-              <p class="flex items-center justify-between gap-3 text-indigo-300">Asignados: <span class="font-extrabold">{{ item.asignado }}</span></p>
+            <div class="opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] rounded-lg p-2.5 absolute mb-64 shadow-xl z-20 pointer-events-none whitespace-nowrap space-y-0.5">
+              <p class="font-bold border-b border-slate-700 pb-1 mb-1">{{ item.key }} ({{ item.total }})</p>
+              <p class="flex items-center justify-between gap-3 text-emerald-400">Disponible: <span class="font-extrabold">{{ item.disponible }}</span></p>
+              <p class="flex items-center justify-between gap-3 text-indigo-300">Asignado: <span class="font-extrabold">{{ item.asignado }}</span></p>
+              <p *ngIf="item.enTransito > 0" class="flex items-center justify-between gap-3 text-sky-300">En Tránsito: <span class="font-extrabold">{{ item.enTransito }}</span></p>
+              <p *ngIf="item.mantenimiento > 0" class="flex items-center justify-between gap-3 text-amber-300">Mantenimiento: <span class="font-extrabold">{{ item.mantenimiento }}</span></p>
+              <p *ngIf="item.rechazado > 0" class="flex items-center justify-between gap-3 text-red-300">Rechazado: <span class="font-extrabold">{{ item.rechazado }}</span></p>
+              <p *ngIf="item.baja > 0" class="flex items-center justify-between gap-3 text-slate-300">Baja: <span class="font-extrabold">{{ item.baja }}</span></p>
               <p *ngIf="!drillDownType()" class="text-[9px] text-slate-400 mt-1 pt-1 border-t border-slate-700">Clic para ver modelos →</p>
             </div>
 
@@ -72,6 +88,30 @@ import { DashboardMetrics } from '../../domain/models/dashboard.model';
                  [class.ring-transparent]="!drillDownType()"
                  [class.group-hover:ring-indigo-300]="!drillDownType()"
                  [style.height.px]="item.barHeight">
+              <!-- Segmento Baja (Gris) -->
+              <div *ngIf="item.baja > 0"
+                   class="bg-slate-400 w-full transition-colors group-hover:bg-slate-300"
+                   [style.height.%]="item.bajaHeight"
+                   title="Baja: {{ item.baja }}">
+              </div>
+              <!-- Segmento Rechazado (Rojo) -->
+              <div *ngIf="item.rechazado > 0"
+                   class="bg-red-500 w-full transition-colors group-hover:bg-red-400"
+                   [style.height.%]="item.rechazadoHeight"
+                   title="Rechazado: {{ item.rechazado }}">
+              </div>
+              <!-- Segmento Mantenimiento (Ámbar) -->
+              <div *ngIf="item.mantenimiento > 0"
+                   class="bg-amber-500 w-full transition-colors group-hover:bg-amber-400"
+                   [style.height.%]="item.mantenimientoHeight"
+                   title="Mantenimiento: {{ item.mantenimiento }}">
+              </div>
+              <!-- Segmento En Tránsito (Sky) -->
+              <div *ngIf="item.enTransito > 0"
+                   class="bg-sky-500 w-full transition-colors group-hover:bg-sky-400"
+                   [style.height.%]="item.enTransitoHeight"
+                   title="En Tránsito: {{ item.enTransito }}">
+              </div>
               <!-- Segmento Asignado (Indigo) -->
               <div *ngIf="item.asignado > 0"
                    class="bg-indigo-600 w-full transition-colors group-hover:bg-indigo-500"
@@ -269,6 +309,12 @@ export class DashboardChartsComponent {
   }
   private _metrics = signal<DashboardMetrics | null>(null);
 
+  @Input() set bannerTypeFilter(val: string | null) {
+    this.drillDownType.set(val);
+    this.drillDownMant.set(val && this._metrics()?.modelMantenimiento?.[val] ? val : null);
+    this.drillDownBaja.set(val && this._metrics()?.modelBaja?.[val] ? val : null);
+  }
+
   /** Drill-down signals para las 3 gráficas */
   drillDownType = signal<string | null>(null);
   drillDownMant = signal<string | null>(null);
@@ -279,9 +325,36 @@ export class DashboardChartsComponent {
   chartAnimatingMant = signal(false);
   chartAnimatingBaja = signal(false);
 
-  // ── Gráfico principal: Disponible vs Asignado ──
+  // ── Gráfico principal: Distribución Completa por Tipo y Modelo ──
 
   deviceTypeStacked = computed(() => {
+    const byType = this._metrics()?.stateDistributionByType;
+    if (byType && Object.keys(byType).length > 0) {
+      const entries = Object.entries(byType);
+      const max = Math.max(...entries.map(([_, v]) => v.total), 1);
+
+      return entries.map(([key, v]) => {
+        const total = v.total;
+        return {
+          key,
+          total,
+          disponible: v.disponible,
+          asignado: v.asignado,
+          enTransito: v.enTransito,
+          mantenimiento: v.mantenimiento,
+          rechazado: v.rechazado,
+          baja: v.baja,
+          disponibleHeight: total > 0 ? Math.round((v.disponible / total) * 100) : 0,
+          asignadoHeight: total > 0 ? Math.round((v.asignado / total) * 100) : 0,
+          enTransitoHeight: total > 0 ? Math.round((v.enTransito / total) * 100) : 0,
+          mantenimientoHeight: total > 0 ? Math.round((v.mantenimiento / total) * 100) : 0,
+          rechazadoHeight: total > 0 ? Math.round((v.rechazado / total) * 100) : 0,
+          bajaHeight: total > 0 ? Math.round((v.baja / total) * 100) : 0,
+          barHeight: Math.round((total / max) * 160)
+        };
+      });
+    }
+
     const data = this._metrics()?.typeStacked ?? {};
     const entries = Object.entries(data);
     if (entries.length === 0) return [];
@@ -295,8 +368,16 @@ export class DashboardChartsComponent {
         total,
         disponible: v.disponible,
         asignado: v.asignado,
+        enTransito: 0,
+        mantenimiento: 0,
+        rechazado: 0,
+        baja: 0,
         disponibleHeight: total > 0 ? Math.round((v.disponible / total) * 100) : 0,
         asignadoHeight: total > 0 ? Math.round((v.asignado / total) * 100) : 0,
+        enTransitoHeight: 0,
+        mantenimientoHeight: 0,
+        rechazadoHeight: 0,
+        bajaHeight: 0,
         barHeight: Math.round((total / max) * 160)
       };
     });
@@ -305,6 +386,33 @@ export class DashboardChartsComponent {
   modelDrillDownData = computed(() => {
     const selectedType = this.drillDownType();
     if (!selectedType) return [];
+
+    const byModel = this._metrics()?.stateDistributionByModel?.[selectedType];
+    if (byModel && Object.keys(byModel).length > 0) {
+      const entries = Object.entries(byModel);
+      const max = Math.max(...entries.map(([_, v]) => v.total), 1);
+
+      return entries.map(([key, v]) => {
+        const total = v.total;
+        return {
+          key,
+          total,
+          disponible: v.disponible,
+          asignado: v.asignado,
+          enTransito: v.enTransito,
+          mantenimiento: v.mantenimiento,
+          rechazado: v.rechazado,
+          baja: v.baja,
+          disponibleHeight: total > 0 ? Math.round((v.disponible / total) * 100) : 0,
+          asignadoHeight: total > 0 ? Math.round((v.asignado / total) * 100) : 0,
+          enTransitoHeight: total > 0 ? Math.round((v.enTransito / total) * 100) : 0,
+          mantenimientoHeight: total > 0 ? Math.round((v.mantenimiento / total) * 100) : 0,
+          rechazadoHeight: total > 0 ? Math.round((v.rechazado / total) * 100) : 0,
+          bajaHeight: total > 0 ? Math.round((v.baja / total) * 100) : 0,
+          barHeight: Math.round((total / max) * 160)
+        };
+      }).sort((a, b) => b.total - a.total);
+    }
 
     const modelData = this._metrics()?.modelStacked?.[selectedType] ?? {};
     const entries = Object.entries(modelData);
@@ -319,8 +427,16 @@ export class DashboardChartsComponent {
         total,
         disponible: v.disponible,
         asignado: v.asignado,
+        enTransito: 0,
+        mantenimiento: 0,
+        rechazado: 0,
+        baja: 0,
         disponibleHeight: total > 0 ? Math.round((v.disponible / total) * 100) : 0,
         asignadoHeight: total > 0 ? Math.round((v.asignado / total) * 100) : 0,
+        enTransitoHeight: 0,
+        mantenimientoHeight: 0,
+        rechazadoHeight: 0,
+        bajaHeight: 0,
         barHeight: Math.round((total / max) * 160)
       };
     }).sort((a, b) => b.total - a.total);
@@ -408,7 +524,7 @@ export class DashboardChartsComponent {
 
   onBarClick(typeKey: string): void {
     if (this.drillDownType()) return;
-    const modelData = this._metrics()?.modelStacked?.[typeKey];
+    const modelData = this._metrics()?.stateDistributionByModel?.[typeKey] ?? this._metrics()?.modelStacked?.[typeKey];
     if (!modelData || Object.keys(modelData).length === 0) return;
     this.triggerAnimation('main');
     this.drillDownType.set(typeKey);
