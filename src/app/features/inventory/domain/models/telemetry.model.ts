@@ -29,6 +29,7 @@ export interface TelemetrySettings {
   whatsappEnabled?: boolean;
   whatsappNotifyCustodian?: boolean;
   whatsappCargoIds?: string[];
+  adminPassword?: string;
   updatedAt?: string;
 }
 

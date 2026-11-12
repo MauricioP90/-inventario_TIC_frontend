@@ -232,6 +232,37 @@ import { GetAllCargosUseCase } from '../../../../responsables/application/use-ca
                 </div>
               }
             </div>
+
+            <!-- Contraseña Maestra de Administración Móvil (TI) -->
+            <div class="pt-3 border-t border-slate-100 space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>🔐</span>
+                  <span>Clave Administración TI (Agente Móvil)</span>
+                </label>
+                <span class="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                  Acceso Técnico
+                </span>
+              </div>
+              <div class="relative">
+                <input
+                  [type]="showAdminPassword() ? 'text' : 'password'"
+                  [(ngModel)]="adminPassword"
+                  placeholder="Ej: FLM#Admin2026"
+                  class="w-full pl-3.5 pr-10 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white font-mono text-slate-800"
+                />
+                <button
+                  type="button"
+                  (click)="showAdminPassword.set(!showAdminPassword())"
+                  class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm p-1 rounded-md transition-colors cursor-pointer"
+                  [title]="showAdminPassword() ? 'Ocultar contraseña' : 'Ver contraseña'">
+                  {{ showAdminPassword() ? '🙈' : '👁️' }}
+                </button>
+              </div>
+              <p class="text-[11px] text-slate-400 leading-relaxed">
+                Clave centralizada para desbloquear el panel técnico del dispositivo en taquillas. Si se actualiza aquí, surte efecto inmediatamente en todas las terminales del país.
+              </p>
+            </div>
           </div>
 
           <div class="pt-4 border-t border-slate-100">
@@ -240,7 +271,7 @@ import { GetAllCargosUseCase } from '../../../../responsables/application/use-ca
               (click)="saveSettings()"
               [disabled]="savingSettings()"
               class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer">
-              {{ savingSettings() ? 'Guardando configuración...' : '💾 Guardar Parámetros de Geocerca' }}
+              {{ savingSettings() ? 'Guardando configuración...' : '💾 Guardar Parámetros y Clave de TI' }}
             </button>
           </div>
         </div>
@@ -536,6 +567,8 @@ export class TelemetriaTabComponent implements OnInit {
   whatsappEnabled = true;
   whatsappNotifyCustodian = true;
   whatsappCargoIds = signal<string[]>([]);
+  adminPassword = 'FLM#Admin2026';
+  showAdminPassword = signal(false);
 
   monitoredTypesCount = computed(() => this.tipos().filter(t => t.admiteTelemetria).length);
   selectedCargosCount = computed(() => this.whatsappCargoIds().length);
@@ -574,6 +607,9 @@ export class TelemetriaTabComponent implements OnInit {
           this.whatsappEnabled = overview.settings.whatsappEnabled !== undefined ? overview.settings.whatsappEnabled : true;
           this.whatsappNotifyCustodian = overview.settings.whatsappNotifyCustodian !== undefined ? overview.settings.whatsappNotifyCustodian : true;
           this.whatsappCargoIds.set(overview.settings.whatsappCargoIds || []);
+          if (overview.settings.adminPassword) {
+            this.adminPassword = overview.settings.adminPassword;
+          }
         }
         this.controversies.set(overview.recentControversies || []);
       }
@@ -588,7 +624,8 @@ export class TelemetriaTabComponent implements OnInit {
       alertsEnabled: this.alertsEnabled,
       whatsappEnabled: this.whatsappEnabled,
       whatsappNotifyCustodian: this.whatsappNotifyCustodian,
-      whatsappCargoIds: this.whatsappCargoIds()
+      whatsappCargoIds: this.whatsappCargoIds(),
+      adminPassword: this.adminPassword.trim()
     }).subscribe({
       next: (updated) => {
         this.toleranceKm = updated.toleranceKm;
@@ -597,10 +634,13 @@ export class TelemetriaTabComponent implements OnInit {
         this.whatsappEnabled = updated.whatsappEnabled ?? true;
         this.whatsappNotifyCustodian = updated.whatsappNotifyCustodian ?? true;
         this.whatsappCargoIds.set(updated.whatsappCargoIds || []);
+        if (updated.adminPassword) {
+          this.adminPassword = updated.adminPassword;
+        }
         this.savingSettings.set(false);
         this.showToast.emit({
           type: 'success',
-          message: `Configuración de geocerca y notificaciones guardada con éxito.`
+          message: `Configuración de geocerca, alertas y clave técnica guardada con éxito.`
         });
       },
       error: (err) => {
