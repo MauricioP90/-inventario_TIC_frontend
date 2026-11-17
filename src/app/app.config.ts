@@ -39,9 +39,9 @@ import { HttpNotificationRecipientRepository } from './features/catalogs/infrast
 import { TelemetryRepository } from './features/inventory/domain/repositories/telemetry.repository';
 import { HttpTelemetryRepository } from './features/inventory/infrastructure/adapters/http-telemetry.repository';
 
-// Condición para incluir el token en las peticiones al backend
+// Condición para incluir el token Bearer tanto en desarrollo como en producción (rutas relativas /api o absolutas)
 const urlCondition = createInterceptorCondition<IncludeBearerTokenCondition>({
-  urlPattern: /^(http:\/\/localhost:3000\/api)(\/.*)?$/i,
+  urlPattern: /^(https?:\/\/[^/]+)?\/api(\/.*)?$/i,
   bearerPrefix: 'Bearer'
 });
 

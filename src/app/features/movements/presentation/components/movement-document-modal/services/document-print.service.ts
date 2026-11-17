@@ -1,5 +1,15 @@
 import { Injectable } from '@angular/core';
 
+function escapeHtml(value: string): string {
+  if (!value) return '';
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -37,13 +47,15 @@ export class DocumentPrintService {
       .map(node => node.outerHTML)
       .join('\n');
 
+    const safeTitle = `${escapeHtml(titulo)}${consecutivo ? ' - ' + escapeHtml(consecutivo) : ''}`;
+
     iframeDoc.open();
     iframeDoc.write(`
       <!DOCTYPE html>
       <html lang="es">
       <head>
         <meta charset="utf-8">
-        <title>${titulo}${consecutivo ? ' - ' + consecutivo : ''}</title>
+        <title>${safeTitle}</title>
         ${styleTags}
         <style>
           @page {

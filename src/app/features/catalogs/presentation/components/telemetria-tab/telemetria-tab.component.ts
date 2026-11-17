@@ -240,15 +240,15 @@ import { GetAllCargosUseCase } from '../../../../responsables/application/use-ca
                   <span>🔐</span>
                   <span>Clave Administración TI (Agente Móvil)</span>
                 </label>
-                <span class="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                  Acceso Técnico
+                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span>🔒</span> Protegida con Hash
                 </span>
               </div>
               <div class="relative">
                 <input
                   [type]="showAdminPassword() ? 'text' : 'password'"
                   [(ngModel)]="adminPassword"
-                  placeholder="Ej: FLM#Admin2026"
+                  placeholder="•••••••• (Escribe aquí solo si deseas cambiarla)"
                   class="w-full pl-3.5 pr-10 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white font-mono text-slate-800"
                 />
                 <button
@@ -267,7 +267,7 @@ import { GetAllCargosUseCase } from '../../../../responsables/application/use-ca
                 </button>
               </div>
               <p class="text-[11px] text-slate-400 leading-relaxed">
-                Clave centralizada para desbloquear el panel técnico del dispositivo en taquillas. Si se actualiza aquí, surte efecto inmediatamente en todas las terminales del país.
+                Clave centralizada para el menú técnico en taquillas y POS. Si no escribes nada, se conserva la clave actual resguardada con hash en el servidor.
               </p>
             </div>
           </div>
@@ -574,7 +574,8 @@ export class TelemetriaTabComponent implements OnInit {
   whatsappEnabled = true;
   whatsappNotifyCustodian = true;
   whatsappCargoIds = signal<string[]>([]);
-  adminPassword = 'FLM#Admin2026';
+  adminPassword = '';
+  hasAdminPassword = signal(true);
   showAdminPassword = signal(false);
 
   monitoredTypesCount = computed(() => this.tipos().filter(t => t.admiteTelemetria).length);
@@ -614,9 +615,8 @@ export class TelemetriaTabComponent implements OnInit {
           this.whatsappEnabled = overview.settings.whatsappEnabled !== undefined ? overview.settings.whatsappEnabled : true;
           this.whatsappNotifyCustodian = overview.settings.whatsappNotifyCustodian !== undefined ? overview.settings.whatsappNotifyCustodian : true;
           this.whatsappCargoIds.set(overview.settings.whatsappCargoIds || []);
-          if (overview.settings.adminPassword) {
-            this.adminPassword = overview.settings.adminPassword;
-          }
+          this.hasAdminPassword.set(overview.settings.hasAdminPassword ?? true);
+          this.adminPassword = '';
         }
         this.controversies.set(overview.recentControversies || []);
       }
@@ -625,15 +625,20 @@ export class TelemetriaTabComponent implements OnInit {
 
   saveSettings(): void {
     this.savingSettings.set(true);
-    this.updateTelemetrySettingsUC.execute({
+    const payload: any = {
       toleranceKm: Number(this.toleranceKm),
       cooldownHours: Number(this.cooldownHours),
-      alertsEnabled: this.alertsEnabled,
-      whatsappEnabled: this.whatsappEnabled,
-      whatsappNotifyCustodian: this.whatsappNotifyCustodian,
-      whatsappCargoIds: this.whatsappCargoIds(),
-      adminPassword: this.adminPassword.trim()
-    }).subscribe({
+      alertsEnabled: Boolean(this.alertsEnabled),
+      whatsappEnabled: Boolean(this.whatsappEnabled),
+      whatsappNotifyCustodian: Boolean(this.whatsappNotifyCustodian),
+      whatsappCargoIds: this.whatsappCargoIds()
+    };
+
+    if (this.adminPassword && this.adminPassword.trim().length > 0) {
+      payload.adminPassword = this.adminPassword.trim();
+    }
+
+    this.updateTelemetrySettingsUC.execute(payload).subscribe({
       next: (updated) => {
         this.toleranceKm = updated.toleranceKm;
         this.cooldownHours = updated.cooldownHours;
@@ -641,9 +646,8 @@ export class TelemetriaTabComponent implements OnInit {
         this.whatsappEnabled = updated.whatsappEnabled ?? true;
         this.whatsappNotifyCustodian = updated.whatsappNotifyCustodian ?? true;
         this.whatsappCargoIds.set(updated.whatsappCargoIds || []);
-        if (updated.adminPassword) {
-          this.adminPassword = updated.adminPassword;
-        }
+        this.hasAdminPassword.set(updated.hasAdminPassword ?? true);
+        this.adminPassword = '';
         this.savingSettings.set(false);
         this.showToast.emit({
           type: 'success',
