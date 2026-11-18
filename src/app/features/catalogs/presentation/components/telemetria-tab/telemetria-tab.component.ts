@@ -234,21 +234,23 @@ import { GetAllCargosUseCase } from '../../../../responsables/application/use-ca
             </div>
 
             <!-- Contraseña Maestra de Administración Móvil (TI) -->
-            <div class="pt-3 border-t border-slate-100 space-y-2">
+            <div class="pt-3 border-t border-slate-100 space-y-2.5">
               <div class="flex items-center justify-between">
                 <label class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                   <span>🔐</span>
                   <span>Clave Administración TI (Agente Móvil)</span>
                 </label>
-                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <span>🔒</span> Protegida con Hash
-                </span>
+                @if (hasAdminPassword()) {
+                  <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span>🔒</span> Clave Activa
+                  </span>
+                }
               </div>
               <div class="relative">
                 <input
                   [type]="showAdminPassword() ? 'text' : 'password'"
                   [(ngModel)]="adminPassword"
-                  placeholder="•••••••• (Escribe aquí solo si deseas cambiarla)"
+                  placeholder="Nueva clave (escribe solo si deseas cambiarla)"
                   class="w-full pl-3.5 pr-10 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white font-mono text-slate-800"
                 />
                 <button
@@ -256,7 +258,6 @@ import { GetAllCargosUseCase } from '../../../../responsables/application/use-ca
                   (click)="showAdminPassword.set(!showAdminPassword())"
                   class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1.5 rounded-md transition-colors cursor-pointer flex items-center justify-center"
                   [title]="showAdminPassword() ? 'Ocultar contraseña' : 'Ver contraseña'">
-                  <!-- Icono de ojito profesional (abierto / tachado) -->
                   <svg *ngIf="showAdminPassword()" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
                   </svg>
@@ -266,8 +267,27 @@ import { GetAllCargosUseCase } from '../../../../responsables/application/use-ca
                   </svg>
                 </button>
               </div>
+
+              @if (adminPassword.trim().length > 0) {
+                <div class="space-y-1 animate-fade-in">
+                  <input
+                    [type]="showAdminPassword() ? 'text' : 'password'"
+                    [(ngModel)]="confirmAdminPassword"
+                    placeholder="Confirmar nueva clave"
+                    class="w-full px-3.5 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 bg-white font-mono text-slate-800"
+                    [class.border-rose-400]="confirmAdminPassword.length > 0 && confirmAdminPassword !== adminPassword"
+                    [class.focus:ring-rose-500]="confirmAdminPassword.length > 0 && confirmAdminPassword !== adminPassword"
+                    [class.border-slate-300]="confirmAdminPassword.length === 0 || confirmAdminPassword === adminPassword"
+                    [class.focus:ring-amber-500]="confirmAdminPassword.length === 0 || confirmAdminPassword === adminPassword"
+                  />
+                  @if (confirmAdminPassword.length > 0 && confirmAdminPassword !== adminPassword) {
+                    <p class="text-[11px] font-semibold text-rose-600">Las contraseñas no coinciden.</p>
+                  }
+                </div>
+              }
+
               <p class="text-[11px] text-slate-400 leading-relaxed">
-                Clave centralizada para el menú técnico en taquillas y POS. Si no escribes nada, se conserva la clave actual resguardada con hash en el servidor.
+                Clave centralizada para el menú técnico en taquillas y POS. Si no escribes nada, se conserva la clave actual.
               </p>
             </div>
           </div>
@@ -575,6 +595,7 @@ export class TelemetriaTabComponent implements OnInit {
   whatsappNotifyCustodian = true;
   whatsappCargoIds = signal<string[]>([]);
   adminPassword = '';
+  confirmAdminPassword = '';
   hasAdminPassword = signal(true);
   showAdminPassword = signal(false);
 
@@ -617,6 +638,7 @@ export class TelemetriaTabComponent implements OnInit {
           this.whatsappCargoIds.set(overview.settings.whatsappCargoIds || []);
           this.hasAdminPassword.set(overview.settings.hasAdminPassword ?? true);
           this.adminPassword = '';
+          this.confirmAdminPassword = '';
         }
         this.controversies.set(overview.recentControversies || []);
       }
@@ -624,6 +646,15 @@ export class TelemetriaTabComponent implements OnInit {
   }
 
   saveSettings(): void {
+    const newPass = this.adminPassword.trim();
+    if (newPass.length > 0 && newPass !== this.confirmAdminPassword.trim()) {
+      this.showToast.emit({
+        type: 'error',
+        message: 'La nueva clave de administración TI y su confirmación no coinciden.'
+      });
+      return;
+    }
+
     this.savingSettings.set(true);
     const payload: any = {
       toleranceKm: Number(this.toleranceKm),
@@ -634,8 +665,8 @@ export class TelemetriaTabComponent implements OnInit {
       whatsappCargoIds: this.whatsappCargoIds()
     };
 
-    if (this.adminPassword && this.adminPassword.trim().length > 0) {
-      payload.adminPassword = this.adminPassword.trim();
+    if (newPass.length > 0) {
+      payload.adminPassword = newPass;
     }
 
     this.updateTelemetrySettingsUC.execute(payload).subscribe({
@@ -648,6 +679,7 @@ export class TelemetriaTabComponent implements OnInit {
         this.whatsappCargoIds.set(updated.whatsappCargoIds || []);
         this.hasAdminPassword.set(updated.hasAdminPassword ?? true);
         this.adminPassword = '';
+        this.confirmAdminPassword = '';
         this.savingSettings.set(false);
         this.showToast.emit({
           type: 'success',

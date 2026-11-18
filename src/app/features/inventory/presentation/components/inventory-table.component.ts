@@ -5,10 +5,7 @@ import { Activo } from '../../domain/models/activo.model';
 import { InstalledSoftwareEvaluation } from '../../../catalogs/domain/models/software.model';
 import { GetActivoInstalledSoftwareUseCase } from '../../../catalogs/application/use-cases/software.use-cases';
 import { ActivoTelemetryLog } from '../../domain/models/telemetry.model';
-import {
-  GetActivoTelemetryHistoryUseCase,
-  RegisterDeviceHeartbeatUseCase
-} from '../../application/use-cases/telemetry.use-cases';
+import { GetActivoTelemetryHistoryUseCase } from '../../application/use-cases/telemetry.use-cases';
 
 @Component({
   selector: 'app-inventory-table',
@@ -233,26 +230,6 @@ import {
                             <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                               <span>📡</span> Telemetría de Arranque y Geocerca (GPS)
                             </h4>
-                            @if (isAdmin && activo.estado !== 'BAJA') {
-                              <div class="flex items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  [disabled]="telemetryMap()[activo.id]?.simulating"
-                                  (click)="simulateHeartbeat(activo, false)"
-                                  title="Simular reporte de encendido dentro de su sede asignada"
-                                  class="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer disabled:opacity-50">
-                                  ✅ Simular en Sede
-                                </button>
-                                <button
-                                  type="button"
-                                  [disabled]="telemetryMap()[activo.id]?.simulating"
-                                  (click)="simulateHeartbeat(activo, true)"
-                                  title="Simular reporte de encendido fuera de la sede (dispara controversia y alerta de correo)"
-                                  class="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer disabled:opacity-50">
-                                  🚨 Simular Controversia GPS
-                                </button>
-                              </div>
-                            }
                           </div>
 
                           @if (telemetryMap()[activo.id]?.loading) {
@@ -388,7 +365,6 @@ import {
 export class InventoryTableComponent {
   private readonly getInstalledSoftwareUC = inject(GetActivoInstalledSoftwareUseCase);
   private readonly getTelemetryHistoryUC = inject(GetActivoTelemetryHistoryUseCase);
-  private readonly registerHeartbeatUC = inject(RegisterDeviceHeartbeatUseCase);
 
   @Input() activos: Activo[] = [];
   @Input() typeMap: Record<string, any> = {};
@@ -401,7 +377,7 @@ export class InventoryTableComponent {
 
   expandedActivoId = signal<string | null>(null);
   softwareMap = signal<Record<string, { loading: boolean; error: string | null; items: InstalledSoftwareEvaluation[] }>>({});
-  telemetryMap = signal<Record<string, { loading: boolean; simulating: boolean; latest: ActivoTelemetryLog | null }>>({});
+  telemetryMap = signal<Record<string, { loading: boolean; latest: ActivoTelemetryLog | null }>>({});
 
   toggleExpand(activo: Activo): void {
     if (this.expandedActivoId() === activo.id) {
@@ -422,75 +398,20 @@ export class InventoryTableComponent {
   loadTelemetry(activoId: string): void {
     this.telemetryMap.update(map => ({
       ...map,
-      [activoId]: { loading: true, simulating: false, latest: map[activoId]?.latest ?? null }
+      [activoId]: { loading: true, latest: map[activoId]?.latest ?? null }
     }));
 
     this.getTelemetryHistoryUC.execute(activoId).subscribe({
       next: (logs) => {
         this.telemetryMap.update(map => ({
           ...map,
-          [activoId]: { loading: false, simulating: false, latest: logs.length > 0 ? logs[0] : null }
+          [activoId]: { loading: false, latest: logs.length > 0 ? logs[0] : null }
         }));
       },
       error: () => {
         this.telemetryMap.update(map => ({
           ...map,
-          [activoId]: { loading: false, simulating: false, latest: null }
-        }));
-      }
-    });
-  }
-
-  simulateHeartbeat(activo: Activo, simulateControversy: boolean): void {
-    const assignedLoc = this.locationMap[activo.locationId] || activo.location;
-    let baseLat = 4.6534;
-    let baseLon = -74.1135;
-
-    if (assignedLoc?.coordenadas) {
-      const parts = String(assignedLoc.coordenadas).split(',');
-      if (parts.length === 2) {
-        const parsedLat = parseFloat(parts[0].trim());
-        const parsedLon = parseFloat(parts[1].trim());
-        if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
-          baseLat = parsedLat;
-          baseLon = parsedLon;
-        }
-      }
-    }
-
-    // Si es simulación en sede: variación mínima (~50 metros). Si es controversia: ~75 km de distancia (ej. otra ciudad/terminal)
-    const latitud = simulateControversy ? +(baseLat - 0.5114).toFixed(5) : +(baseLat + 0.0004).toFixed(5);
-    const longitud = simulateControversy ? +(baseLon + 0.4869).toFixed(5) : +(baseLon + 0.0004).toFixed(5);
-
-    this.telemetryMap.update(map => ({
-      ...map,
-      [activo.id]: {
-        loading: false,
-        simulating: true,
-        latest: map[activo.id]?.latest ?? null
-      }
-    }));
-
-    this.registerHeartbeatUC.execute({
-      placa: activo.placa,
-      latitud,
-      longitud,
-      forceAlert: simulateControversy
-    }).subscribe({
-      next: (newLog) => {
-        this.telemetryMap.update(map => ({
-          ...map,
-          [activo.id]: { loading: false, simulating: false, latest: newLog }
-        }));
-      },
-      error: () => {
-        this.telemetryMap.update(map => ({
-          ...map,
-          [activo.id]: {
-            loading: false,
-            simulating: false,
-            latest: map[activo.id]?.latest ?? null
-          }
+          [activoId]: { loading: false, latest: null }
         }));
       }
     });
