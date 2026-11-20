@@ -155,6 +155,10 @@ export class MagicLinkReceiveComponent implements OnInit {
     return this.movement()?.activos || [];
   }
 
+  get simCardsList(): any[] {
+    return this.movement()?.simCards || [];
+  }
+
   get destinationResponsible(): string {
     const m = this.movement();
     return m?.responsible?.nombre || 'Responsable de la Sede';

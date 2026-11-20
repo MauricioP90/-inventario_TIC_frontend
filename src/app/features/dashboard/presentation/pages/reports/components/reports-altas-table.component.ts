@@ -36,7 +36,7 @@ import { Activo } from '../../../../../inventory/domain/models/activo.model';
               </td>
               <!-- Tipo -->
               <td class="px-6 py-4 font-semibold text-slate-700">
-                {{ typeMap[a.tipoActivoId]?.label || a.tipoActivoId }}
+                {{ a.tipoActivo?.nombre || typeMap[a.tipoActivoId]?.label || a.tipoActivoId }}
               </td>
               <!-- Marca / Modelo -->
               <td class="px-6 py-4 font-medium text-slate-700">

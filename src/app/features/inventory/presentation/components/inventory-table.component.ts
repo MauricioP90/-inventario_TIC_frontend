@@ -70,7 +70,7 @@ import { GetActivoTelemetryHistoryUseCase } from '../../application/use-cases/te
               </td>
               <td class="px-6 py-4">
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-600 border-slate-200">
-                  {{ typeMap[activo.tipoActivoId]?.label || activo.tipoActivoId }}
+                  {{ activo.tipoActivo?.nombre || typeMap[activo.tipoActivoId]?.label || activo.tipoActivoId }}
                 </span>
               </td>
               <td class="px-6 py-4 font-medium text-slate-600">{{ activo.marca }}</td>
@@ -160,7 +160,7 @@ import { GetActivoTelemetryHistoryUseCase } from '../../application/use-cases/te
                       @if (!admitsSoftware(activo)) {
                         <div class="p-3.5 bg-white border border-slate-200/90 rounded-xl text-xs text-slate-400 italic flex items-center gap-2">
                           <span class="text-base">ℹ️</span>
-                          <span>Este tipo de activo ({{ typeMap[activo.tipoActivoId]?.label || 'General' }}) no está parametrizado para admitir software corporativo.</span>
+                          <span>Este tipo de activo ({{ activo.tipoActivo?.nombre || typeMap[activo.tipoActivoId]?.label || 'General' }}) no está parametrizado para admitir software corporativo.</span>
                         </div>
                       } @else if (softwareMap()[activo.id]?.loading) {
                         <div class="p-4 bg-white border border-slate-200 rounded-xl flex items-center gap-2.5 text-xs text-slate-500">

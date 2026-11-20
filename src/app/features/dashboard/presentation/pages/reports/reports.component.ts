@@ -269,7 +269,7 @@ export class ReportsPageComponent implements OnInit {
         const modelo = (a.modelo || '').toLowerCase();
         const serial = (a.serial || '').toLowerCase();
         const locName = (a.location?.nombre || '').toLowerCase();
-        const tipoName = (this.typeMap()[a.tipoActivoId]?.label || '').toLowerCase();
+        const tipoName = (a.tipoActivo?.nombre || this.typeMap()[a.tipoActivoId]?.label || '').toLowerCase();
 
         matchesSearch = placa.includes(term) ||
           marca.includes(term) ||

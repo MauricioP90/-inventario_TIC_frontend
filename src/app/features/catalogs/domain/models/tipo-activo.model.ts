@@ -4,6 +4,7 @@ export interface TipoActivo {
   estado: 'ACTIVO' | 'INACTIVO';
   admiteSoftware?: boolean;
   admiteTelemetria?: boolean;
+  admiteSim?: boolean;
 }
 
 export interface CreateTipoActivoDto {
@@ -11,6 +12,7 @@ export interface CreateTipoActivoDto {
   estado?: 'ACTIVO' | 'INACTIVO';
   admiteSoftware?: boolean;
   admiteTelemetria?: boolean;
+  admiteSim?: boolean;
 }
 
 export interface UpdateTipoActivoDto {
@@ -18,4 +20,5 @@ export interface UpdateTipoActivoDto {
   estado?: 'ACTIVO' | 'INACTIVO';
   admiteSoftware?: boolean;
   admiteTelemetria?: boolean;
+  admiteSim?: boolean;
 }

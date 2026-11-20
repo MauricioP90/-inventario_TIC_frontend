@@ -28,19 +28,27 @@ import { Area } from '../../../../../responsables/domain/models/area.model';
       </div>
 
       @if (_movementType() === 'SIM_TRASLADO') {
-        <!-- Flujo Traslado SIM en Bodega -->
+        <!-- Flujo Traslado SIM en Bodega (Individual y Grupal) -->
         <div class="space-y-1.5">
-          <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Buscar SIM Card Disponible *</label>
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Buscar SIM Card(s) Disponible(s) *</label>
+            @if (_selectedSimsForTransfer().length > 0) {
+              <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full border bg-purple-50 text-purple-700 border-purple-200">
+                {{ _selectedSimsForTransfer().length }} {{ _selectedSimsForTransfer().length === 1 ? 'SIM seleccionada' : 'SIMs seleccionadas' }}
+              </span>
+            }
+          </div>
           <div class="relative group">
             <input type="text" 
                    [ngModel]="simTransferSearchQuery()" 
                    (focus)="showSimTransferDropdown.set(true)"
                    (input)="simTransferSearchQuery.set($any($event.target).value); showSimTransferDropdown.set(true)"
-                   placeholder="Escriba ICCID, Número o Proveedor..."
+                   placeholder="Escriba ICCID, Número o Operador para agregar al traslado..."
                    class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm">
             
-            @if (simTransferSearchQuery() || _selectedSimForTransfer()) {
-              <button (click)="clearSimTransferSelection()" 
+            @if (simTransferSearchQuery() || showSimTransferDropdown()) {
+              <button type="button"
+                      (click)="simTransferSearchQuery.set(''); showSimTransferDropdown.set(false)" 
                       class="absolute right-3 top-3 text-slate-300 hover:text-slate-500 transition-colors cursor-pointer">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -52,11 +60,14 @@ import { Area } from '../../../../../responsables/domain/models/area.model';
               <div class="absolute z-20 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
                 @for (sim of filteredSimsForTransfer(); track sim.id) {
                   <div (click)="selectSimForTransfer(sim)" 
-                       class="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none flex flex-col gap-0.5 transition-colors">
-                    <p class="text-sm font-bold text-slate-800">{{ sim.numero }}</p>
+                       class="p-3.5 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none flex flex-col gap-0.5 transition-colors">
+                    <div class="flex items-center justify-between">
+                      <p class="text-sm font-bold text-slate-800">{{ sim.numero }}</p>
+                      <span class="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">{{ sim.location?.nombre || 'Sin Ubicación' }}</span>
+                    </div>
                     <div class="flex items-center justify-between">
                       <p class="text-[10px] text-slate-500">ICCID: {{ sim.iccid }} - Operador: {{ sim.operador }}</p>
-                      <span class="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">{{ sim.location?.nombre || 'Sin Ubicación' }}</span>
+                      <span class="text-[11px] text-indigo-600 font-bold hover:underline">+ Agregar</span>
                     </div>
                   </div>
                 }
@@ -65,26 +76,60 @@ import { Area } from '../../../../../responsables/domain/models/area.model';
           </div>
         </div>
 
-        <!-- Vista Previa de SIM Física -->
-        @if (_selectedSimForTransfer()) {
-          <div [class]="'p-4 rounded-2xl border flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-1 ' + getSimCardBrandClasses(_selectedSimForTransfer()?.operador)">
-            <div class="flex items-center gap-3">
-              <span class="text-3xl">📱</span>
-              <div>
-                <h4 class="font-bold text-sm leading-none flex items-center gap-2">
-                  {{ _selectedSimForTransfer()?.numero }}
-                  <span class="text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded-full bg-white/60 border border-white/80">
-                    {{ _selectedSimForTransfer()?.operador }}
-                  </span>
-                </h4>
-                <p class="text-[11px] font-mono opacity-80 mt-1.5">ICCID: {{ _selectedSimForTransfer()?.iccid }}</p>
-              </div>
-            </div>
-            <div class="text-right">
-              <span class="text-[10px] font-extrabold tracking-wider uppercase px-2 py-0.5 rounded bg-indigo-600 text-white shadow-sm">
-                BODEGA
+        <!-- Relación de SIM Cards del Traslado -->
+        @if (_selectedSimsForTransfer().length > 0) {
+          <div class="space-y-2.5 animate-in fade-in slide-in-from-top-1">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-2">
+                <span>Relación de SIM Cards del Traslado</span>
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-100">
+                  {{ _selectedSimsForTransfer().length }} {{ _selectedSimsForTransfer().length === 1 ? 'chip' : 'chips' }}
+                </span>
               </span>
-              <p class="text-[11px] opacity-75 mt-1.5 font-medium">Ubicación: {{ _selectedSimForTransfer()?.location?.nombre || 'Sin Ubicación' }}</p>
+              @if (_selectedSimsForTransfer().length > 1) {
+                <button type="button"
+                        (click)="clearSimTransferSelection()"
+                        class="text-[11px] font-medium text-slate-400 hover:text-red-500 transition-colors cursor-pointer">
+                  Limpiar lista
+                </button>
+              }
+            </div>
+
+            <div class="space-y-2 max-h-72 overflow-y-auto pr-1">
+              @for (sim of _selectedSimsForTransfer(); track sim.id; let idx = $index) {
+                <div [class]="'p-3.5 rounded-2xl border flex items-center justify-between shadow-xs transition-all ' + getSimCardBrandClasses(sim.operador)">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-7 h-7 rounded-lg bg-white/80 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-200/70">
+                      #{{ idx + 1 }}
+                    </div>
+                    <div class="min-w-0">
+                      <h4 class="font-bold text-sm leading-none flex items-center gap-2 flex-wrap">
+                        <span>📱 {{ sim.numero }}</span>
+                        <span class="text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded-full bg-white/70 border border-white/90">
+                          {{ sim.operador }}
+                        </span>
+                      </h4>
+                      <p class="text-[11px] font-mono opacity-80 mt-1 truncate">ICCID: {{ sim.iccid }}</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <div class="text-right hidden sm:block">
+                      <span class="text-[10px] font-extrabold tracking-wider uppercase px-2 py-0.5 rounded bg-indigo-600 text-white shadow-sm">
+                        BODEGA
+                      </span>
+                      <p class="text-[10px] opacity-75 mt-1 font-medium">{{ sim.location?.nombre || 'Sin Ubicación' }}</p>
+                    </div>
+                    <button type="button"
+                            (click)="removeSimFromTransfer(sim.id)"
+                            title="Quitar SIM de la relación"
+                            class="w-7 h-7 rounded-lg text-slate-500 hover:text-red-600 hover:bg-white/80 flex items-center justify-center transition-colors cursor-pointer">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              }
             </div>
           </div>
         }
@@ -97,13 +142,13 @@ import { Area } from '../../../../../responsables/domain/models/area.model';
             <div class="relative group">
               <input type="text" 
                      [ngModel]="originSearchQuery()" 
-                     (focus)="_selectedSimForTransfer()?.locationId ? null : showOriginDropdown.set(true)"
+                     (focus)="hasLockedSimOrigin() ? null : showOriginDropdown.set(true)"
                      (input)="originSearchQuery.set($any($event.target).value); showOriginDropdown.set(true)"
-                     [disabled]="!!_selectedSimForTransfer()?.locationId"
+                     [disabled]="hasLockedSimOrigin()"
                      placeholder="Escriba Código o Nombre de la Sede Origen..."
                      class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium text-slate-700 disabled:bg-slate-100 disabled:text-slate-500">
               
-              @if (originSearchQuery() && !_selectedSimForTransfer()?.locationId) {
+              @if (originSearchQuery() && !hasLockedSimOrigin()) {
                 <button (click)="clearOriginSelection()" 
                         class="absolute right-3 top-3 text-slate-300 hover:text-slate-500 transition-colors">
                   <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -112,7 +157,7 @@ import { Area } from '../../../../../responsables/domain/models/area.model';
                 </button>
               }
 
-              @if (showOriginDropdown() && !_selectedSimForTransfer()?.locationId && filteredOrigins().length > 0) {
+              @if (showOriginDropdown() && !hasLockedSimOrigin() && filteredOrigins().length > 0) {
                 <div class="absolute z-20 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
                   @for (loc of filteredOrigins(); track loc.id) {
                     <div (click)="selectOrigin(loc)" 
@@ -591,13 +636,8 @@ export class MovementSimSectionComponent {
       this.searchQuery.set(val.placa);
     }
   }
-  @Input() set selectedSimForTransfer(val: SimCard | null) { 
-    this._selectedSimForTransfer.set(val);
-    if (val) {
-      this.simTransferSearchQuery.set(`${val.numero} | ICCID: ${val.iccid} | ${val.operador}`);
-    } else {
-      this.simTransferSearchQuery.set('');
-    }
+  @Input() set selectedSimsForTransfer(val: SimCard[]) {
+    this._selectedSimsForTransfer.set(val || []);
   }
 
   @Input() selectedSimForAssign: SimCard | null = null;
@@ -612,7 +652,7 @@ export class MovementSimSectionComponent {
   @Output() destinationAreaIdChange = new EventEmitter<string>();
   @Output() responsibleIdChange = new EventEmitter<string>();
   @Output() selectedActivoChange = new EventEmitter<Activo | null>();
-  @Output() selectedSimForTransferChange = new EventEmitter<SimCard | null>();
+  @Output() selectedSimsForTransferChange = new EventEmitter<SimCard[]>();
   @Output() selectedSimForAssignChange = new EventEmitter<SimCard | null>();
   @Output() selectedSimToReplaceChange = new EventEmitter<SimCard | null>();
   @Output() selectedSimToRemoveChange = new EventEmitter<SimCard | null>();
@@ -633,7 +673,11 @@ export class MovementSimSectionComponent {
   _destinationAreaId = signal('');
   _responsibleId = signal('');
   _selectedActivo = signal<Activo | null>(null);
-  _selectedSimForTransfer = signal<SimCard | null>(null);
+  _selectedSimsForTransfer = signal<SimCard[]>([]);
+
+  hasLockedSimOrigin = computed(() => {
+    return this._selectedSimsForTransfer().some(s => !!s.locationId);
+  });
 
   searchQuery = signal('');
   isLoadingPlaca = signal(false);
@@ -670,9 +714,10 @@ export class MovementSimSectionComponent {
         m.simCardIds?.forEach((id: string) => activeMovementSimIds.add(id));
       }
     });
+    const selectedIds = new Set(this._selectedSimsForTransfer().map(s => s.id));
 
     const available = this._simCards().filter(s =>
-      s.estado === 'BODEGA' && !activeMovementSimIds.has(s.id)
+      s.estado === 'BODEGA' && !activeMovementSimIds.has(s.id) && !selectedIds.has(s.id)
     );
     if (!term) return available;
     return available.filter(s =>
@@ -738,7 +783,11 @@ export class MovementSimSectionComponent {
 
   filteredDestinations = computed(() => {
     const term = this.destinationSearchQuery().toLowerCase().trim();
-    const todos = this._locations().filter(loc => loc.estado === 'ACTIVO');
+    const originId = this._originId();
+    const todos = this._locations().filter(loc =>
+      loc.estado === 'ACTIVO' &&
+      (this._movementType() !== 'SIM_TRASLADO' || !originId || loc.id !== originId)
+    );
     if (!term) return todos;
     return todos.filter(loc =>
       loc.nombre.toLowerCase().includes(term) ||
@@ -768,12 +817,24 @@ export class MovementSimSectionComponent {
       }
     });
 
-    const todos = this._activos().filter(a =>
-      a.estado !== 'BAJA' &&
-      a.estado !== 'RECHAZADO' &&
-      a.estado !== 'EN_TRANSITO' &&
-      !activeMovementActivoIds.has(a.id)
-    );
+    const mType = this._movementType();
+    const requiresAdmiteSim = mType === 'SIM_ASIGNACION' || mType === 'SIM_CAMBIO';
+
+    const todos = this._activos().filter(a => {
+      if (
+        a.estado === 'BAJA' ||
+        a.estado === 'RECHAZADO' ||
+        a.estado === 'EN_TRANSITO' ||
+        activeMovementActivoIds.has(a.id)
+      ) {
+        return false;
+      }
+      if (requiresAdmiteSim) {
+        return a.tipoActivo?.admiteSim === true;
+      }
+      // Para SIM_RETIRO / SIM_RETIRO_TOTAL permitir equipos con SIMs instaladas o tipos que admiten SIM
+      return a.tipoActivo?.admiteSim === true || (a.simCards && a.simCards.length > 0);
+    });
 
     if (!term) return todos;
     return todos.filter(a =>
@@ -807,6 +868,10 @@ export class MovementSimSectionComponent {
       this.clearDestinationSelection();
     } else if (isLocalSIM) {
       this.clearSimTransferSelection();
+      const currentActivo = this._selectedActivo();
+      if (currentActivo && (newType === 'SIM_ASIGNACION' || newType === 'SIM_CAMBIO') && !currentActivo.tipoActivo?.admiteSim) {
+        this.clearSelection();
+      }
       const activo = this._selectedActivo();
       if (activo) {
         const loc = activo.location || this._locations().find(l => l.id === (activo.locationId || (activo as any).location?.id));
@@ -830,12 +895,29 @@ export class MovementSimSectionComponent {
   }
 
   selectSimForTransfer(sim: SimCard) {
-    this._selectedSimForTransfer.set(sim);
-    this.selectedSimForTransferChange.emit(sim);
-    this.simTransferSearchQuery.set(`${sim.numero} | ICCID: ${sim.iccid} | ${sim.operador}`);
+    const currentList = this._selectedSimsForTransfer();
+    if (currentList.some(s => s.id === sim.id)) {
+      this.simTransferSearchQuery.set('');
+      this.showSimTransferDropdown.set(false);
+      return;
+    }
+
+    const currentOriginId = this._originId();
+    if (currentList.length > 0 && currentOriginId && sim.locationId && currentOriginId !== sim.locationId) {
+      const originLoc = this._locations().find(l => l.id === currentOriginId);
+      const originName = originLoc?.nombre || 'la sede de origen seleccionada';
+      const newName = sim.location?.nombre || 'otra sede';
+      alert(`⚠️ No se puede agregar esta SIM Card:\n\nTodas las SIMs del traslado deben pertenecer a la misma sede de origen ("${originName}").\n\nLa SIM #${sim.numero} está registrada en "${newName}".`);
+      return;
+    }
+
+    const updated = [...currentList, sim];
+    this._selectedSimsForTransfer.set(updated);
+    this.selectedSimsForTransferChange.emit(updated);
+    this.simTransferSearchQuery.set('');
     this.showSimTransferDropdown.set(false);
 
-    if (sim.locationId) {
+    if (sim.locationId && !this._originId()) {
       this._originId.set(sim.locationId);
       this.originIdChange.emit(sim.locationId);
       this.originSearchQuery.set(sim.location?.nombre || 'Bodega');
@@ -849,15 +931,31 @@ export class MovementSimSectionComponent {
       if (this.selectedDestination()?.id === sim.locationId) {
         this.clearDestinationSelection();
       }
-    } else {
+    }
+  }
+
+  removeSimFromTransfer(simId: string) {
+    const updated = this._selectedSimsForTransfer().filter(s => s.id !== simId);
+    this._selectedSimsForTransfer.set(updated);
+    this.selectedSimsForTransferChange.emit(updated);
+
+    if (updated.length === 0) {
       this.clearOriginSelection();
+    } else if (!this._originId()) {
+      const simWithLoc = updated.find(s => !!s.locationId);
+      if (simWithLoc?.locationId) {
+        this._originId.set(simWithLoc.locationId);
+        this.originIdChange.emit(simWithLoc.locationId);
+        this.originSearchQuery.set(simWithLoc.location?.nombre || 'Bodega');
+      }
     }
   }
 
   clearSimTransferSelection() {
-    this._selectedSimForTransfer.set(null);
-    this.selectedSimForTransferChange.emit(null);
+    this._selectedSimsForTransfer.set([]);
+    this.selectedSimsForTransferChange.emit([]);
     this.simTransferSearchQuery.set('');
+    this.showSimTransferDropdown.set(false);
     this.clearOriginSelection();
   }
 
@@ -1044,7 +1142,7 @@ export class MovementSimSectionComponent {
 
   reset() {
     this._selectedActivo.set(null);
-    this._selectedSimForTransfer.set(null);
+    this._selectedSimsForTransfer.set([]);
     this._originId.set('');
     this._destinationId.set('');
     this._destinationAreaId.set('');

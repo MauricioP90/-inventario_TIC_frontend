@@ -96,17 +96,28 @@ import { TipoModelosModalComponent } from '../tipo-modelos-modal/tipo-modelos-mo
               @if (formError()) {
                 <p class="text-xs text-red-600">{{ formError() }}</p>
               }
-              <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
                 <p class="text-[11px] text-slate-400">Normalizado a formato Título (ej: "laptop" → "Laptop"). Al guardar podrás seguir gestionando sus marcas y modelos.</p>
-                <label class="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-slate-700 font-medium">
-                  <input
-                    type="checkbox"
-                    [(ngModel)]="newAdmiteSoftware"
-                    class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
-                    id="checkbox-admite-software"
-                  />
-                  <span>¿Admite instalación de aplicativos y software?</span>
-                </label>
+                <div class="flex flex-wrap items-center gap-4">
+                  <label class="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-slate-700 font-medium">
+                    <input
+                      type="checkbox"
+                      [(ngModel)]="newAdmiteSoftware"
+                      class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+                      id="checkbox-admite-software"
+                    />
+                    <span>¿Admite aplicativos y software?</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-slate-700 font-medium">
+                    <input
+                      type="checkbox"
+                      [(ngModel)]="newAdmiteSim"
+                      class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+                      id="checkbox-admite-sim"
+                    />
+                    <span>¿Admite tarjetas SIM?</span>
+                  </label>
+                </div>
               </div>
             </div>
             <div class="flex gap-2 lg:pt-6">
@@ -137,6 +148,7 @@ import { TipoModelosModalComponent } from '../tipo-modelos-modal/tipo-modelos-mo
               <th class="px-6 py-3 font-semibold">Nombre del Tipo</th>
               <th class="px-6 py-3 font-semibold text-center w-48">Marcas y Modelos</th>
               <th class="px-6 py-3 font-semibold text-center w-40">Soporte Software</th>
+              <th class="px-6 py-3 font-semibold text-center w-36">Soporte SIM</th>
               <th class="px-6 py-3 font-semibold text-center w-36">Estado</th>
               <th class="px-6 py-3 font-semibold text-right w-28">Acciones</th>
             </tr>
@@ -144,7 +156,7 @@ import { TipoModelosModalComponent } from '../tipo-modelos-modal/tipo-modelos-mo
           <tbody class="divide-y divide-slate-100">
             @if (loadingTipos()) {
               <tr>
-                <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+                <td colspan="6" class="px-6 py-12 text-center text-slate-400">
                   <div class="flex items-center justify-center gap-2">
                     <div class="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                     <span>Cargando tipos de activo...</span>
@@ -153,7 +165,7 @@ import { TipoModelosModalComponent } from '../tipo-modelos-modal/tipo-modelos-mo
               </tr>
             } @else if (filteredTipos().length === 0) {
               <tr>
-                <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+                <td colspan="6" class="px-6 py-12 text-center text-slate-400">
                   @if (searchTiposTerm) {
                     No se encontraron tipos que coincidan con "{{ searchTiposTerm }}".
                   } @else {
@@ -257,6 +269,28 @@ import { TipoModelosModalComponent } from '../tipo-modelos-modal/tipo-modelos-mo
 
                   <td class="px-6 py-3.5 text-center">
                     <button
+                      (click)="toggleAdmiteSim(tipo)"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer"
+                      [class.bg-indigo-50]="tipo.admiteSim"
+                      [class.text-indigo-700]="tipo.admiteSim"
+                      [class.hover:bg-indigo-100]="tipo.admiteSim"
+                      [class.bg-slate-100]="!tipo.admiteSim"
+                      [class.text-slate-500]="!tipo.admiteSim"
+                      [class.hover:bg-slate-200]="!tipo.admiteSim"
+                      [title]="'Click para ' + (tipo.admiteSim ? 'desactivar soporte de SIM Card' : 'activar soporte de SIM Card')"
+                      [id]="'btn-toggle-sim-' + tipo.id"
+                    >
+                      <span
+                        class="w-1.5 h-1.5 rounded-full"
+                        [class.bg-indigo-500]="tipo.admiteSim"
+                        [class.bg-slate-400]="!tipo.admiteSim"
+                      ></span>
+                      {{ tipo.admiteSim ? 'Admite SIM' : 'No Aplica' }}
+                    </button>
+                  </td>
+
+                  <td class="px-6 py-3.5 text-center">
+                    <button
                       (click)="toggleEstadoTipo(tipo)"
                       class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full transition-all cursor-pointer"
                       [class.bg-emerald-50]="tipo.estado === 'ACTIVO'"
@@ -351,6 +385,7 @@ export class TiposTabComponent implements OnInit {
   newMarcaInicial = '';
   newModeloInicial = '';
   newAdmiteSoftware = false;
+  newAdmiteSim = false;
   formError = signal<string | null>(null);
   editingTipoId = signal<string | null>(null);
   editNombre = '';
@@ -437,6 +472,7 @@ export class TiposTabComponent implements OnInit {
     this.newMarcaInicial = '';
     this.newModeloInicial = '';
     this.newAdmiteSoftware = false;
+    this.newAdmiteSim = false;
     this.formError.set(null);
   }
 
@@ -446,6 +482,7 @@ export class TiposTabComponent implements OnInit {
     this.newMarcaInicial = '';
     this.newModeloInicial = '';
     this.newAdmiteSoftware = false;
+    this.newAdmiteSim = false;
     this.formError.set(null);
   }
 
@@ -461,7 +498,7 @@ export class TiposTabComponent implements OnInit {
     }
     this.formError.set(null);
     this.saving.set(true);
-    this.createTipoUC.execute({ nombre, admiteSoftware: this.newAdmiteSoftware }).subscribe({
+    this.createTipoUC.execute({ nombre, admiteSoftware: this.newAdmiteSoftware, admiteSim: this.newAdmiteSim }).subscribe({
       next: (created) => {
         const finalizeCreation = (extraMsg = '') => {
           this.saving.set(false);
@@ -470,6 +507,7 @@ export class TiposTabComponent implements OnInit {
           this.newMarcaInicial = '';
           this.newModeloInicial = '';
           this.newAdmiteSoftware = false;
+          this.newAdmiteSim = false;
           this.loadTipos();
           this.loadModelos();
           this.newlyCreatedId.set(created.id);
@@ -564,6 +602,25 @@ export class TiposTabComponent implements OnInit {
       error: (err) => {
         this.updatingTipo.set(false);
         this.showToast.emit({ type: 'error', message: err.error?.message || 'Error al actualizar soporte de software.' });
+      }
+    });
+  }
+
+  toggleAdmiteSim(tipo: TipoActivo) {
+    const newAdmite = !tipo.admiteSim;
+    this.updatingTipo.set(true);
+    this.updateTipoUC.execute(tipo.id, { admiteSim: newAdmite }).subscribe({
+      next: () => {
+        this.updatingTipo.set(false);
+        this.loadTipos();
+        this.showToast.emit({
+          type: 'success',
+          message: `"${tipo.nombre}" ahora ${newAdmite ? 'admite tarjetas SIM' : 'no admite tarjetas SIM'}.`
+        });
+      },
+      error: (err) => {
+        this.updatingTipo.set(false);
+        this.showToast.emit({ type: 'error', message: err.error?.message || 'Error al actualizar soporte de SIM.' });
       }
     });
   }

@@ -80,14 +80,23 @@ import { RoleService } from '../../../core/auth/services/role.service';
         @if (simCard) {
           <div class="space-y-1.5">
             <label class="block text-sm font-medium text-slate-700">Estado</label>
-            <select [(ngModel)]="estado" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+            <select [(ngModel)]="estado" [disabled]="!!simCard.activoId"
+              class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white disabled:bg-slate-100 disabled:text-slate-500">
               <option value="BODEGA">Disponible (Bodega)</option>
-              <option value="ASIGNADA">Asignada</option>
+              <option value="ASIGNADA" [disabled]="!simCard.activoId">Asignada{{ !simCard.activoId ? ' — (Usar Movimientos)' : '' }}</option>
+              @if (simCard.estado === 'POR_REPOSICION') {
+                <option value="POR_REPOSICION">Pend. Reposición (Hurto/Pérdida)</option>
+              }
               <option value="BAJA" [disabled]="!!simCard.activoId">Inactiva (Baja){{ simCard.activoId ? ' — (Vinculada a Dispositivo)' : '' }}</option>
             </select>
-            @if (simCard.activoId && estado === 'BAJA') {
+            @if (simCard.activoId) {
               <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-2.5 rounded-lg flex items-center gap-1.5 font-medium">
-                <span>⚠️ No se puede inactivar esta SIM Card porque está vinculada al dispositivo {{ simCard.activo?.placa ? '("' + simCard.activo?.placa + '")' : '' }}. Desvincúlala del dispositivo primero.</span>
+                <span>⚠️ Esta SIM Card está vinculada al dispositivo {{ simCard.activo?.placa ? '("' + simCard.activo?.placa + '")' : '' }}. Para retirarla o cambiar su estado utiliza el módulo de Movimientos.</span>
+              </div>
+            } @else if (simCard.estado === 'POR_REPOSICION') {
+              <div class="bg-amber-50 border border-amber-300 text-amber-900 text-xs p-3 rounded-xl space-y-1 font-medium">
+                <p class="font-bold">⚠️ Línea vinculada a equipo HURTADO o PERDIDO</p>
+                <p class="leading-relaxed">Si tramitaste reposición con el operador, actualiza el nuevo <strong>ICCID</strong> y cambia el estado a <strong>Disponible (Bodega)</strong>. Si cancelaste la línea, cámbiala a <strong>Inactiva (Baja)</strong>.</p>
               </div>
             }
           </div>
@@ -246,7 +255,7 @@ export class AddSimDrawerComponent implements OnInit, OnChanges {
         numero: this.numero,
         iccid: this.iccid,
         operador: this.operador,
-        estado: this.estado as 'BODEGA' | 'ASIGNADA' | 'BAJA',
+        estado: this.estado as 'BODEGA' | 'ASIGNADA' | 'POR_REPOSICION' | 'BAJA',
         locationId: isAssigned ? undefined : (this.ubicacion || undefined)
       };
 

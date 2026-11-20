@@ -80,7 +80,7 @@ export class ReportsExportService {
     altas.forEach(a => {
       const date = this.formatDateOnlyForCSV(a.fechaIngreso);
       const placa = a.placa;
-      const type = typeMap[a.tipoActivoId]?.label || a.tipoActivoId;
+      const type = a.tipoActivo?.nombre || typeMap[a.tipoActivoId]?.label || a.tipoActivoId;
       const marca = a.marca || '';
       const modelo = a.modelo || '';
       const serial = a.serial || '';

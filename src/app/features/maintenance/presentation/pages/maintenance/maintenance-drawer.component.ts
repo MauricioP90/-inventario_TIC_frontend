@@ -70,13 +70,13 @@ import { MaintenanceTimelineComponent } from '../../components/maintenance-timel
           <div class="space-y-5">
             <app-maintenance-info-card
               [report]="report"
-              [activo]="activoAsociado"
+              [activo]="activoAsociado()"
               [isAdmin]="isAdmin()"
             />
 
             <app-maintenance-workflow-actions
               [report]="report"
-              [activo]="activoAsociado"
+              [activo]="activoAsociado()"
               [puedeEditar]="isTecnico()"
               (saved)="onReportSaved()"
               (reportUpdated)="onReportUpdated($event)"
@@ -106,7 +106,7 @@ export class MaintenanceDrawerComponent {
     if (val) {
       this.cargarDetallesReporte(val);
     } else {
-      this.activoAsociado = null;
+      this.activoAsociado.set(null);
     }
   }
   get report() { return this._report; }
@@ -118,7 +118,7 @@ export class MaintenanceDrawerComponent {
   isAdmin = computed(() => this.roleService.isAdmin());
   isTecnico = computed(() => this.roleService.canRegisterMaintenance());
 
-  activoAsociado: Activo | null = null;
+  activoAsociado = signal<Activo | null>(null);
   toast = signal<{ type: 'success' | 'error', message: string } | null>(null);
 
   close() {
@@ -128,10 +128,10 @@ export class MaintenanceDrawerComponent {
   cargarDetallesReporte(rep: MaintenanceReport) {
     this.getAllActivosUC.execute().subscribe({
       next: (activos: Activo[]) => {
-        this.activoAsociado = activos.find((a: Activo) => a.id === rep.activoId) || null;
+        this.activoAsociado.set(activos.find((a: Activo) => a.id === rep.activoId) || null);
       },
       error: () => {
-        this.activoAsociado = null;
+        this.activoAsociado.set(null);
       }
     });
   }

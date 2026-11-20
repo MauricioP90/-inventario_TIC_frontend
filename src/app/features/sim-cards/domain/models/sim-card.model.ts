@@ -3,7 +3,7 @@ export interface SimCard {
   numero: string;    // Del backend: numero
   iccid: string;
   operador: string;  // Del backend: operador
-  estado: 'BODEGA' | 'ASIGNADA' | 'BAJA'; // Sincronizado con EstadoSIM
+  estado: 'BODEGA' | 'ASIGNADA' | 'POR_REPOSICION' | 'BAJA'; // Sincronizado con EstadoSIM
   responsableId?: string;
   activoId?: string;
   locationId?: string;

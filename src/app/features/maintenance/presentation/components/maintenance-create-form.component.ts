@@ -83,7 +83,8 @@ import { RoleService } from '../../../../core/auth/services/role.service';
         </div>
       }
     </div>
-  `
+  `,
+  styles: [':host { display: block; }']
 })
 export class MaintenanceCreateFormComponent implements OnInit {
   private usecases = inject(MaintenanceUseCases);

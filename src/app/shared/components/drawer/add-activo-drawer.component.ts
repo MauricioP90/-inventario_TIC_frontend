@@ -83,6 +83,9 @@ import { ActivoSoftwareSectionComponent, PreSelectedApp } from './activo-compone
           <label class="block text-sm font-medium text-slate-700">Tipo de Dispositivo <span class="text-red-500">*</span></label>
           <select [(ngModel)]="tipo" (change)="onTipoChange()" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
             <option value="" disabled>Seleccionar tipo</option>
+            @if (activo?.tipoActivo?.estado === 'INACTIVO') {
+              <option [value]="activo!.tipoActivo!.id">{{ activo!.tipoActivo!.nombre }} (Inactivo / Descontinuado)</option>
+            }
             @for (type of metadata()?.types; track type.id) {
               <option [value]="type.id">{{ type.label }}</option>
             }

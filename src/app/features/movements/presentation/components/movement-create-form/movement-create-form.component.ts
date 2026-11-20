@@ -109,7 +109,7 @@ import { MovementRecipientsSectionComponent } from './components/movement-recipi
             [destinationAreaId]="destinationAreaId()"
             [responsibleId]="responsibleId()"
             [selectedActivo]="selectedActivo()"
-            [selectedSimForTransfer]="selectedSimForTransfer()"
+            [selectedSimsForTransfer]="selectedSimsForTransfer()"
             [selectedSimForAssign]="selectedSimForAssign()"
             [selectedSimToReplace]="selectedSimToReplace()"
             [selectedSimToRemove]="selectedSimToRemove()"
@@ -121,7 +121,7 @@ import { MovementRecipientsSectionComponent } from './components/movement-recipi
             (destinationAreaIdChange)="destinationAreaId.set($event)"
             (responsibleIdChange)="responsibleId.set($event)"
             (selectedActivoChange)="onSimActivoChange($event)"
-            (selectedSimForTransferChange)="selectedSimForTransfer.set($event)"
+            (selectedSimsForTransferChange)="selectedSimsForTransfer.set($event)"
             (selectedSimForAssignChange)="selectedSimForAssign.set($event)"
             (selectedSimToReplaceChange)="selectedSimToReplace.set($event)"
             (selectedSimToRemoveChange)="selectedSimToRemove.set($event)"
@@ -206,7 +206,7 @@ export class MovementCreateFormComponent {
   selectedEmails = signal<string[]>([]);
 
   // SIM specific state
-  selectedSimForTransfer = signal<SimCard | null>(null);
+  selectedSimsForTransfer = signal<SimCard[]>([]);
   selectedSimForAssign = signal<SimCard | null>(null);
   selectedSimToReplace = signal<SimCard | null>(null);
   selectedSimToRemove = signal<SimCard | null>(null);
@@ -222,7 +222,7 @@ export class MovementCreateFormComponent {
     this.responsibleId.set('');
     this.selectedActivo.set(null);
     this.selectedActivos.set([]);
-    this.selectedSimForTransfer.set(null);
+    this.selectedSimsForTransfer.set([]);
     this.selectedSimForAssign.set(null);
     this.selectedSimToReplace.set(null);
     this.selectedSimToRemove.set(null);
@@ -287,9 +287,10 @@ export class MovementCreateFormComponent {
 
     if (mType === 'SIM_TRASLADO') {
       return !!(
-        this.selectedSimForTransfer() &&
+        this.selectedSimsForTransfer().length > 0 &&
         this.originId() &&
         this.destinationId() &&
+        this.originId() !== this.destinationId() &&
         this.responsibleId()
       );
     }
@@ -347,7 +348,7 @@ export class MovementCreateFormComponent {
 
     const needsActivo = mType !== 'SIM_TRASLADO';
     const hasEquipment = this.operationMode() === 'ACTIVO' ? this.selectedActivos().length > 0 : !!this.selectedActivo();
-    if (!mType || !this.originId() || !this.destinationId() || !this.responsibleId() || (needsActivo && !hasEquipment) || (!needsActivo && !this.selectedSimForTransfer())) {
+    if (!mType || !this.originId() || !this.destinationId() || !this.responsibleId() || (needsActivo && !hasEquipment) || (!needsActivo && this.selectedSimsForTransfer().length === 0)) {
       alert('Completa los campos obligatorios');
       return;
     }
@@ -361,14 +362,16 @@ export class MovementCreateFormComponent {
     this.loading.set(true);
 
     const simCardIds: string[] = [];
-    if (mType === 'SIM_TRASLADO' && this.selectedSimForTransfer()) {
-      simCardIds.push(this.selectedSimForTransfer()!.id);
+    if (mType === 'SIM_TRASLADO' && this.selectedSimsForTransfer().length > 0) {
+      simCardIds.push(...this.selectedSimsForTransfer().map(s => s.id));
     } else if (mType === 'SIM_ASIGNACION' && this.selectedSimForAssign()) {
       simCardIds.push(this.selectedSimForAssign()!.id);
     } else if (mType === 'SIM_CAMBIO' && this.selectedSimForAssign()) {
       simCardIds.push(this.selectedSimForAssign()!.id);
     } else if (mType === 'SIM_RETIRO' && this.selectedSimToRemove()) {
       simCardIds.push(this.selectedSimToRemove()!.id);
+    } else if (mType === 'SIM_RETIRO_TOTAL' && this.selectedActivo()?.simCards?.length) {
+      simCardIds.push(...this.selectedActivo()!.simCards!.map(s => s.id));
     }
 
     const activoIds = mType === 'SIM_TRASLADO' 
@@ -429,7 +432,7 @@ export class MovementCreateFormComponent {
     this.selectedSimToRemove.set(null);
     this.simStates.set(['BODEGA', 'BODEGA']);
     this.removedSimNewState.set('BODEGA');
-    this.selectedSimForTransfer.set(null);
+    this.selectedSimsForTransfer.set([]);
     this.setOperationMode('ACTIVO');
     setTimeout(() => this.showSuccess.set(false), 8000);
   }

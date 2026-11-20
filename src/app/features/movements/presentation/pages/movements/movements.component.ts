@@ -258,8 +258,12 @@ export class MovementsPageComponent implements OnInit {
           a.placa?.toLowerCase().includes(query) ||
           (a.serial && a.serial.toLowerCase().includes(query))
         );
+        const simMatch = m.simCards?.some((s: any) =>
+          s.numero?.toLowerCase().includes(query) ||
+          (s.iccid && s.iccid.toLowerCase().includes(query))
+        );
 
-        return idMatch || typeMatch || originMatch || destMatch || respMatch || receiverMatch || activeMatch;
+        return idMatch || typeMatch || originMatch || destMatch || respMatch || receiverMatch || activeMatch || simMatch;
       });
     }
 

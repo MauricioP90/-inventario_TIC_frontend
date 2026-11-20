@@ -39,6 +39,29 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
         </div>
       </div>
 
+      <!-- Alerta de SIMs Pendientes de Reposición (Equipos Hurtados / Perdidos) -->
+      @if (pendingRepositionSims().length > 0) {
+        <div class="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div class="flex items-start gap-3">
+            <span class="text-xl shrink-0">⚠️</span>
+            <div>
+              <h3 class="text-xs font-extrabold text-amber-950 uppercase tracking-wider">
+                {{ pendingRepositionSims().length }} línea(s) SIM vinculadas a equipos reportados por Hurto / Pérdida
+              </h3>
+              <p class="text-xs text-amber-900 mt-0.5 leading-relaxed">
+                Líneas: <strong>{{ pendingRepositionNumbers() }}</strong>. Debes solicitar reposición del chip (actualizar nuevo ICCID y pasar a Bodega) o cancelación definitiva (Baja) ante el operador.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            (click)="statusFilter.set(statusFilter() === 'POR_REPOSICION' ? '' : 'POR_REPOSICION')"
+            class="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-colors shrink-0 cursor-pointer shadow-xs">
+            {{ statusFilter() === 'POR_REPOSICION' ? 'Ver todas' : 'Filtrar Pend. Reposición' }}
+          </button>
+        </div>
+      }
+
       <!-- Filter Bar -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
         <div class="md:col-span-2 relative">
@@ -58,6 +81,7 @@ import { RoleService } from '../../../../../core/auth/services/role.service';
           <option value="">Todos los estados</option>
           <option value="BODEGA">Disponible (Bodega)</option>
           <option value="ASIGNADA">Asignada</option>
+          <option value="POR_REPOSICION">Pend. Reposición (Hurto)</option>
           <option value="BAJA">Inactiva (Baja)</option>
         </select>
         <!-- Filtro de Operador -->
@@ -218,6 +242,14 @@ export class SimCardsPageComponent implements OnInit {
 
   newlyCreatedNumero = signal<string | null>(null);
 
+  pendingRepositionSims = computed(() =>
+    this.simCards().filter(s => s.estado === 'POR_REPOSICION')
+  );
+
+  pendingRepositionNumbers = computed(() =>
+    this.pendingRepositionSims().map(s => `${s.numero} (${s.operador})`).join(', ')
+  );
+
   // Señales de Paginación
   currentPage = signal(1);
   pageSize = signal(10);
@@ -330,6 +362,7 @@ export class SimCardsPageComponent implements OnInit {
     switch (status.toUpperCase()) {
       case 'ASIGNADA': return base + 'bg-indigo-800/80';
       case 'BODEGA': return base + 'bg-emerald-500';
+      case 'POR_REPOSICION': return base + 'bg-amber-600';
       case 'BAJA': return base + 'bg-red-600';
       default: return base + 'bg-slate-400';
     }
@@ -337,7 +370,10 @@ export class SimCardsPageComponent implements OnInit {
 
   statusLabel(status: string): string {
     const map: Record<string, string> = {
-      BODEGA: 'Disponible', ASIGNADA: 'Asignada', BAJA: 'Inactiva'
+      BODEGA: 'Disponible',
+      ASIGNADA: 'Asignada',
+      POR_REPOSICION: 'Pend. Reposición',
+      BAJA: 'Inactiva'
     };
     return map[status.toUpperCase()] ?? status;
   }
